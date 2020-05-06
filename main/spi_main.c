@@ -49,11 +49,17 @@ void app_main(void)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
-    lgw_spi_open(&spi);
-
     // Get SX1302 Versioin
+    lgw_spi_open(&spi);
     version = spi_get_version(&spi);
     printf("version = 0x%x\n", version);
+    lgw_spi_close(&spi);
+
+    // test it again to check open()/close()
+    lgw_spi_open(&spi);
+    version = spi_get_version(&spi);
+    printf("version = 0x%x\n", version);
+    lgw_spi_close(&spi);
 
     while(true){
         printf("hello\n");

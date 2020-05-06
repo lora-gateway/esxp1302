@@ -90,35 +90,28 @@ int lgw_spi_open(spi_device_handle_t *spi)
     ret = spi_bus_add_device(SX1302_SPI_HOST, &devcfg, spi);
     ESP_ERROR_CHECK(ret);
 
-    return ret;
+    return LGW_SPI_SUCCESS;
+}
+
+/* SPI release */
+int lgw_spi_close(spi_device_handle_t *spi)
+{
+    esp_err_t ret;
+
+    // esp_err_t spi_bus_remove_device(spi_device_handle_t handle);
+    ret = spi_bus_remove_device(*spi);
+    ESP_ERROR_CHECK(ret);
+    // printf("ret = %d\n", ret);
+
+    // esp_err_t spi_bus_free(spi_host_device_t host_id);
+    ret = spi_bus_free(SX1302_SPI_HOST);
+    ESP_ERROR_CHECK(ret);
+    // printf("ret = %d\n", ret);
+
+    return LGW_SPI_SUCCESS;
 }
 
 #if 0
-
-/* SPI release */
-int lgw_spi_close(void *spi_target) {
-    int spi_device;
-    int a;
-
-    /* check input variables */
-    CHECK_NULL(spi_target);
-
-    /* close file & deallocate file descriptor */
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-    a = close(spi_device);
-    free(spi_target);
-
-    /* determine return code */
-    if (a < 0) {
-        DEBUG_MSG("ERROR: SPI PORT FAILED TO CLOSE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI port closed\n");
-        return LGW_SPI_SUCCESS;
-    }
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple write */
 int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t data) {

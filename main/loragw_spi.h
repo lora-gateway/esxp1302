@@ -51,7 +51,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 int lgw_spi_open(spi_device_handle_t *spi);
-//int lgw_spi_open(const char * spidev_path, void **spi_target_ptr);
 
 /**
 @brief LoRa concentrator SPI close
@@ -59,9 +58,9 @@ int lgw_spi_open(spi_device_handle_t *spi);
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-#if 0
-int lgw_spi_close(void *spi_target);
+int lgw_spi_close(spi_device_handle_t *spi);
 
+#if 0
 /**
 @brief LoRa concentrator SPI single-byte write
 @param spi_target generic pointer to SPI target (implementation dependant)
