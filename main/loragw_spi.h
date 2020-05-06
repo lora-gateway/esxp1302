@@ -23,6 +23,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>        /* C99 types*/
+#include "driver/spi_master.h"
 
 //#include "config.h"    /* library configuration options (dynamically generated) */
 
@@ -49,7 +50,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-int lgw_spi_open(const char * spidev_path, void **spi_target_ptr);
+int lgw_spi_open(spi_device_handle_t *spi);
+//int lgw_spi_open(const char * spidev_path, void **spi_target_ptr);
 
 /**
 @brief LoRa concentrator SPI close
@@ -57,6 +59,7 @@ int lgw_spi_open(const char * spidev_path, void **spi_target_ptr);
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
+#if 0
 int lgw_spi_close(void *spi_target);
 
 /**
@@ -96,6 +99,7 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
+#endif
 
 #endif
 

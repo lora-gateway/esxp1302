@@ -26,7 +26,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
 
-#include <sys/ioctl.h>
+//#include <sys/ioctl.h>
 //#include <linux/spi/spidev.h>
 
 #include "loragw_spi.h"
@@ -52,83 +52,48 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define READ_ACCESS     0x00
 #define WRITE_ACCESS    0x80
 
+#define PIN_NUM_MISO 12
+#define PIN_NUM_MOSI 13
+#define PIN_NUM_CLK  14
+#define PIN_NUM_CS   15
+
+#define SX1302_SPI_HOST    HSPI_HOST
+#define DMA_CHAN    2
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* SPI initialization and configuration */
-int lgw_spi_open(const char * spidev_path, void **spi_target_ptr) {
-    int *spi_device = NULL;
-    int dev;
-    int a=0, b=0;
-    int i;
+int lgw_spi_open(spi_device_handle_t *spi)
+{
+    esp_err_t ret;
 
-    /* check input variables */
-    CHECK_NULL(spi_target_ptr); /* cannot be null, must point on a void pointer (*spi_target_ptr can be null) */
+    spi_bus_config_t buscfg = {
+        .miso_io_num = PIN_NUM_MISO,
+        .mosi_io_num = PIN_NUM_MOSI,
+        .sclk_io_num = PIN_NUM_CLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+    };
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = SPI_SPEED,
+        .mode = 0,
+        .spics_io_num = PIN_NUM_CS,
+        .queue_size = 8,
+    };
 
-    /* allocate memory for the device descriptor */
-    spi_device = malloc(sizeof(int));
-    if (spi_device == NULL) {
-        DEBUG_MSG("ERROR: MALLOC FAIL\n");
-        return LGW_SPI_ERROR;
-    }
+    // Initialize the SPI bus
+    ret = spi_bus_initialize(SX1302_SPI_HOST, &buscfg, DMA_CHAN);
+    ESP_ERROR_CHECK(ret);
 
-    /* open SPI device */
-    dev = open(spidev_path, O_RDWR);
-    if (dev < 0) {
-        DEBUG_PRINTF("ERROR: failed to open SPI device %s\n", spidev_path);
-        return LGW_SPI_ERROR;
-    }
+    // Attach SX1302 to the SPI bus
+    ret = spi_bus_add_device(SX1302_SPI_HOST, &devcfg, spi);
+    ESP_ERROR_CHECK(ret);
 
-    /* setting SPI mode to 'mode 0' */
-    i = SPI_MODE_0;
-    a = ioctl(dev, SPI_IOC_WR_MODE, &i);
-    b = ioctl(dev, SPI_IOC_RD_MODE, &i);
-    if ((a < 0) || (b < 0)) {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET IN MODE 0\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI max clk (in Hz) */
-    i = SPI_SPEED;
-    a = ioctl(dev, SPI_IOC_WR_MAX_SPEED_HZ, &i);
-    b = ioctl(dev, SPI_IOC_RD_MAX_SPEED_HZ, &i);
-    if ((a < 0) || (b < 0)) {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET MAX SPEED\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI to MSB first */
-    i = 0;
-    a = ioctl(dev, SPI_IOC_WR_LSB_FIRST, &i);
-    b = ioctl(dev, SPI_IOC_RD_LSB_FIRST, &i);
-    if ((a < 0) || (b < 0)) {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET MSB FIRST\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI to 8 bits per word */
-    i = 0;
-    a = ioctl(dev, SPI_IOC_WR_BITS_PER_WORD, &i);
-    b = ioctl(dev, SPI_IOC_RD_BITS_PER_WORD, &i);
-    if ((a < 0) || (b < 0)) {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET 8 BITS-PER-WORD\n");
-        close(dev);
-        return LGW_SPI_ERROR;
-    }
-
-    *spi_device = dev;
-    *spi_target_ptr = (void *)spi_device;
-    DEBUG_MSG("Note: SPI port opened and configured ok\n");
-    return LGW_SPI_SUCCESS;
+    return ret;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+#if 0
 
 /* SPI release */
 int lgw_spi_close(void *spi_target) {
@@ -348,5 +313,6 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8
         return LGW_SPI_SUCCESS;
     }
 }
+#endif
 
 /* --- EOF ------------------------------------------------------------------ */
