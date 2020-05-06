@@ -27,10 +27,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memset */
 
 #include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
+//#include <linux/spi/spidev.h>
 
 #include "loragw_spi.h"
-#include "loragw_aux.h"
+//#include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
