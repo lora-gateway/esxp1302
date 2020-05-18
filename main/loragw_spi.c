@@ -49,8 +49,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define READ_ACCESS     0x00
-#define WRITE_ACCESS    0x80
+#define READ_ACCESS     0x0000
+#define WRITE_ACCESS    0x8000
+#define ADDR_MASK       0x7fff
 
 #define PIN_NUM_MISO 12
 #define PIN_NUM_MOSI 13
@@ -74,6 +75,7 @@ int lgw_spi_open(spi_device_handle_t *spi)
         .sclk_io_num = PIN_NUM_CLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
+        .max_transfer_sz = LGW_BURST_CHUNK,
     };
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = SPI_SPEED,
@@ -111,137 +113,72 @@ int lgw_spi_close(spi_device_handle_t *spi)
     return LGW_SPI_SUCCESS;
 }
 
-#if 0
-
 /* Simple write */
-int lgw_spi_w(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t data) {
-    int spi_device;
-    uint8_t out_buf[4];
-    uint8_t command_size;
-    struct spi_ioc_transfer k;
-    int a;
+int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data)
+{
+    esp_err_t err;
 
-    /* check input variables */
-    CHECK_NULL(spi_target);
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if (err != ESP_OK) return err;
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    spi_transaction_t t = {
+        .cmd = WRITE_ACCESS | (address & ADDR_MASK),
+        .length = 8,
+        .flags = SPI_TRANS_USE_TXDATA,
+        .tx_data = {data},
+    };
+    err = spi_device_polling_transmit(*spi, &t);
 
-    /* prepare frame to be sent */
-    out_buf[0] = spi_mux_target;
-    out_buf[1] = WRITE_ACCESS | ((address >> 8) & 0x7F);
-    out_buf[2] =                ((address >> 0) & 0xFF);
-    out_buf[3] = data;
-    command_size = 4;
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.len = command_size;
-    k.speed_hz = SPI_SPEED;
-    k.cs_change = 0;
-    k.bits_per_word = 8;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
-
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI write success\n");
-        return LGW_SPI_SUCCESS;
-    }
+    spi_device_release_bus(*spi);
+    return err;
 }
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple read */
-int lgw_spi_r(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data) {
-    int spi_device;
-    uint8_t out_buf[5];
-    uint8_t command_size;
-    uint8_t in_buf[ARRAY_SIZE(out_buf)];
-    struct spi_ioc_transfer k;
-    int a;
+int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
+{
+    spi_transaction_t t = {
+        .cmd = READ_ACCESS | (address & ADDR_MASK),
+        .rxlength = 8,
+        .flags = SPI_TRANS_USE_RXDATA,
+    };
 
-    /* check input variables */
-    CHECK_NULL(spi_target);
-    CHECK_NULL(data);
+    esp_err_t err = spi_device_polling_transmit(*spi, &t);
+    if (err!= ESP_OK) return err;
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-
-    /* prepare frame to be sent */
-    out_buf[0] = spi_mux_target;
-    out_buf[1] = READ_ACCESS | ((address >> 8) & 0x7F);
-    out_buf[2] =               ((address >> 0) & 0xFF);
-    out_buf[3] = 0x00;
-    out_buf[4] = 0x00;
-    command_size = 5;
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.rx_buf = (unsigned long) in_buf;
-    k.len = command_size;
-    k.cs_change = 0;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
-
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI read success\n");
-        *data = in_buf[command_size - 1];
-        return LGW_SPI_SUCCESS;
-    }
+    *data = t.rx_data[0];
+    return ESP_OK;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 /* Burst (multiple-byte) write */
-int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
-    int spi_device;
-    uint8_t command[3];
-    uint8_t command_size;
-    struct spi_ioc_transfer k[2];
+int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, uint16_t size)
+{
+    esp_err_t err;
+    spi_transaction_t t;
     int size_to_do, chunk_size, offset;
     int byte_transfered = 0;
-    int i;
 
-    /* check input parameters */
-    CHECK_NULL(spi_target);
-    CHECK_NULL(data);
-    if (size == 0) {
-        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
-        return LGW_SPI_ERROR;
-    }
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if (err != ESP_OK) return err;
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-
-    /* prepare command byte */
-    command[0] = spi_mux_target;
-    command[1] = WRITE_ACCESS | ((address >> 8) & 0x7F);
-    command[2] =                ((address >> 0) & 0xFF);
-    command_size = 3;
+    memset(&t, 0, sizeof(t));
+    t.cmd = WRITE_ACCESS | (address & ADDR_MASK);
     size_to_do = size;
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k[0].tx_buf = (unsigned long) &command[0];
-    k[0].len = command_size;
-    k[0].cs_change = 0;
-    k[1].cs_change = 0;
-    for (i=0; size_to_do > 0; ++i) {
+    for(int i = 0; size_to_do > 0; ++i) {
         chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
         offset = i * LGW_BURST_CHUNK;
-        k[1].tx_buf = (unsigned long)(data + offset);
-        k[1].len = chunk_size;
-        byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - k[0].len );
+        t.tx_buffer = (unsigned long *)(data + offset);
+        t.length = chunk_size * 8;
+        err = spi_device_polling_transmit(*spi, &t);
+        if (err != ESP_OK)
+            return err;
+
+        byte_transfered += chunk_size;
         DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
         size_to_do -= chunk_size; /* subtract the quantity of data already transferred */
     }
 
-    /* determine return code */
+    /* TODO: check transfered bits, and determine return code */
+    /*
     if (byte_transfered != size) {
         DEBUG_MSG("ERROR: SPI BURST WRITE FAILURE\n");
         return LGW_SPI_ERROR;
@@ -249,63 +186,57 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_target, uint16_t address, const
         DEBUG_MSG("Note: SPI burst write success\n");
         return LGW_SPI_SUCCESS;
     }
-}
+    */
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+    spi_device_release_bus(*spi);
+    return err;
+}
 
 /* Burst (multiple-byte) read */
-int lgw_spi_rb(void *spi_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
-    int spi_device;
-    uint8_t command[4];
-    uint8_t command_size;
-    struct spi_ioc_transfer k[2];
+int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16_t size)
+{
+    esp_err_t err;
+    spi_transaction_t t;
     int size_to_do, chunk_size, offset;
     int byte_transfered = 0;
-    int i;
 
-    /* check input parameters */
-    CHECK_NULL(spi_target);
-    CHECK_NULL(data);
-    if (size == 0) {
-        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
-        return LGW_SPI_ERROR;
-    }
+    memset(&t, 0, sizeof(t));
+    t.cmd = READ_ACCESS | (address & ADDR_MASK);
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    if(size == 0)
+        return ESP_OK;
 
-    /* prepare command byte */
-    command[0] = spi_mux_target;
-    command[1] = READ_ACCESS | ((address >> 8) & 0x7F);
-    command[2] =               ((address >> 0) & 0xFF);
-    command[3] = 0x00;
-    command_size = 4;
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if (err != ESP_OK) return err;
+
+    t.cmd = WRITE_ACCESS | (address & ADDR_MASK);
     size_to_do = size;
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k[0].tx_buf = (unsigned long) &command[0];
-    k[0].len = command_size;
-    k[0].cs_change = 0;
-    k[1].cs_change = 0;
-    for (i=0; size_to_do > 0; ++i) {
+    for(int i = 0; size_to_do > 0; ++i) {
         chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
         offset = i * LGW_BURST_CHUNK;
-        k[1].rx_buf = (unsigned long)(data + offset);
-        k[1].len = chunk_size;
-        byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - k[0].len );
-        DEBUG_PRINTF("BURST READ: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
-        size_to_do -= chunk_size;  /* subtract the quantity of data already transferred */
+        t.rx_buffer = (unsigned long *)(data + offset);
+        t.rxlength = chunk_size * 8;
+
+        err = spi_device_polling_transmit(*spi, &t);
+        if (err != ESP_OK)
+            return err;
+
+        byte_transfered += chunk_size;
+        DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
+        size_to_do -= chunk_size; /* subtract the quantity of data already transferred */
     }
 
-    /* determine return code */
+    /* TODO: check transfered bits, and determine return code */
+    /*
     if (byte_transfered != size) {
-        DEBUG_MSG("ERROR: SPI BURST READ FAILURE\n");
+        DEBUG_MSG("ERROR: SPI BURST WRITE FAILURE\n");
         return LGW_SPI_ERROR;
     } else {
-        DEBUG_MSG("Note: SPI burst read success\n");
+        DEBUG_MSG("Note: SPI burst write success\n");
         return LGW_SPI_SUCCESS;
     }
-}
-#endif
+    */
 
-/* --- EOF ------------------------------------------------------------------ */
+    return ESP_OK;
+}
+
