@@ -16,9 +16,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
 #include <stdlib.h>     /* malloc free */
@@ -26,14 +23,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
 
-//#include <sys/ioctl.h>
-//#include <linux/spi/spidev.h>
-
 #include "loragw_spi.h"
 //#include "loragw_aux.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_SPI == 1
@@ -45,9 +37,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
     #define DEBUG_PRINTF(fmt, args...)
     #define CHECK_NULL(a)                if(a==NULL){return LGW_SPI_ERROR;}
 #endif
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define READ_ACCESS     0x0000
 #define WRITE_ACCESS    0x8000
@@ -61,8 +50,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define SX1302_SPI_HOST    HSPI_HOST
 #define DMA_CHAN    2
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+#define USE_SPI_TRANSACTION_EXT
+#define DEBUG_SPI
 
 /* SPI initialization and configuration */
 int lgw_spi_open(spi_device_handle_t *spi)
@@ -117,15 +106,27 @@ int lgw_spi_close(spi_device_handle_t *spi)
 int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data)
 {
     esp_err_t err;
+    //uint8_t tbuf[4];
+
+    /*
+    tbuf[0] = 0x00;
+    tbuf[1] = ((WRITE_ACCESS | (address & ADDR_MASK)) >> 8);
+    tbuf[2] = (address & 0xFF);
+    tbuf[3] = data;
+    */
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
-    if (err != ESP_OK) return err;
+    if (err != ESP_OK)
+        return err;
 
     spi_transaction_t t = {
-        .cmd = WRITE_ACCESS | (address & ADDR_MASK),
-        .length = 8,
+        .length = 32,
         .flags = SPI_TRANS_USE_TXDATA,
-        .tx_data = {data},
+        //.tx_buffer = tbuf,
+        .tx_data[0] = 0x00,
+        .tx_data[1] = ((WRITE_ACCESS | (address & ADDR_MASK)) >> 8),
+        .tx_data[2] = (address & 0xFF),
+        .tx_data[3] = data,
     };
     err = spi_device_polling_transmit(*spi, &t);
 
@@ -133,21 +134,69 @@ int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data)
     return err;
 }
 
+#ifdef USE_SPI_TRANSACTION_EXT
 /* Simple read */
 int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
 {
+    spi_transaction_ext_t et;
+
+    //et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
+    et.command_bits = 8;
+    et.address_bits = 16;
+    et.base.cmd = 0x00;
+    et.base.addr = READ_ACCESS | (address & ADDR_MASK);
+    et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
+    et.base.length = 16;
+    et.base.tx_data[0] = 0x00;
+    et.base.tx_data[1] = 0x00;
+
+    esp_err_t err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
+    if (err!= ESP_OK)
+        return err;
+
+#ifdef DEBUG_SPI
+    for(int i = 0; i < 4; i++)
+        printf("0x%02x ", et.base.rx_data[i]);
+    printf("\n");
+#endif
+
+    *data = et.base.rx_data[1];
+    return ESP_OK;
+}
+
+#else
+
+int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
+{
+    uint8_t rbuf[5];
+    uint8_t tbuf[5];
+
+    tbuf[0] = 0x00;
+    tbuf[1] = ((READ_ACCESS | (address & ADDR_MASK)) >> 8);
+    tbuf[2] = (address & 0xFF);
+    tbuf[3] = 0x00;
+    tbuf[4] = 0x00;
+
     spi_transaction_t t = {
-        .cmd = READ_ACCESS | (address & ADDR_MASK),
-        .rxlength = 8,
-        .flags = SPI_TRANS_USE_RXDATA,
+        .length = 40,
+        .rx_buffer = rbuf,
+        .tx_buffer = tbuf,
     };
 
     esp_err_t err = spi_device_polling_transmit(*spi, &t);
-    if (err!= ESP_OK) return err;
+    if (err!= ESP_OK)
+        return err;
 
-    *data = t.rx_data[0];
+#ifdef DEBUG_SPI
+    for(int i = 0; i < 5; i++)
+        printf("0x%02x ", rbuf[i]);
+    printf("\n");
+#endif
+
+    *data = rbuf[4];
     return ESP_OK;
 }
+#endif
 
 /* Burst (multiple-byte) write */
 int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, uint16_t size)
