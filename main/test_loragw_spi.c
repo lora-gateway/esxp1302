@@ -23,18 +23,19 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_spi.h"
 
 
-#define BUFF_SIZE           1024
+#define BUFF_SIZE           1024*4
 
 #define SX1302_AGC_MCU_MEM  0x0000
 #define SX1302_REG_COMMON   0x5600
 #define SX1302_REG_AGC_MCU  0x5780
 
 
+uint8_t test_buff[BUFF_SIZE];
+uint8_t read_buff[BUFF_SIZE];
+
 void app_main(void)
 {
     uint8_t data = 0;
-    uint8_t test_buff[BUFF_SIZE];
-    uint8_t read_buff[BUFF_SIZE];
     int cycle_number = 0;
     int i;
     uint16_t size;
