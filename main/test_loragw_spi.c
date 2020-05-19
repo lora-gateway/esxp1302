@@ -59,9 +59,10 @@ void app_main(void)
     for(cycle_number = 0; cycle_number < 100; cycle_number++){
         size = rand() % BUFF_SIZE;
         for (i = 0; i < size; ++i) {
-            test_buff[i] = rand() & 0xFF;
+            //test_buff[i] = rand() & 0xFF;
+            test_buff[i] = i & 0xFF;
         }
-        printf("Cycle %i > ", cycle_number);
+        printf("Cycle %i (size: %d) > ", cycle_number, size);
         lgw_spi_wb(&spi, SX1302_AGC_MCU_MEM, test_buff, size);
         lgw_spi_rb(&spi, SX1302_AGC_MCU_MEM, read_buff, size);
 
@@ -98,5 +99,5 @@ void app_main(void)
         vTaskDelay(8000 / portTICK_PERIOD_MS);
     }
 
-    return 0;
+    return;
 }

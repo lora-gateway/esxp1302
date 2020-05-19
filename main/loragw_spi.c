@@ -112,7 +112,7 @@ int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data)
         return err;
 
     spi_transaction_t t = {
-        .length = 32,
+        .length = 8 * 4,
         .flags = SPI_TRANS_USE_TXDATA,
         .tx_data[0] = 0x00,
         .tx_data[1] = ((WRITE_ACCESS | (address & ADDR_MASK)) >> 8),
@@ -131,13 +131,13 @@ int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
 {
     spi_transaction_ext_t et;
 
-    //et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
-    et.command_bits = 8;
-    et.address_bits = 16;
+    memset(&et, 0, sizeof(et));
+    et.command_bits = 8 * 1;
+    et.address_bits = 8 * 2;
     et.base.cmd = 0x00;
     et.base.addr = READ_ACCESS | (address & ADDR_MASK);
     et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
-    et.base.length = 16;
+    et.base.length = 8 * 2;
     et.base.tx_data[0] = 0x00;
     et.base.tx_data[1] = 0x00;
 
@@ -193,28 +193,38 @@ int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
 int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, uint16_t size)
 {
     esp_err_t err;
-    spi_transaction_t t;
+    spi_transaction_ext_t et;
     int size_to_do, chunk_size, offset;
     int byte_transfered = 0;
+    uint8_t rbuf[LGW_BURST_CHUNK] = {0x00};
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
-    if(err != ESP_OK) return err;
+    if(err != ESP_OK)
+        return err;
 
-    memset(&t, 0, sizeof(t));
-    t.cmd = WRITE_ACCESS | (address & ADDR_MASK);
+    memset(&et, 0, sizeof(et));
+    et.command_bits = 8;
+    et.address_bits = 16;
+    et.base.cmd = 0x00;
+    et.base.addr = WRITE_ACCESS | (address & ADDR_MASK);
+    //et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_RXDATA;
+    et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
+    et.base.rx_buffer = rbuf;
+
     size_to_do = size;
     for(int i = 0; size_to_do > 0; ++i) {
         chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
         offset = i * LGW_BURST_CHUNK;
-        t.tx_buffer = (unsigned long *)(data + offset);
-        t.length = chunk_size * 8;
-        err = spi_device_polling_transmit(*spi, &t);
+        et.base.tx_buffer = (unsigned long *)(data + offset);
+        et.base.length = chunk_size * 8;
+        et.base.rxlength = chunk_size * 8;
+        err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
         if(err != ESP_OK)
             return err;
 
         byte_transfered += chunk_size;
         DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
-        size_to_do -= chunk_size; /* subtract the quantity of data already transferred */
+        size_to_do -= chunk_size;
     }
 
     /* TODO: check transfered bits, and determine return code */
@@ -236,34 +246,40 @@ int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, 
 int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16_t size)
 {
     esp_err_t err;
-    spi_transaction_t t;
+    spi_transaction_ext_t et;
     int size_to_do, chunk_size, offset;
     int byte_transfered = 0;
-
-    memset(&t, 0, sizeof(t));
-    t.cmd = READ_ACCESS | (address & ADDR_MASK);
-
-    if(size == 0)
-        return ESP_OK;
+    uint8_t tbuf[LGW_BURST_CHUNK] = {0x00};
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
-    if(err != ESP_OK) return err;
+    if(err != ESP_OK)
+        return err;
 
-    t.cmd = WRITE_ACCESS | (address & ADDR_MASK);
+    memset(&et, 0, sizeof(et));
+    et.command_bits = 8;
+    et.address_bits = 8 * 3;
+    et.base.cmd = 0x00;
+    et.base.addr = ((READ_ACCESS | (address & ADDR_MASK)) << 8) | 0x00;
+    //et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_TXDATA;
+    et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
+    //et.base.tx_data[0] = 0x00;
+    et.base.tx_buffer = tbuf;
+    //et.base.length = 8;
+
     size_to_do = size;
     for(int i = 0; size_to_do > 0; ++i) {
         chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
         offset = i * LGW_BURST_CHUNK;
-        t.rx_buffer = (unsigned long *)(data + offset);
-        t.rxlength = chunk_size * 8;
-
-        err = spi_device_polling_transmit(*spi, &t);
+        et.base.rx_buffer = (unsigned long *)(data + offset);
+        et.base.length = chunk_size * 8;
+        et.base.rxlength = chunk_size * 8;
+        err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
         if(err != ESP_OK)
             return err;
 
         byte_transfered += chunk_size;
         DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
-        size_to_do -= chunk_size; /* subtract the quantity of data already transferred */
+        size_to_do -= chunk_size;
     }
 
     /* TODO: check transfered bits, and determine return code */
@@ -277,6 +293,7 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16
     }
     */
 
-    return ESP_OK;
+    spi_device_release_bus(*spi);
+    return err;
 }
 
