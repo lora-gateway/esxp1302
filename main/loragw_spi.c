@@ -106,23 +106,14 @@ int lgw_spi_close(spi_device_handle_t *spi)
 int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data)
 {
     esp_err_t err;
-    //uint8_t tbuf[4];
-
-    /*
-    tbuf[0] = 0x00;
-    tbuf[1] = ((WRITE_ACCESS | (address & ADDR_MASK)) >> 8);
-    tbuf[2] = (address & 0xFF);
-    tbuf[3] = data;
-    */
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
-    if (err != ESP_OK)
+    if(err != ESP_OK)
         return err;
 
     spi_transaction_t t = {
         .length = 32,
         .flags = SPI_TRANS_USE_TXDATA,
-        //.tx_buffer = tbuf,
         .tx_data[0] = 0x00,
         .tx_data[1] = ((WRITE_ACCESS | (address & ADDR_MASK)) >> 8),
         .tx_data[2] = (address & 0xFF),
@@ -151,7 +142,7 @@ int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
     et.base.tx_data[1] = 0x00;
 
     esp_err_t err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
-    if (err!= ESP_OK)
+    if(err!= ESP_OK)
         return err;
 
 #ifdef DEBUG_SPI
@@ -184,7 +175,7 @@ int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
     };
 
     esp_err_t err = spi_device_polling_transmit(*spi, &t);
-    if (err!= ESP_OK)
+    if(err!= ESP_OK)
         return err;
 
 #ifdef DEBUG_SPI
@@ -207,7 +198,7 @@ int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, 
     int byte_transfered = 0;
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
-    if (err != ESP_OK) return err;
+    if(err != ESP_OK) return err;
 
     memset(&t, 0, sizeof(t));
     t.cmd = WRITE_ACCESS | (address & ADDR_MASK);
@@ -218,7 +209,7 @@ int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, 
         t.tx_buffer = (unsigned long *)(data + offset);
         t.length = chunk_size * 8;
         err = spi_device_polling_transmit(*spi, &t);
-        if (err != ESP_OK)
+        if(err != ESP_OK)
             return err;
 
         byte_transfered += chunk_size;
@@ -228,7 +219,7 @@ int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, 
 
     /* TODO: check transfered bits, and determine return code */
     /*
-    if (byte_transfered != size) {
+    if(byte_transfered != size) {
         DEBUG_MSG("ERROR: SPI BURST WRITE FAILURE\n");
         return LGW_SPI_ERROR;
     } else {
@@ -256,7 +247,7 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16
         return ESP_OK;
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
-    if (err != ESP_OK) return err;
+    if(err != ESP_OK) return err;
 
     t.cmd = WRITE_ACCESS | (address & ADDR_MASK);
     size_to_do = size;
@@ -267,7 +258,7 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16
         t.rxlength = chunk_size * 8;
 
         err = spi_device_polling_transmit(*spi, &t);
-        if (err != ESP_OK)
+        if(err != ESP_OK)
             return err;
 
         byte_transfered += chunk_size;
@@ -277,7 +268,7 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16
 
     /* TODO: check transfered bits, and determine return code */
     /*
-    if (byte_transfered != size) {
+    if(byte_transfered != size) {
         DEBUG_MSG("ERROR: SPI BURST WRITE FAILURE\n");
         return LGW_SPI_ERROR;
     } else {
