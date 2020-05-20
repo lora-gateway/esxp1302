@@ -46,7 +46,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /**
 @brief LoRa concentrator SPI setup (configure I/O and peripherals)
 */
-int lgw_spi_open(spi_device_handle_t *spi);
+//int lgw_spi_open(spi_device_handle_t *spi);
+int lgw_spi_open(void **spi);
 
 /**
 @brief LoRa concentrator SPI close

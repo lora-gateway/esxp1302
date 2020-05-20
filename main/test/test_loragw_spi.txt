@@ -40,7 +40,7 @@ void app_main(void)
     int i;
     uint16_t size;
 
-    spi_device_handle_t spi;
+    spi_device_handle_t *spi = NULL;
 
     printf("Beginning of test for loragw_spi.c\n");
 
@@ -50,11 +50,11 @@ void app_main(void)
         return;
     }
 
-    lgw_spi_r(&spi, SX1302_REG_COMMON + 6, &data);
+    lgw_spi_r(spi, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_COMMON + 6, &data);
     printf("SX1302 version: 0x%02X\n", data);
 
-    lgw_spi_r(&spi, SX1302_REG_AGC_MCU + 0, &data);
-    lgw_spi_w(&spi, SX1302_REG_AGC_MCU + 0, 0x06); /* mcu_clear, host_prog */
+    lgw_spi_r(spi, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, &data);
+    lgw_spi_w(spi, LGW_SPI_MUX_TARGET_SX1302, SX1302_REG_AGC_MCU + 0, 0x06); /* mcu_clear, host_prog */
 
     /* databuffer R/W stress test */
     for(cycle_number = 0; cycle_number < 100; cycle_number++){
@@ -64,8 +64,8 @@ void app_main(void)
             test_buff[i] = i & 0xFF;
         }
         printf("Cycle %i (size: %d) > ", cycle_number, size);
-        lgw_spi_wb(&spi, SX1302_AGC_MCU_MEM, test_buff, size);
-        lgw_spi_rb(&spi, SX1302_AGC_MCU_MEM, read_buff, size);
+        lgw_spi_wb(spi, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, test_buff, size);
+        lgw_spi_rb(spi, LGW_SPI_MUX_TARGET_SX1302, SX1302_AGC_MCU_MEM, read_buff, size);
 
         for (i = 0; ((i<size) && (test_buff[i] == read_buff[i])); ++i);
         if (i != size) {
@@ -92,7 +92,7 @@ void app_main(void)
         }
     }
 
-    lgw_spi_close(&spi);
+    lgw_spi_close(spi);
     printf("End of test for loragw_spi.c\n");
 
     while(true){

@@ -53,10 +53,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define USE_SPI_TRANSACTION_EXT
 #define DEBUG_SPI
 
+
 /* SPI initialization and configuration */
-int lgw_spi_open(spi_device_handle_t *spi)
+int lgw_spi_open(void **spi_target)
 {
     esp_err_t ret;
+    void *spi;
 
     spi_bus_config_t buscfg = {
         .miso_io_num = PIN_NUM_MISO,
@@ -87,6 +89,7 @@ int lgw_spi_open(spi_device_handle_t *spi)
     ret = spi_bus_add_device(SX1302_SPI_HOST, &devcfg, spi);
     ESP_ERROR_CHECK(ret);
 
+    *spi_target = (void *)spi;
     return LGW_SPI_SUCCESS;
 }
 
@@ -105,6 +108,7 @@ int lgw_spi_close(spi_device_handle_t *spi)
     // printf("ret = %d\n", ret);
 
     free(spi);
+    spi = NULL;
     return LGW_SPI_SUCCESS;
 }
 
