@@ -51,11 +51,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DMA_CHAN    2
 
 #define USE_SPI_TRANSACTION_EXT
-#define DEBUG_SPI
+//#define DEBUG_SPI
 
 
 /* SPI initialization and configuration */
-int lgw_spi_open(void **spi_target)
+int lgw_spi_open(spi_device_handle_t **spi_target)
 {
     esp_err_t ret;
     void *spi;
