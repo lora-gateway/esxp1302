@@ -73,6 +73,12 @@ int lgw_spi_open(spi_device_handle_t *spi)
         .queue_size = 8,
     };
 
+    spi = malloc(sizeof(spi_device_handle_t));
+    if(spi == NULL){
+        DEBUG_MSG("ERROR: MALLOC FAIL\n");
+        return LGW_SPI_ERROR;
+    }
+
     // Initialize the SPI bus
     ret = spi_bus_initialize(SX1302_SPI_HOST, &buscfg, DMA_CHAN);
     ESP_ERROR_CHECK(ret);
@@ -89,21 +95,21 @@ int lgw_spi_close(spi_device_handle_t *spi)
 {
     esp_err_t ret;
 
-    // esp_err_t spi_bus_remove_device(spi_device_handle_t handle);
+    CHECK_NULL(spi);
     ret = spi_bus_remove_device(*spi);
     ESP_ERROR_CHECK(ret);
     // printf("ret = %d\n", ret);
 
-    // esp_err_t spi_bus_free(spi_host_device_t host_id);
     ret = spi_bus_free(SX1302_SPI_HOST);
     ESP_ERROR_CHECK(ret);
     // printf("ret = %d\n", ret);
 
+    free(spi);
     return LGW_SPI_SUCCESS;
 }
 
 /* Simple write */
-int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data)
+int lgw_spi_w(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t data)
 {
     esp_err_t err;
 
@@ -114,7 +120,7 @@ int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data)
     spi_transaction_t t = {
         .length = 8 * 4,
         .flags = SPI_TRANS_USE_TXDATA,
-        .tx_data[0] = 0x00,
+        .tx_data[0] = spi_mux_target,
         .tx_data[1] = ((WRITE_ACCESS | (address & ADDR_MASK)) >> 8),
         .tx_data[2] = (address & 0xFF),
         .tx_data[3] = data,
@@ -127,14 +133,14 @@ int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data)
 
 #ifdef USE_SPI_TRANSACTION_EXT
 /* Simple read */
-int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
+int lgw_spi_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t *data)
 {
     spi_transaction_ext_t et;
 
     memset(&et, 0, sizeof(et));
     et.command_bits = 8 * 1;
     et.address_bits = 8 * 2;
-    et.base.cmd = 0x00;
+    et.base.cmd = spi_mux_target;
     et.base.addr = READ_ACCESS | (address & ADDR_MASK);
     et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA;
     et.base.length = 8 * 2;
@@ -157,12 +163,12 @@ int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
 
 #else
 
-int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
+int lgw_spi_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t *data)
 {
     uint8_t rbuf[5];
     uint8_t tbuf[5];
 
-    tbuf[0] = 0x00;
+    tbuf[0] = spi_mux_target;
     tbuf[1] = ((READ_ACCESS | (address & ADDR_MASK)) >> 8);
     tbuf[2] = (address & 0xFF);
     tbuf[3] = 0x00;
@@ -190,7 +196,7 @@ int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data)
 #endif
 
 /* Burst (multiple-byte) write */
-int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, uint16_t size)
+int lgw_spi_wb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size)
 {
     esp_err_t err;
     spi_transaction_ext_t et;
@@ -205,7 +211,7 @@ int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, 
     memset(&et, 0, sizeof(et));
     et.command_bits = 8;
     et.address_bits = 16;
-    et.base.cmd = 0x00;
+    et.base.cmd = spi_mux_target;
     et.base.addr = WRITE_ACCESS | (address & ADDR_MASK);
     //et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_RXDATA;
     et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
@@ -243,7 +249,7 @@ int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, 
 }
 
 /* Burst (multiple-byte) read */
-int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16_t size)
+int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size)
 {
     esp_err_t err;
     spi_transaction_ext_t et;
@@ -258,7 +264,7 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16
     memset(&et, 0, sizeof(et));
     et.command_bits = 8;
     et.address_bits = 8 * 3;
-    et.base.cmd = 0x00;
+    et.base.cmd = spi_mux_target;
     et.base.addr = ((READ_ACCESS | (address & ADDR_MASK)) << 8) | 0x00;
     //et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_TXDATA;
     et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;

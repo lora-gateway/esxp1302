@@ -56,22 +56,22 @@ int lgw_spi_close(spi_device_handle_t *spi);
 /**
 @brief LoRa concentrator SPI single-byte write
 */
-int lgw_spi_w(spi_device_handle_t *spi, uint16_t address, uint8_t data);
+int lgw_spi_w(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t data);
 
 /**
 @brief LoRa concentrator SPI single-byte read
 */
-int lgw_spi_r(spi_device_handle_t *spi, uint16_t address, uint8_t *data);
+int lgw_spi_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t *data);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) write
 */
-int lgw_spi_wb(spi_device_handle_t *spi, uint16_t address, const uint8_t *data, uint16_t size);
+int lgw_spi_wb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) read
 */
-int lgw_spi_rb(spi_device_handle_t *spi, uint16_t address, uint8_t *data, uint16_t size);
+int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
 
 #endif
 
