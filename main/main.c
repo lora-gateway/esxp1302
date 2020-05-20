@@ -1,1 +1,1 @@
-test/test_loragw_spi.txt
+test/test_loragw_reg.txt
