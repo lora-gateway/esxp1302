@@ -12,17 +12,12 @@ Description:
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
-
 #ifndef _LORAGW_AUX_H
 #define _LORAGW_AUX_H
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
-#include "config.h"    /* library configuration options (dynamically generated) */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC MACROS -------------------------------------------------------- */
 
 /**
 @brief Get a particular bit value from a byte
@@ -33,15 +28,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 #define TAKE_N_BITS_FROM(b, p, n) (((b) >> (p)) & ((1 << (n)) - 1))
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
-
 /**
 @brief Wait for a certain time (millisecond accuracy)
 @param t number of milliseconds to wait.
 */
-void wait_ms(unsigned long t);
+void wait_ms(unsigned long ms);
 
 #endif
-
-/* --- EOF ------------------------------------------------------------------ */
