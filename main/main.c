@@ -1,1 +1,1 @@
-test/test_loragw_reg.txt
+test/test_loragw_spi_sx1250.c
