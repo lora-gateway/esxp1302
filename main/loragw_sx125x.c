@@ -19,8 +19,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memset */
-#include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
 
 #include "loragw_sx125x.h"
 #include "loragw_spi.h"
@@ -116,82 +114,61 @@ extern void *lgw_spi_target; /*! generic pointer to the SPI device */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 /* Simple read */
-int sx125x_reg_r(void *spi_target, uint8_t spi_mux_target, uint8_t address, uint8_t *data) {
-    int spi_device;
-    uint8_t out_buf[3];
-    uint8_t command_size;
-    uint8_t in_buf[ARRAY_SIZE(out_buf)];
-    struct spi_ioc_transfer k;
-    int a;
+int sx125x_reg_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t address, uint8_t *data) {
+    esp_err_t err;
+    uint8_t command_size = 3;
 
-    /* check input variables */
-    CHECK_NULL(spi_target);
+    CHECK_NULL(spi);
     CHECK_NULL(data);
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if(err != ESP_OK)
+        return err;
 
-    /* prepare frame to be sent */
-    out_buf[0] = spi_mux_target;
-    out_buf[1] = READ_ACCESS | (address & 0x7F);
-    out_buf[2] = 0x00;
-    command_size = 3;
+    spi_transaction_t t = {
+        .length = 8 * command_size,
+        .flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA,
+        .tx_data[0] = spi_mux_target,
+        .tx_data[1] = READ_ACCESS | (address & 0x7F),
+        .tx_data[2] = 0x00,
+    };
+    err = spi_device_polling_transmit(*spi, &t);
+    if(err!= ESP_OK)
+        return err;
 
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.rx_buf = (unsigned long) in_buf;
-    k.len = command_size;
-    k.cs_change = 0;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+    spi_device_release_bus(*spi);
+    *data = t.tx_data[command_size-1];
 
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        //DEBUG_MSG("Note: SPI read success\n");
-        *data = in_buf[command_size - 1];
-        return LGW_SPI_SUCCESS;
-    }
+    return LGW_SPI_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx125x_reg_w(void *spi_target, uint8_t spi_mux_target, uint8_t address, uint8_t data) {
-    int spi_device;
-    uint8_t out_buf[3];
-    uint8_t command_size;
-    struct spi_ioc_transfer k;
-    int a;
+int sx125x_reg_w(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t address, uint8_t data) {
+    esp_err_t err;
+    uint8_t command_size = 3;
 
-    /* check input variables */
-    CHECK_NULL(spi_target);
+    CHECK_NULL(spi);
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    /*
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if(err != ESP_OK)
+        return err;
+    */
 
-    /* prepare frame to be sent */
-    out_buf[0] = spi_mux_target;
-    out_buf[1] = WRITE_ACCESS | (address & 0x7F);
-    out_buf[2] = data;
-    command_size = 3;
+    spi_transaction_t t = {
+        .length = 8 * command_size,
+        .flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA,
+        .tx_data[0] = spi_mux_target,
+        .tx_data[1] = WRITE_ACCESS | (address & 0x7F),
+        .tx_data[2] = 0x00,
+    };
+    err = spi_device_polling_transmit(*spi, &t);
+    if(err!= ESP_OK)
+        return err;
 
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.len = command_size;
-    k.speed_hz = SPI_SPEED;
-    k.cs_change = 0;
-    k.bits_per_word = 8;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
-
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        //DEBUG_MSG("Note: SPI write success\n");
-        return LGW_SPI_SUCCESS;
-    }
+    //spi_device_release_bus(*spi);
+    return LGW_SPI_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
