@@ -47,14 +47,14 @@ void app_main(void)
     int cycle_number = 0;
     int i, x;
 
-    for(int i = 0; i < 5; i++){
+    for(int i = 0; i < 4; i++){
         printf("waiting %d...\n", i+1);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     printf("\n!!! Note !!!\nPlease Reset SX1302 board first to run this test.\n");
     printf("You can just power off then power on the whole system\n\n");
 
-    for(int i = 5; i > 0; i--){
+    for(int i = 4; i > 0; i--){
         printf("waiting %d...\n", i);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
@@ -65,6 +65,7 @@ void app_main(void)
         printf("ERROR: Failed to connect to the concentrator using SPI\n");
         return;
     }
+    printf("LoRa gateway connected\n");
 
     /* Reset radios */
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
@@ -119,7 +120,7 @@ void app_main(void)
             printf("error during the buffer comparison\n");
             printf("Written value: %08X\n", test_val);
             printf("Read value:    %08X\n", read_val);
-            return;
+            break;
         } else {
             printf("did a %i-byte R/W on a register with no error\n", 4);
             ++cycle_number;
@@ -129,6 +130,11 @@ void app_main(void)
 
     lgw_disconnect();
     printf("End of test for loragw_spi_sx1250.c\n");
+
+    while(true){
+        printf("hello\n");
+        vTaskDelay(8000 / portTICK_PERIOD_MS);
+    }
 
     return;
 }

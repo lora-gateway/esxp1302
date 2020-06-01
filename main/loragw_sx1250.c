@@ -109,9 +109,12 @@ int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *dat
 
     spi = lgw_spi_target;
 
+    /*
+     * Note: this not included in esp-idf's example code, so maybe it's not needed
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
     if(err != ESP_OK)
         return err;
+    */
 
     memset(&et, 0, sizeof(et));
     et.command_bits = 8;
@@ -128,7 +131,7 @@ int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *dat
     if(err != ESP_OK)
         return err;
 
-    spi_device_release_bus(*spi);
+    //spi_device_release_bus(*spi);  // Not in esp-idf's example code
     memcpy(data, et.base.rx_buffer, size);
     return LGW_SPI_SUCCESS;
 }

@@ -26,6 +26,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 
 void wait_ms(unsigned long ms) {
-    vTaskDelay(portTICK_PERIOD_MS * ms);
+    vTaskDelay(ms / portTICK_PERIOD_MS);
 }
 
