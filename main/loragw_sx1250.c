@@ -23,9 +23,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
 
-#include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
-
 #include "loragw_spi.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
@@ -61,58 +58,47 @@ extern void *lgw_spi_target; /*! generic pointer to the SPI device */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int sx1250_write_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
-    int spi_device;
-    int cmd_size = 2; /* header + op_code */
-    uint8_t out_buf[cmd_size + size];
-    uint8_t command_size;
-    struct spi_ioc_transfer k;
-    int a, i;
+    spi_transaction_ext_t et;
+    spi_device_handle_t *spi;
+    uint8_t rbuf[size];  // we won't check the return value. Just provide it.
+    esp_err_t err;
 
     /* wait BUSY */
     wait_ms(WAIT_BUSY_SX1250_MS);
 
     /* check input variables */
     CHECK_NULL(lgw_spi_target);
+    spi = lgw_spi_target;
 
-    spi_device = *(int *)lgw_spi_target; /* must check that spi_target is not null beforehand */
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if(err != ESP_OK)
+        return err;
 
-    /* prepare frame to be sent */
-    out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
-    out_buf[1] = (uint8_t)op_code;
-    for(i = 0; i < (int)size; i++) {
-        out_buf[cmd_size + i] = data[i];
-    }
-    command_size = cmd_size + size;
+    memset(&et, 0, sizeof(et));
+    et.command_bits = 8;
+    et.address_bits = 8;
+    et.base.cmd = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
+    et.base.addr = (uint8_t)op_code;  // use 'addr' for op_code
+    et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
+    et.base.tx_buffer = data;
+    et.base.rx_buffer = rbuf;
+    et.base.length = size * 8;
+    et.base.rxlength = size * 8;
+    err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
+    if(err != ESP_OK)
+        return err;
 
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.len = command_size;
-    k.speed_hz = SPI_SPEED;
-    k.cs_change = 0;
-    k.bits_per_word = 8;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
-
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI write success\n");
-        return LGW_SPI_SUCCESS;
-    }
+    spi_device_release_bus(*spi);
+    return err;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
-    int spi_device;
-    int cmd_size = 2; /* header + op_code + NOP */
-    uint8_t out_buf[cmd_size + size];
-    uint8_t command_size;
-    uint8_t in_buf[ARRAY_SIZE(out_buf)];
-    struct spi_ioc_transfer k;
-    int a, i;
+    spi_transaction_ext_t et;
+    spi_device_handle_t *spi;
+    uint8_t rbuf[size];
+    esp_err_t err;
 
     /* wait BUSY */
     wait_ms(WAIT_BUSY_SX1250_MS);
@@ -121,34 +107,30 @@ int sx1250_read_command(uint8_t rf_chain, sx1250_op_code_t op_code, uint8_t *dat
     CHECK_NULL(lgw_spi_target);
     CHECK_NULL(data);
 
-    spi_device = *(int *)lgw_spi_target; /* must check that spi_target is not null beforehand */
+    spi = lgw_spi_target;
 
-    /* prepare frame to be sent */
-    out_buf[0] = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
-    out_buf[1] = (uint8_t)op_code;
-    for(i = 0; i < (int)size; i++) {
-        out_buf[cmd_size + i] = data[i];
-    }
-    command_size = cmd_size + size;
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if(err != ESP_OK)
+        return err;
 
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.rx_buf = (unsigned long) in_buf;
-    k.len = command_size;
-    k.cs_change = 0;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+    memset(&et, 0, sizeof(et));
+    et.command_bits = 8;
+    et.address_bits = 8;
+    et.base.cmd = (rf_chain == 0) ? LGW_SPI_MUX_TARGET_RADIOA : LGW_SPI_MUX_TARGET_RADIOB;
+    et.base.addr = (uint8_t)op_code;  // use 'addr' for op_code
+    et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
+    et.base.rx_buffer = rbuf;
 
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI read success\n");
-        //*data = in_buf[command_size - 1];
-        memcpy(data, in_buf + cmd_size, size);
-        return LGW_SPI_SUCCESS;
-    }
+    et.base.tx_buffer = data;
+    et.base.length = size * 8;
+    et.base.rxlength = size * 8;
+    err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
+    if(err != ESP_OK)
+        return err;
+
+    spi_device_release_bus(*spi);
+    memcpy(data, et.base.rx_buffer, size);
+    return LGW_SPI_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

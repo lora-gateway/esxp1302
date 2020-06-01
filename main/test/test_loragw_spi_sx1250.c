@@ -27,8 +27,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>     /* sigaction */
-#include <unistd.h>     /* getopt, access */
 
 #include "loragw_spi.h"
 #include "loragw_aux.h"
@@ -37,85 +35,35 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_sx1250.h"
 #include "loragw_sx1302.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define BUFF_SIZE           16
 
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
 
-/* -------------------------------------------------------------------------- */
-/* --- GLOBAL VARIABLES ----------------------------------------------------- */
-
-/* Signal handling variables */
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
-/* -------------------------------------------------------------------------- */
-/* --- SUBFUNCTIONS DECLARATION --------------------------------------------- */
-
-static void sig_handler(int sigio);
-static void usage(void);
-
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
-
-int main(int argc, char ** argv)
+void app_main(void)
 {
-    static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-
     uint8_t test_buff[BUFF_SIZE];
     uint8_t read_buff[BUFF_SIZE];
     uint32_t test_val, read_val;
     int cycle_number = 0;
-    int i, x;
+    int x;
 
-    /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
+    for(int i = 0; i < 5; i++){
+        printf("waiting %d...\n", i+1);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+    printf("\n!!! Note !!!\nPlease Reset SX1302 board first to run this test.\n");
+    printf("You can just power off then power on the whole system\n\n");
 
-    /* Parse command line options */
-    while ((i = getopt(argc, argv, "hd:")) != -1) {
-        switch (i) {
-            case 'h':
-                usage();
-                return EXIT_SUCCESS;
-                break;
-
-            case 'd':
-                if (optarg != NULL) {
-                    spidev_path = optarg;
-                }
-                break;
-
-            default:
-                printf("ERROR: argument parsing options, use -h option for help\n");
-                usage();
-                return EXIT_FAILURE;
-            }
+    for(int i = 5; i > 0; i--){
+        printf("waiting %d...\n", i);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
-    /* Configure signal handling */
-    sigemptyset( &sigact.sa_mask );
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction( SIGQUIT, &sigact, NULL );
-    sigaction( SIGINT, &sigact, NULL );
-    sigaction( SIGTERM, &sigact, NULL );
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
-    }
-
-    x = lgw_connect(spidev_path);
+    x = lgw_connect();
     if (x != LGW_REG_SUCCESS) {
-        printf("ERROR: Failed to connect to the concentrator using SPI %s\n", spidev_path);
-        return EXIT_FAILURE;
+        printf("ERROR: Failed to connect to the concentrator using SPI\n");
+        return;
     }
 
     /* Reset radios */
@@ -148,7 +96,7 @@ int main(int argc, char ** argv)
     printf("Radio1: get_status: 0x%02X\n", test_buff[0]);
 
     /* databuffer R/W stress test */
-    while ((quit_sig != 1) && (exit_sig != 1)) {
+    while(cycle_number < 20) {
         test_buff[0] = rand() & 0x7F;
         test_buff[1] = rand() & 0xFF;
         test_buff[2] = rand() & 0xFF;
@@ -171,7 +119,7 @@ int main(int argc, char ** argv)
             printf("error during the buffer comparison\n");
             printf("Written value: %08X\n", test_val);
             printf("Read value:    %08X\n", read_val);
-            return EXIT_FAILURE;
+            return;
         } else {
             printf("did a %i-byte R/W on a register with no error\n", 4);
             ++cycle_number;
@@ -182,35 +130,5 @@ int main(int argc, char ** argv)
     lgw_disconnect();
     printf("End of test for loragw_spi_sx1250.c\n");
 
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
-    }
-
-    return 0;
+    return;
 }
-
-/* -------------------------------------------------------------------------- */
-/* --- SUBFUNCTIONS DEFINITION ---------------------------------------------- */
-
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;
-    } else if((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-static void usage(void) {
-    printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    printf(" %s\n", lgw_version_info());
-    printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    printf(" -h            print this help\n");
-    printf(" -d <path>     use Linux SPI device driver\n");
-    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
-}
-
-/* --- EOF ------------------------------------------------------------------ */
