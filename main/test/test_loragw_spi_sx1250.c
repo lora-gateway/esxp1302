@@ -45,7 +45,7 @@ void app_main(void)
     uint8_t read_buff[BUFF_SIZE];
     uint32_t test_val, read_val;
     int cycle_number = 0;
-    int x;
+    int i, x;
 
     for(int i = 0; i < 5; i++){
         printf("waiting %d...\n", i+1);

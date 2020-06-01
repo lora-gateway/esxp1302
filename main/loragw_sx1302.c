@@ -26,9 +26,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <inttypes.h>
 #include <time.h>
 
-#include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
-
 #include "loragw_reg.h"
 #include "loragw_aux.h"
 #include "loragw_hal.h"
