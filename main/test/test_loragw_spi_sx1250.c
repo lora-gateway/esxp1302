@@ -34,6 +34,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_hal.h"
 #include "loragw_sx1250.h"
 #include "loragw_sx1302.h"
+#include "loragw_debug.h"
 
 
 #define BUFF_SIZE           16
@@ -46,6 +47,9 @@ void app_main(void)
     uint32_t test_val, read_val;
     int cycle_number = 0;
     int i, x;
+
+    // simple test for loragw_debug.c
+    dbg_init_gpio();
 
     for(int i = 0; i < 4; i++){
         printf("waiting %d...\n", i+1);
