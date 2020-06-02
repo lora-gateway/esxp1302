@@ -21,8 +21,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memset */
 #include <errno.h>      /* errno */
 
-#include "driver/i2c.h"
-
 #include "loragw_i2c.h"
 #include "loragw_aux.h"
 
