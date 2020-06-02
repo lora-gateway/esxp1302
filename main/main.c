@@ -1,1 +1,1 @@
-test/test_loragw_i2c.c
+test/test_loragw_gps.c
