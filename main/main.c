@@ -1,1 +1,1 @@
-test/test_loragw_spi_sx1250.c
+test/test_loragw_i2c.c
