@@ -13,9 +13,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
 #include <stdlib.h>     /* malloc free */
@@ -24,17 +21,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memset */
 #include <errno.h>      /* errno */
 
-#include <sys/ioctl.h>
-#include <linux/i2c.h>
-#include <linux/i2c-dev.h>
+#include "driver/i2c.h"
 
 #include "loragw_i2c.h"
 #include "loragw_aux.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_I2C == 1
     #define DEBUG_MSG(str)                fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
@@ -45,113 +37,72 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
     #define CHECK_NULL(a)                if(a==NULL){return LGW_SPI_ERROR;}
 #endif
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+esp_err_t i2c_esp32_open(i2c_port_t i2c_num)
+{
+    i2c_config_t conf;
+    int i2c_master_port = i2c_num;
+    esp_err_t ret;
 
-int i2c_linuxdev_open(const char *path, uint8_t device_addr, int *i2c_fd) {
-    int dev;
+    conf.mode = I2C_MODE_MASTER;
+    conf.sda_io_num = I2C_MASTER_SDA_IO;
+    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.scl_io_num = I2C_MASTER_SCL_IO;
+    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+    i2c_param_config(i2c_master_port, &conf);
 
-    /* Check input variables */
-    if (path == NULL) {
-        DEBUG_MSG("ERROR: null pointer path\n");
-        return LGW_I2C_ERROR;
-    }
-    if (i2c_fd == NULL) {
-        DEBUG_MSG("ERROR: null pointer i2c_fd\n");
-        return LGW_I2C_ERROR;
-    }
-
-    /* Open I2C device */
-    dev = open(path, O_RDWR);
-    if (dev < 0) {
-        DEBUG_PRINTF("ERROR: Failed to open I2C %s - %s\n", path, strerror(errno));
-        return LGW_I2C_ERROR;
-    }
-
-    /* Setting I2C device mode to slave */
-    if (ioctl(dev, I2C_SLAVE, device_addr) < 0) {
-        DEBUG_PRINTF("ERROR: Failed to acquire bus access and/or talk to slave - %s\n", strerror(errno));
-        return LGW_I2C_ERROR;
-    }
-
-    DEBUG_PRINTF("INFO: I2C port opened successfully (%s, 0x%02X)\n", path, device_addr);
-    *i2c_fd = dev; /* return file descriptor index */
-
-    return LGW_I2C_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int i2c_linuxdev_read(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t *data) {
-    uint8_t *inbuff, outbuff;
-    struct i2c_rdwr_ioctl_data packets;
-    struct i2c_msg messages[2];
-
-    outbuff = reg_addr;
-    messages[0].addr = device_addr;
-    messages[0].flags= 0;
-    messages[0].len = sizeof(outbuff);
-    messages[0].buf = &outbuff;
-
-    inbuff = data;
-    messages[1].addr = device_addr;
-    messages[1].flags = I2C_M_RD;
-    messages[1].len = sizeof(*inbuff);
-    messages[1].buf = inbuff;
-
-    packets.msgs = messages;
-    packets.nmsgs = 2;
-
-    if (ioctl(i2c_fd, I2C_RDWR, &packets) < 0) {
-        DEBUG_PRINTF("ERROR: Read from I2C Device failed (%d, 0x%02x, 0x%02x) - %s\n", i2c_fd, device_addr, reg_addr, strerror(errno));
-        return LGW_I2C_ERROR;
-    }
-
-    return LGW_I2C_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int i2c_linuxdev_write(int i2c_fd, uint8_t device_addr, uint8_t reg_addr, uint8_t data) {
-    unsigned char buff[2];
-    struct i2c_rdwr_ioctl_data packets;
-    struct i2c_msg messages[1];
-
-    buff[0] = reg_addr;
-    buff[1] = data;
-
-    messages[0].addr = device_addr;
-    messages[0].flags = 0;
-    messages[0].len = sizeof(buff);
-    messages[0].buf = buff;
-
-    packets.msgs = messages;
-    packets.nmsgs = 1;
-
-    if (ioctl(i2c_fd, I2C_RDWR, &packets) < 0) {
-        DEBUG_PRINTF("ERROR: Write to I2C Device failed (%d, 0x%02x, 0x%02x) - %s\n", i2c_fd, device_addr, reg_addr, strerror(errno));
-        return LGW_I2C_ERROR;
-    }
-
-    return LGW_I2C_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int i2c_linuxdev_close(int i2c_fd) {
-    int i;
-
-    i = close(i2c_fd);
-    if (i == 0) {
-        DEBUG_MSG("INFO: I2C port closed successfully\n");
-        return LGW_I2C_SUCCESS;
+    ret = i2c_driver_install(i2c_master_port, conf.mode,
+            I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
+    if(ret == ESP_OK){
+        DEBUG_PRINTF("INFO: I2C port(%d) opened successfully\n", i2c_num);
     } else {
-        DEBUG_PRINTF("ERROR: Failed to close I2C - %s\n", strerror(errno));
-        return LGW_I2C_ERROR;
+        DEBUG_PRINTF("INFO: I2C port(%d) opened failed\n", i2c_num);
     }
+
+    return ret;
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+esp_err_t i2c_esp32_read(i2c_port_t i2c_num, uint8_t device_addr, uint8_t reg_addr, uint8_t *data)
+{
+    esp_err_t ret;
+
+    // write first, provide device address and register address
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (device_addr << 1) | I2C_MASTER_WRITE, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, reg_addr, ACK_VAL);
+
+    // now change to read, and save one byte to 'data'
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (device_addr << 1) | I2C_MASTER_READ, ACK_CHECK_EN);
+    i2c_master_read_byte(cmd, data, NACK_VAL);
+    i2c_master_stop(cmd);
+
+    ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
+    i2c_cmd_link_delete(cmd);
+
+    return ret;
+}
+
+esp_err_t i2c_esp32_write(i2c_port_t i2c_num, uint8_t device_addr, uint8_t reg_addr, uint8_t data)
+{
+    esp_err_t ret;
+
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (device_addr << 1) | I2C_MASTER_WRITE, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, reg_addr, ACK_VAL);
+    i2c_master_write_byte(cmd, data, NACK_VAL);
+    i2c_master_stop(cmd);
+
+    ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
+    i2c_cmd_link_delete(cmd);
+
+    return ret;
+}
+
+esp_err_t i2c_esp32_close(i2c_port_t i2c_num)
+{
+    return i2c_driver_delete(i2c_num);
+}

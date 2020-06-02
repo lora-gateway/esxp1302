@@ -13,9 +13,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 /* Fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
     #define _XOPEN_SOURCE 600
@@ -27,7 +24,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>     /* sigaction */
 #include <unistd.h>     /* getopt, access */
 #include <time.h>
 
@@ -35,12 +31,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 #include "loragw_hal.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-
+#define I2C_MASTER_NUM          0
 #define I2C_PORT_STTS751        0x39
 
 #define STTS751_REG_TEMP_H      0x00
@@ -55,78 +47,37 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define STTS751_1_PROD_ID       0x01
 #define ST_MAN_ID               0x53
 
-/* -------------------------------------------------------------------------- */
-/* --- GLOBAL VARIABLES ----------------------------------------------------- */
 
-/* Signal handling variables */
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
-static int i2c_dev = -1;
-
-/* -------------------------------------------------------------------------- */
-/* --- SUBFUNCTIONS DECLARATION --------------------------------------------- */
-
-static void sig_handler(int sigio);
-static void usage(void);
-
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
-
-int main(int argc, char ** argv)
+void app_main(void)
 {
     int i, err;
-    static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
     uint8_t val;
     uint8_t high_byte, low_byte;
     int8_t h;
     float temperature;
-
-    /* Parse command line options */
-    while ((i = getopt(argc, argv, "hd:")) != -1) {
-        switch (i) {
-            case 'h':
-                usage();
-                return EXIT_SUCCESS;
-                break;
-
-            case 'd':
-                if (optarg != NULL) {
-                    /* TODO */
-                }
-                break;
-
-            default:
-                printf("ERROR: argument parsing options, use -h option for help\n");
-                usage();
-                return EXIT_FAILURE;
-            }
-    }
-
-    /* Configure signal handling */
-    sigemptyset( &sigact.sa_mask );
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction( SIGQUIT, &sigact, NULL );
-    sigaction( SIGINT, &sigact, NULL );
-    sigaction( SIGTERM, &sigact, NULL );
+    i2c_port_t i2c_num = I2C_MASTER_NUM;
 
     printf( "+++ Start of I2C test program +++\n" );
 
+    // I've two choices to skip when something goes wrong before the 'for()' loop:
+    //   1. use 'goto'.
+    //   2. put all of i2c_esp32_open/read/write() in a big while loop and use 'break'.
+    // Since I don't like add too many indents, I choose the 1st one here.
+
     /* Open I2C port expander */
-    err = i2c_linuxdev_open( I2C_DEVICE, I2C_PORT_STTS751, &i2c_dev );
-    if ( (err != 0) || (i2c_dev <= 0) )
+    err = i2c_esp32_open(i2c_num);
+    if (err != 0)
     {
-        printf( "ERROR: failed to open I2C device %s (err=%i)\n", I2C_DEVICE, err );
-        return EXIT_FAILURE;
+        printf( "ERROR: failed to open I2C port %d (err=%i)\n", i2c_num, err);
+        goto out;
     }
 
     /* Get temperature sensor product ID */
-    err = i2c_linuxdev_read( i2c_dev, I2C_PORT_STTS751, STTS751_REG_PROD_ID, &val );
+    err = i2c_esp32_read(i2c_num, I2C_PORT_STTS751, STTS751_REG_PROD_ID, &val);
     if ( err != 0 )
     {
-        printf( "ERROR: failed to read I2C device %s (err=%i)\n", I2C_DEVICE, err );
-        return EXIT_FAILURE;;
+        printf( "ERROR: failed to read I2C device %x (err=%i)\n", I2C_PORT_STTS751, err );
+        goto out;
     }
     switch( val )
     {
@@ -138,20 +89,20 @@ int main(int argc, char ** argv)
             break;
         default:
             printf("ERROR: Product ID: UNKNOWN\n");
-            return EXIT_FAILURE;;
+            goto out;
     }
 
     /* Get temperature sensor  Manufacturer ID */
-    err = i2c_linuxdev_read( i2c_dev, I2C_PORT_STTS751, STTS751_REG_MAN_ID, &val );
+    err = i2c_esp32_read(i2c_num, I2C_PORT_STTS751, STTS751_REG_MAN_ID, &val );
     if ( err != 0 )
     {
-        printf( "ERROR: failed to read I2C device %s (err=%i)\n", I2C_DEVICE, err );
-        return EXIT_FAILURE;;
+        printf( "ERROR: failed to read I2C device %x (err=%i)\n", I2C_PORT_STTS751, err );
+        goto out;
     }
     if ( val != ST_MAN_ID )
     {
         printf( "ERROR: Manufacturer ID: UNKNOWN\n" );
-        return EXIT_FAILURE;;
+        goto out;
     }
     else
     {
@@ -159,87 +110,68 @@ int main(int argc, char ** argv)
     }
 
     /* Get temperature sensor  revision number */
-    err = i2c_linuxdev_read( i2c_dev, I2C_PORT_STTS751, STTS751_REG_REV_ID, &val );
+    err = i2c_esp32_read(I2C_PORT_STTS751, STTS751_REG_REV_ID, &val );
     if ( err != 0 )
     {
-        printf( "ERROR: failed to read I2C device %s (err=%i)\n", I2C_DEVICE, err );
-        return EXIT_FAILURE;;
+        printf( "ERROR: failed to read I2C device %x (err=%i)\n", I2C_PORT_STTS751, err );
+        goto out;
     }
     printf("INFO: Revision number: 0x%02X\n", val);
 
     /* Set conversion resolution to 12 bits */
-    err = i2c_linuxdev_write( i2c_dev, I2C_PORT_STTS751, STTS751_REG_CONF, 0x8C ); /* TODO: do not hardcode the whole byte */
+    err = i2c_esp32_write( I2C_PORT_STTS751, STTS751_REG_CONF, 0x8C ); /* TODO: do not hardcode the whole byte */
     if ( err != 0 )
     {
         printf( "ERROR: failed to write I2C device 0x%02X (err=%i)\n", I2C_PORT_STTS751, err );
-        return EXIT_FAILURE;
+        goto out;
     }
 
     /* Set conversion rate to 1 / second */
-    err = i2c_linuxdev_write( i2c_dev, I2C_PORT_STTS751, STTS751_REG_RATE, 0x04 );
+    err = i2c_esp32_write( I2C_PORT_STTS751, STTS751_REG_RATE, 0x04 );
     if ( err != 0 )
     {
         printf( "ERROR: failed to write I2C device 0x%02X (err=%i)\n", I2C_PORT_STTS751, err );
-        return EXIT_FAILURE;
+        goto out;
     }
 
-    while ((quit_sig != 1) && (exit_sig != 1)) {
+    for(int i=0; i<100; i++) {
         /* Read Temperature LSB */
-        err = i2c_linuxdev_read( i2c_dev, I2C_PORT_STTS751, STTS751_REG_TEMP_L, &low_byte );
+        err = i2c_esp32_read( I2C_PORT_STTS751, STTS751_REG_TEMP_L, &low_byte );
         if ( err != 0 )
         {
             printf( "ERROR: failed to read I2C device 0x%02X (err=%i)\n", I2C_PORT_STTS751, err );
-            return EXIT_FAILURE;
+            break;
         }
 
         /* Read Temperature MSB */
-        err = i2c_linuxdev_read( i2c_dev, I2C_PORT_STTS751, STTS751_REG_TEMP_H, &high_byte );
+        err = i2c_esp32_read( I2C_PORT_STTS751, STTS751_REG_TEMP_H, &high_byte );
         if ( err != 0 )
         {
             printf( "ERROR: failed to read I2C device 0x%02X (err=%i)\n", I2C_PORT_STTS751, err );
-            return EXIT_FAILURE;
+            break;
         }
 
         h = (int8_t)high_byte;
         temperature =  ((h << 8) | low_byte) / 256.0;
 
         printf( "Temperature: %f C (h:0x%02X l:0x%02X)\n", temperature, high_byte, low_byte );
-        wait_ms( 100 );
+        wait_ms( 1000 );
     }
 
     /* Terminate */
     printf( "+++ End of I2C test program +++\n" );
 
-    err = i2c_linuxdev_close( i2c_dev );
+    err = i2c_esp32_close(i2c_num);
     if ( err != 0 )
     {
         printf( "ERROR: failed to close I2C device (err=%i)\n", err );
-        return EXIT_FAILURE;
     }
 
-    return 0;
-}
-
-/* -------------------------------------------------------------------------- */
-/* --- SUBFUNCTIONS DEFINITION ---------------------------------------------- */
-
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;
-    } else if((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
+out:
+    while(true){
+        printf("end\n");
+        vTaskDelay(8000 / portTICK_PERIOD_MS);
     }
+
+    return;
 }
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-static void usage(void) {
-    printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    printf(" %s\n", lgw_version_info());
-    printf("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    printf(" -h            print this help\n");
-    printf(" -d <path>     use Linux I2C device driver\n");
-    printf("               => default path: " I2C_DEVICE "\n");
-}
-
-/* --- EOF ------------------------------------------------------------------ */
