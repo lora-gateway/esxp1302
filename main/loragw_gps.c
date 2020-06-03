@@ -57,7 +57,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define TS_CPS              1E6 /* count-per-second of the timestamp counter */
 #define PLUS_10PPM          1.00001
 #define MINUS_10PPM         0.99999
-#define DEFAULT_BAUDRATE    B9600
+#define DEFAULT_BAUDRATE    9600
 
 #define UBX_MSG_NAVTIMEGPS_LEN  16
 
@@ -90,7 +90,6 @@ static bool gps_pos_ok = false;
 static char gps_mod = 'N'; /* GPS mode (N no fix, A autonomous, D differential) */
 static short gps_sat = 0; /* number of satellites used for fix */
 
-static struct termios ttyopt_restore;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -253,29 +252,27 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *fd_ptr) {
-    int i;
-    struct termios ttyopt; /* serial port options */
-    int gps_tty_dev; /* file descriptor to the serial port of the GNSS module */
+int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr)
+{
     uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN] = {
                     0xB5, 0x62, /* UBX Sync Chars */
                     0x06, 0x01, /* CFG-MSG Class/ID */
                     0x08, 0x00, /* Payload length */
                     0x01, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-TIMEGPS output on serial */
                     0x32, 0x94 }; /* Checksum */
-    ssize_t num_written;
 
-    /* check input parameters */
-    CHECK_NULL(tty_path);
-    CHECK_NULL(fd_ptr);
+    uart_port_t uart_num = UART_NUM_1;
+    uart_config_t uart_config = {
+        .baud_rate = DEFAULT_BAUDRATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB,
+    };
 
-    /* open TTY device */
-    gps_tty_dev = open(tty_path, O_RDWR | O_NOCTTY);
-    if (gps_tty_dev <= 0) {
-        DEBUG_MSG("ERROR: TTY PORT FAIL TO OPEN, CHECK PATH AND ACCESS RIGHTS\n");
-        return LGW_GPS_ERROR;
-    }
-    *fd_ptr = gps_tty_dev;
+    CHECK_NULL(uart_ptr);
+    *uart_ptr = uart_num;
 
     /* manage the different GPS modules families */
     if (gps_family == NULL) {
@@ -294,65 +291,14 @@ int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *
         DEBUG_MSG("WARNING: target_brate parameter ignored for now\n"); // TODO
     }
 
-    /* get actual serial port configuration */
-    i = tcgetattr(gps_tty_dev, &ttyopt);
-    if (i != 0) {
-        DEBUG_MSG("ERROR: IMPOSSIBLE TO GET TTY PORT CONFIGURATION\n");
-        return LGW_GPS_ERROR;
-    }
-
-    /* Save current serial port configuration for restoring later */
-    memcpy(&ttyopt_restore, &ttyopt, sizeof ttyopt);
-
-    /* update baudrates */
-    cfsetispeed(&ttyopt, DEFAULT_BAUDRATE);
-    cfsetospeed(&ttyopt, DEFAULT_BAUDRATE);
-
-    /* update terminal parameters */
-    /* The following configuration should allow to:
-            - Get ASCII NMEA messages
-            - Get UBX binary messages
-            - Send UBX binary commands
-        Note: as binary data have to be read/written, we need to disable
-              various character processing to avoid loosing data */
-    /* Control Modes */
-    ttyopt.c_cflag |= CLOCAL;  /* local connection, no modem control */
-    ttyopt.c_cflag |= CREAD;   /* enable receiving characters */
-    ttyopt.c_cflag |= CS8;     /* 8 bit frames */
-    ttyopt.c_cflag &= ~PARENB; /* no parity */
-    ttyopt.c_cflag &= ~CSTOPB; /* one stop bit */
-    /* Input Modes */
-    ttyopt.c_iflag |= IGNPAR;  /* ignore bytes with parity errors */
-    ttyopt.c_iflag &= ~ICRNL;  /* do not map CR to NL on input*/
-    ttyopt.c_iflag &= ~IGNCR;  /* do not ignore carriage return on input */
-    ttyopt.c_iflag &= ~IXON;   /* disable Start/Stop output control */
-    ttyopt.c_iflag &= ~IXOFF;  /* do not send Start/Stop characters */
-    /* Output Modes */
-    ttyopt.c_oflag = 0;        /* disable everything on output as we only write binary */
-    /* Local Modes */
-    ttyopt.c_lflag &= ~ICANON; /* disable canonical input - cannot use with binary input */
-    ttyopt.c_lflag &= ~ISIG;   /* disable check for INTR, QUIT, SUSP special characters */
-    ttyopt.c_lflag &= ~IEXTEN; /* disable any special control character */
-    ttyopt.c_lflag &= ~ECHO;   /* do not echo back every character typed */
-    ttyopt.c_lflag &= ~ECHOE;  /* does not erase the last character in current line */
-    ttyopt.c_lflag &= ~ECHOK;  /* do not echo NL after KILL character */
-
-    /* settings for non-canonical mode
-       read will block for until the lesser of VMIN or requested chars have been received */
-    ttyopt.c_cc[VMIN]  = LGW_GPS_MIN_MSG_SIZE;
-    ttyopt.c_cc[VTIME] = 0;
-
-    /* set new serial ports parameters */
-    i = tcsetattr(gps_tty_dev, TCSANOW, &ttyopt);
-    if (i != 0){
-        DEBUG_MSG("ERROR: IMPOSSIBLE TO UPDATE TTY PORT CONFIGURATION\n");
-        return LGW_GPS_ERROR;
-    }
-    tcflush(gps_tty_dev, TCIOFLUSH);
+    // setup the UART
+    uart_driver_install(uart_num, UART_BUF_SIZE, 0, 0, NULL, 0);
+    uart_param_config(uart_num, &uart_config);
+    uart_set_pin(uart_num, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
 
     /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
     /* This is a binary message, serial port has to be properly configured to handle this */
-    num_written = write (gps_tty_dev, ubx_cmd_timegps, UBX_MSG_NAVTIMEGPS_LEN);
+    ssize_t num_written = uart_write_bytes(uart_num, ubx_cmd_timegps, UBX_MSG_NAVTIMEGPS_LEN);
     if (num_written != UBX_MSG_NAVTIMEGPS_LEN) {
         DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
     }
@@ -368,29 +314,12 @@ int lgw_gps_enable(char *tty_path, char *gps_family, speed_t target_brate, int *
     return LGW_GPS_SUCCESS;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_gps_disable(int fd) {
-    int i;
-
-    /* restore serial ports parameters */
-    i = tcsetattr(fd, TCSANOW, &ttyopt_restore);
-    if (i != 0){
-        DEBUG_MSG("ERROR: IMPOSSIBLE TO RESTORE TTY PORT CONFIGURATION - %s\n", strerror(errno));
-        return LGW_GPS_ERROR;
-    }
-    tcflush(fd, TCIOFLUSH);
-
-    i = close(fd);
-    if (i != 0) {
-        DEBUG_PRINTF("ERROR: TTY PORT FAIL TO CLOSE - %s\n", strerror(errno));
-        return LGW_GPS_ERROR;
-    }
-
-    return LGW_GPS_SUCCESS;
+int lgw_gps_disable(uart_port_t uart_num)
+{
+    return uart_driver_delete(uart_num);
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 enum gps_msg lgw_parse_ubx(const char *serial_buff, size_t buff_size, size_t *msg_size) {
     bool valid = 0;    /* iTOW, fTOW and week validity */
@@ -833,5 +762,3 @@ int lgw_gps2cnt(struct tref ref, struct timespec gps_time, uint32_t *count_us) {
 
     return LGW_GPS_SUCCESS;
 }
-
-/* --- EOF ------------------------------------------------------------------ */

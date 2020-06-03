@@ -14,12 +14,9 @@ Description:
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
-
 #ifndef _LORAGW_GPS_H
 #define _LORAGW_GPS_H
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
 
 #define _GNU_SOURCE
 #include <stdint.h>     /* C99 types */
@@ -27,10 +24,16 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <termios.h>    /* speed_t */
 #include <unistd.h>     /* ssize_t */
 
-#include "config.h"     /* library configuration options (dynamically generated) */
+#include "config.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC TYPES --------------------------------------------------------- */
+
+#define UART_NUM       UART_NUM_1
+#define UART_BUF_SIZE  (1024)
+#define ECHO_TEST_TXD  (GPIO_NUM_1)
+#define ECHO_TEST_RXD  (GPIO_NUM_3)
+#define ECHO_TEST_RTS  (UART_PIN_NO_CHANGE)
+#define ECHO_TEST_CTS  (UART_PIN_NO_CHANGE)
+
 
 /**
 @struct coord_s
@@ -98,21 +101,20 @@ enum gps_msg {
 /**
 @brief Configure a GPS module
 
-@param tty_path path to the TTY connected to the GPS
 @param gps_familly parameter (eg. ubx6 for uBlox gen.6)
 @param target_brate target baudrate for communication (0 keeps default target baudrate)
-@param fd_ptr pointer to a variable to receive file descriptor on GPS tty
+@param uart_ptr pointer to a variable to save the UART port number for GPS
 @return success if the function was able to connect and configure a GPS module
 */
-int lgw_gps_enable(char* tty_path, char* gps_familly, speed_t target_brate, int* fd_ptr);
+int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr);
 
 /**
 @brief Restore GPS serial configuration and close serial device
 
-@param fd file descriptor on GPS tty
+@param uart_num  UART port number
 @return success if the function was able to complete
 */
-int lgw_gps_disable(int fd);
+int lgw_gps_disable(uart_port_t uart_num);
 
 /**
 @brief Parse messages coming from the GPS system (or other GNSS)
