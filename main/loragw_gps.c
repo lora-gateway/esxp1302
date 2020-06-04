@@ -63,6 +63,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
+extern long int timezone;
 
 
 /* result of the NMEA parsing */
@@ -298,7 +299,7 @@ int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr
 
     /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
     /* This is a binary message, serial port has to be properly configured to handle this */
-    ssize_t num_written = uart_write_bytes(uart_num, ubx_cmd_timegps, UBX_MSG_NAVTIMEGPS_LEN);
+    ssize_t num_written = uart_write_bytes(uart_num, (const char *)ubx_cmd_timegps, UBX_MSG_NAVTIMEGPS_LEN);
     if (num_written != UBX_MSG_NAVTIMEGPS_LEN) {
         DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
     }

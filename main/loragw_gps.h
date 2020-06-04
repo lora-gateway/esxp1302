@@ -24,6 +24,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <termios.h>    /* speed_t */
 #include <unistd.h>     /* ssize_t */
 
+#include "driver/uart.h"
+#include "driver/gpio.h"
+
 #include "config.h"
 
 

@@ -35,33 +35,16 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_gps.h"
 #include "loragw_aux.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define MATCH(a,b) ( ((int32_t)(a-b)<=1) && ((int32_t)(a-b)>=-1) ) /* tolerate 1µs */
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
 struct tref ppm_ref;
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 static void sig_handler(int sigio);
 static void gps_process_sync(void);
 static void gps_process_coords(void);
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
@@ -69,14 +52,6 @@ void usage(void) {
     printf( " -h print this help\n");
     printf( " -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf( " -r <uint> Radio type (1255, 1257, 1250)\n");
-}
-
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
 }
 
 static void gps_process_sync(void) {
@@ -167,12 +142,9 @@ static void gps_process_coords(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
+//int main(int argc, char **argv)
+void app_main(void)
 {
-    /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
-
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     int i;
@@ -192,78 +164,38 @@ int main(int argc, char **argv)
     /* NMEA/UBX variables */
     enum gps_msg latest_msg; /* keep track of latest NMEA/UBX message parsed */
 
-    /* parse command line options */
-    while ((i = getopt (argc, argv, "hk:r:")) != -1) {
-        switch (i) {
-            case 'h':
-                usage();
-                return -1;
-                break;
-            case 'r': /* <uint> Radio type */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
-                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    switch (arg_u) {
-                        case 1255:
-                            radio_type = LGW_RADIO_TYPE_SX1255;
-                            break;
-                        case 1257:
-                            radio_type = LGW_RADIO_TYPE_SX1257;
-                            break;
-                        default: /* 1250 */
-                            radio_type = LGW_RADIO_TYPE_SX1250;
-                            break;
-                    }
-                }
-                break;
-            case 'k': /* <uint> Clock Source */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 1)) {
-                    printf("ERROR: argument parsing of -k argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    clocksource = (uint8_t)arg_u;
-                }
-                break;
-            default:
-                printf("ERROR: argument parsing\n");
-                usage();
-                exit(EXIT_FAILURE);
-        }
+    // TODO: Settings
+    //radio_type = LGW_RADIO_TYPE_SX1255;
+    //radio_type = LGW_RADIO_TYPE_SX1257;
+    radio_type = LGW_RADIO_TYPE_SX1250;
+    clocksource = 0; // Clock Source: [Radio A: 0; Radio B: 1]
+
+    for(int i = 0; i < 4; i++){
+        printf("waiting %d...\n", i+1);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+    printf("\n!!! Note !!!\nPlease Reset SX1302 board first to run this test.\n");
+    printf("You can just power off then power on the whole system\n\n");
+
+    for(int i = 4; i > 0; i--){
+        printf("waiting %d...\n", i);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
-    /* Check arguments */
-    if (radio_type == LGW_RADIO_TYPE_NONE) {
-        printf("ERROR: radio type must be specified\n");
-        usage();
-        exit(EXIT_FAILURE);
-    }
-
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
+    // I've two choices to jump to the forever loop at the end when something goes wrong:
+    //   1. use 'goto'.
+    //   2. wrap lots of code in a big do{..}while(0) loop and use 'break'.
+    // Since I don't like add too many indents, I choose the 1st one here.
 
     /* Intro message and library information */
     printf("Beginning of test for loragw_gps.c\n");
     printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
-    }
-
     /* Open and configure GPS */
-    i = lgw_gps_enable("/dev/ttyS0", "ubx7", 0, &gps_tty_dev);
+    i = lgw_gps_enable("ubx7", 0, &gps_tty_dev);
     if (i != LGW_GPS_SUCCESS) {
         printf("ERROR: Failed to enable GPS\n");
-        exit(EXIT_FAILURE);
+        goto out;
     }
 
     /* start concentrator (default conf for IoT SK) */
@@ -272,11 +204,14 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+
+    // TODO: change the struct of boardconf, remove or replace the 'spidev_path'.
+    //strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
+    //boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
+
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
-        return EXIT_FAILURE;
+        goto out;
     }
 
     /* set configuration for RF chains */
@@ -289,7 +224,7 @@ int main(int argc, char **argv)
     rfconf.single_input_mode = false;
     if (lgw_rxrf_setconf(0, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 0\n");
-        return EXIT_FAILURE;
+        goto out;
     }
 
     memset( &rfconf, 0, sizeof rfconf);
@@ -301,26 +236,26 @@ int main(int argc, char **argv)
     rfconf.single_input_mode = false;
     if (lgw_rxrf_setconf(1, &rfconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure rxrf 1\n");
-        return EXIT_FAILURE;
+        goto out;
     }
 
     /* start */
     if (lgw_start() != LGW_HAL_SUCCESS) {
         printf("ERROR: IMPOSSIBLE TO START THE GATEWAY\n");
-        exit(EXIT_FAILURE);
+        goto out;
     }
 
     /* initialize some variables before loop */
     memset(serial_buff, 0, sizeof serial_buff);
     memset(&ppm_ref, 0, sizeof ppm_ref);
 
-    /* loop until user action */
-    while ((quit_sig != 1) && (exit_sig != 1)) {
+    /* TODO: loop forever */
+    while (1) {
         size_t rd_idx = 0;
         size_t frame_end_idx = 0;
 
         /* blocking non-canonical read on serial port */
-        ssize_t nb_char = read(gps_tty_dev, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
+        ssize_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t *)(serial_buff + wr_idx), LGW_GPS_MIN_MSG_SIZE, 20/portTICK_RATE_MS);
         if (nb_char <= 0) {
             printf("WARNING: [gps] read() returned value %zd\n", nb_char);
             continue;
@@ -400,19 +335,16 @@ int main(int argc, char **argv)
     }
 
     /* clean up before leaving */
-    if (exit_sig == 1) {
-        lgw_gps_disable(gps_tty_dev);
-        lgw_stop();
-    }
-
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
-    }
+    lgw_gps_disable(gps_tty_dev);
+    lgw_stop();
 
     printf("\nEnd of test for loragw_gps.c\n");
-    exit(EXIT_SUCCESS);
-}
 
-/* --- EOF ------------------------------------------------------------------ */
+out:
+    while(true){
+        printf("hello\n");
+        vTaskDelay(8000 / portTICK_PERIOD_MS);
+    }
+
+    return;
+}
