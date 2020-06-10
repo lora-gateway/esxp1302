@@ -205,10 +205,6 @@ void app_main(void)
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
 
-    // TODO: change the struct of boardconf, remove or replace the 'spidev_path'.
-    //strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    //boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
-
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         goto out;

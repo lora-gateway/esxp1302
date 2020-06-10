@@ -68,7 +68,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
 #define CONTEXT_STARTED         lgw_context.is_started
-#define CONTEXT_SPI             lgw_context.board_cfg.spidev_path
 #define CONTEXT_LWAN_PUBLIC     lgw_context.board_cfg.lorawan_public
 #define CONTEXT_BOARD           lgw_context.board_cfg
 #define CONTEXT_RF_CHAIN        lgw_context.rf_chain_cfg
@@ -113,7 +112,6 @@ the _start and _send functions assume they are valid.
 */
 static lgw_context_t lgw_context = {
     .is_started = false,
-    .board_cfg.spidev_path = "/dev/spidev0.0",
     .board_cfg.lorawan_public = true,
     .board_cfg.clksrc = 0,
     .board_cfg.full_duplex = false,
@@ -181,7 +179,6 @@ static lgw_context_t lgw_context = {
 FILE * log_file = NULL;
 
 /* I2C temperature sensor handles */
-static int     ts_fd = -1;
 static uint8_t ts_addr = 0xFF;
 
 /* -------------------------------------------------------------------------- */
@@ -234,13 +231,11 @@ int lgw_board_setconf(struct lgw_conf_board_s * conf) {
     CONTEXT_LWAN_PUBLIC = conf->lorawan_public;
     CONTEXT_BOARD.clksrc = conf->clksrc;
     CONTEXT_BOARD.full_duplex = conf->full_duplex;
-    strncpy(CONTEXT_SPI, conf->spidev_path, sizeof CONTEXT_SPI);
-    CONTEXT_SPI[sizeof CONTEXT_SPI - 1] = '\0'; /* ensure string termination */
 
-    DEBUG_PRINTF("Note: board configuration: spidev_path: %s, lorawan_public:%d, clksrc:%d, full_duplex:%d\n",  CONTEXT_SPI,
-                                                                                                                CONTEXT_LWAN_PUBLIC,
-                                                                                                                CONTEXT_BOARD.clksrc,
-                                                                                                                CONTEXT_BOARD.full_duplex);
+    DEBUG_PRINTF("Note: board configuration: lorawan_public:%d, clksrc:%d, full_duplex:%d\n",
+                                                                        CONTEXT_LWAN_PUBLIC,
+                                                                        CONTEXT_BOARD.clksrc,
+                                                                        CONTEXT_BOARD.full_duplex);
 
     return LGW_HAL_SUCCESS;
 }
@@ -577,7 +572,7 @@ int lgw_start(void) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(CONTEXT_SPI);
+    reg_stat = lgw_connect();
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
@@ -721,15 +716,14 @@ int lgw_start(void) {
 
     /* Try to configure temperature sensor STTS751-0DP3F */
     ts_addr = I2C_PORT_TEMP_SENSOR_0;
-    i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
-    err = stts751_configure(ts_fd, ts_addr);
+    i2c_esp32_open(ts_addr);
+    err = stts751_configure(ts_addr, ts_addr);
     if (err != LGW_I2C_SUCCESS) {
-        i2c_linuxdev_close(ts_fd);
-        ts_fd = -1;
+        i2c_esp32_close(ts_addr);
         /* Not found, try to configure temperature sensor STTS751-1DP3F */
         ts_addr = I2C_PORT_TEMP_SENSOR_1;
-        i2c_linuxdev_open(I2C_DEVICE, ts_addr, &ts_fd);
-        err = stts751_configure(ts_fd, ts_addr);
+        i2c_esp32_open(ts_addr);
+        err = stts751_configure(ts_addr, ts_addr);
         if (err != LGW_I2C_SUCCESS) {
             printf("ERROR: failed to configure the temperature sensor\n");
             return LGW_HAL_ERROR;
@@ -762,7 +756,7 @@ int lgw_stop(void) {
     lgw_disconnect();
 
     DEBUG_MSG("INFO: Closing I2C\n");
-    err = i2c_linuxdev_close(ts_fd);
+    err = i2c_esp32_close(ts_addr);
     if (err != 0) {
         printf("ERROR: failed to close I2C device (err=%i)\n", err);
     }
@@ -802,7 +796,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* Apply RSSI temperature compensation */
-    res = stts751_get_temperature(ts_fd, ts_addr, &current_temperature);
+    res = stts751_get_temperature(ts_addr, ts_addr, &current_temperature);
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
@@ -983,7 +977,7 @@ int lgw_get_eui(uint64_t* eui) {
 int lgw_get_temperature(float* temperature) {
     CHECK_NULL(temperature);
 
-    if (stts751_get_temperature(ts_fd, ts_addr, temperature) != LGW_I2C_SUCCESS) {
+    if (stts751_get_temperature(ts_addr, ts_addr, temperature) != LGW_I2C_SUCCESS) {
         return LGW_HAL_ERROR;
     }
 

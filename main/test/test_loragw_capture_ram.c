@@ -112,10 +112,6 @@ int main(int argc, char **argv)
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
-    /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
-
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
@@ -128,12 +124,6 @@ int main(int argc, char **argv)
             case 'h':
                 usage();
                 return -1;
-                break;
-
-            case 'd':
-                if (optarg != NULL) {
-                    spidev_path = optarg;
-                }
                 break;
 
             case 's': /* <uint> Capture Source */
@@ -174,7 +164,7 @@ int main(int argc, char **argv)
         capture_ram_buffer[i] = i%256;
     }
 
-    reg_stat = lgw_connect(spidev_path);
+    reg_stat = lgw_connect();
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;

@@ -473,10 +473,6 @@ int main(int argc, char **argv)
 
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
-    /* SPI interfaces */
-    const char spidev_path_default[] = LINUXDEV_PATH_DEFAULT;
-    const char * spidev_path = spidev_path_default;
-
     /* Initialize TX gain LUT */
     txlut.size = 1;
     memset(txlut.lut, 0, sizeof txlut.lut);
@@ -497,12 +493,6 @@ int main(int argc, char **argv)
             case 'h':
                 usage();
                 return -1;
-                break;
-
-            case 'd':
-                if (optarg != NULL) {
-                    spidev_path = optarg;
-                }
                 break;
 
             case 'r': /* <uint> Radio type */
@@ -610,8 +600,6 @@ int main(int argc, char **argv)
     boardconf.lorawan_public = true;
     boardconf.clksrc = clocksource;
     boardconf.full_duplex = false;
-    strncpy(boardconf.spidev_path, spidev_path, sizeof boardconf.spidev_path);
-    boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to configure board\n");
         return EXIT_FAILURE;
@@ -650,7 +638,7 @@ int main(int argc, char **argv)
     fp = fopen("log.txt", "w+");
 
     /* connect the gateway */
-    x = lgw_connect(spidev_path);
+    x = lgw_connect();
     if (x != 0) {
         printf("ERROR: failed to connect the gateway\n");
         return EXIT_FAILURE;

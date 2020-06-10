@@ -47,7 +47,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PIN_NUM_CLK  14
 #define PIN_NUM_CS   15
 
-#define SX1302_SPI_HOST    HSPI_HOST
 #define DMA_CHAN    2
 
 #define USE_SPI_TRANSACTION_EXT
