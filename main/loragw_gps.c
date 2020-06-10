@@ -62,8 +62,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
-extern long int timezone;
-
 
 /* result of the NMEA parsing */
 static short gps_yea = 0; /* year (2 or 4 digits) */
@@ -254,6 +252,7 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) 
 
 int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr)
 {
+    esp_err_t err;
     uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN] = {
                     0xB5, 0x62, /* UBX Sync Chars */
                     0x06, 0x01, /* CFG-MSG Class/ID */
@@ -294,7 +293,11 @@ int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr
     // setup the UART
     uart_driver_install(uart_num, UART_BUF_SIZE, 0, 0, NULL, 0);
     uart_param_config(uart_num, &uart_config);
-    uart_set_pin(uart_num, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
+
+    // TODO: something wrong here; needs more check
+    err = uart_set_pin(uart_num, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
+    if(err != ESP_OK)
+        return LGW_GPS_ERROR;
 
     /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
     /* This is a binary message, serial port has to be properly configured to handle this */
@@ -533,6 +536,8 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
     struct tm x;
     time_t y;
     double intpart, fractpart;
+    //extern long int timezone;
+
 
     if (utc != NULL) {
         if (!gps_time_ok) {
@@ -550,7 +555,11 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
         x.tm_hour = gps_hou;
         x.tm_min = gps_min;
         x.tm_sec = gps_sec;
-        y = mktime(&x) - timezone; /* need to substract timezone bc mktime assumes time vector is local time */
+
+        // TODO: fix the timezone issue: "undefined reference to `timezone'"
+        // y = mktime(&x) - timezone; /* need to substract timezone bc mktime assumes time vector is local time */
+        y = mktime(&x);
+
         if (y == (time_t)(-1)) {
             DEBUG_MSG("ERROR: FAILED TO CONVERT BROKEN-DOWN TIME\n");
             return LGW_GPS_ERROR;
