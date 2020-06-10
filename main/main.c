@@ -1,1 +1,1 @@
-test/test_loragw_gps.c
+test/test_loragw_cal.c

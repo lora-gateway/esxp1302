@@ -29,8 +29,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
-#include <signal.h>     /* sigaction */
-#include <getopt.h>     /* getopt_long */
 #include <sys/time.h>
 
 #include "loragw_hal.h"
@@ -50,8 +48,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
 
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
@@ -78,7 +74,7 @@ struct cal_tx_log {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-FILE * fp;
+FILE * fp;  // TODO: enable saving log to file
 
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB] = {865500000, 865500000};
 static lgw_radio_type_t rf_radio_type[LGW_RF_CHAIN_NB] = {LGW_RADIO_TYPE_SX1257, LGW_RADIO_TYPE_SX1257};
@@ -88,7 +84,7 @@ static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
-#include "../src/cal_fw.var" /* text_cal_sx1257_16_Nov_1 */
+#include "cal_fw.var" /* text_cal_sx1257_16_Nov_1 */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -98,8 +94,6 @@ void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
-    printf(" -d <path>     use Linux SPI device driver\n");
-    printf("               => default path: " LINUXDEV_PATH_DEFAULT "\n");
     printf(" -k <uint> Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -c <uint> RF chain to be used for TX (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint> Radio type (1255, 1257, 1250)\n");
@@ -110,17 +104,6 @@ void usage(void) {
     printf(" --dig  <uint> sx1302 digital gain [0..3]\n");
     printf(" --dac  <uint> sx1257 DAC gain [0..3]\n");
     printf(" --mix  <uint> sx1257 MIX gain [0..15]\n");
-}
-
-/* handle signals */
-static void sig_handler(int sigio)
-{
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;
-    }
-    else if((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
 }
 
 int setup_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type) {
@@ -332,13 +315,13 @@ int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, uint32_t freq_hz, uint8_
     } else {
         switch (test_id) {
             case TEST_FREQ_SCAN:
-                fprintf(fp, "%u ", f_offset);
+                //fprintf(fp, "%u ", f_offset);
                 break;
             case TEST_OFFSET_IQ:
-                fprintf(fp, "%d %d ", i_offset, q_offset);
+                //fprintf(fp, "%d %d ", i_offset, q_offset);
                 break;
             case TEST_AMP_PHI:
-                fprintf(fp, "%d %d ", amp, phi);
+                //fprintf(fp, "%d %d ", amp, phi);
                 break;
             default:
                 printf("ERROR: wrong test ID (%u)\n", test_id);
@@ -372,10 +355,10 @@ int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, uint32_t freq_hz, uint8_
         switch (test_id) {
             case TEST_OFFSET_IQ:
             case TEST_AMP_PHI:
-                fprintf(fp, "%u %u %u %f\n", val_min, val_max, val_mean, val_std);
+                //fprintf(fp, "%u %u %u %f\n", val_min, val_max, val_mean, val_std);
                 break;
             case TEST_FREQ_SCAN:
-                fprintf(fp, "%u\n", val_mean);
+                //fprintf(fp, "%u\n", val_mean);
                 break;
             default:
                 break;
@@ -457,7 +440,7 @@ int test_capture_ram(uint8_t rf_chain) {
     return 0;
 }
 
-int main(int argc, char **argv)
+int main_test(void)
 {
     int i, x;
     uint32_t ft = DEFAULT_FREQ_HZ;
@@ -471,129 +454,30 @@ int main(int argc, char **argv)
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
 
-    static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-
     /* Initialize TX gain LUT */
     txlut.size = 1;
     memset(txlut.lut, 0, sizeof txlut.lut);
     txlut.lut[0].dac_gain = DEFAULT_DAC_GAIN;
     txlut.lut[0].mix_gain = DEFAULT_MIX_GAIN;
 
-    /* Parameter parsing */
-    int option_index = 0;
-    static struct option long_options[] = {
-        {"dac", 1, 0, 0},
-        {"mix", 1, 0, 0},
-        {0, 0, 0, 0}
-    };
+    // usage();
 
-    /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hjf:k:r:c:d:", long_options, &option_index)) != -1) {
-        switch (i) {
-            case 'h':
-                usage();
-                return -1;
-                break;
+    // configurations
+    //radio_type = LGW_RADIO_TYPE_SX1255;
+    //radio_type = LGW_RADIO_TYPE_SX1257;
+    radio_type = LGW_RADIO_TYPE_SX1250;
 
-            case 'r': /* <uint> Radio type */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
-                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    switch (arg_u) {
-                        case 1255:
-                            radio_type = LGW_RADIO_TYPE_SX1255;
-                            break;
-                        case 1257:
-                            radio_type = LGW_RADIO_TYPE_SX1257;
-                            break;
-                        default: /* 1250 */
-                            radio_type = LGW_RADIO_TYPE_SX1250;
-                            break;
-                    }
-                }
-                break;
+    clocksource = 0; // Concentrator clock source (Radio A or Radio B) [0..1]
+    rf_chain = 0;    // RF chain to be used for TX (Radio A or Radio B) [0..1]
+    single_input_mode = true; // Set radio in single input mode (SX1250 only)
 
-            case 'k': /* <uint> Clock Source */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 1)) {
-                    printf("ERROR: argument parsing of -k argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    clocksource = (uint8_t)arg_u;
-                }
-                break;
+    // Radio TX frequency in MHz
+    ft = (uint32_t)((868.3*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
 
-            case 'c': /* <uint> RF chain */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 1)) {
-                    printf("ERROR: argument parsing of -c argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    rf_chain = (uint8_t)arg_u;
-                }
-                break;
+    txlut.size = 1;
+    txlut.lut[0].dac_gain = 1; // sx1257 DAC gain [0..3]
+    txlut.lut[0].mix_gain = 7; // sx1257 MIX gain [0..15]
 
-            case 'j':
-                single_input_mode = true;
-                break;
-
-            case 'f': /* <float> Radio TX frequency in MHz */
-                i = sscanf(optarg, "%lf", &arg_d);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    ft = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                }
-                break;
-
-            case 0:
-                if (strcmp(long_options[option_index].name, "dac") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 3)) {
-                        printf("ERROR: argument parsing of --dac argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].dac_gain = (uint8_t)arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "mix") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 15)) {
-                        printf("ERROR: argument parsing of --mix argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].mix_gain = (uint8_t)arg_u;
-                    }
-                } else {
-                    printf("ERROR: argument parsing options. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                }
-                break;
-
-            default:
-                printf("ERROR: argument parsing\n");
-                usage();
-                return -1;
-        }
-    }
-
-    /* Configure signal handling */
-    sigemptyset( &sigact.sa_mask );
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction( SIGQUIT, &sigact, NULL );
-    sigaction( SIGINT, &sigact, NULL );
-    sigaction( SIGTERM, &sigact, NULL );
-
-    /* Board reset */
-    if (system("./reset_lgw.sh start") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
-    }
 
     /* Configure the gateway */
     memset(&boardconf, 0, sizeof boardconf);
@@ -635,7 +519,7 @@ int main(int argc, char **argv)
     }
 
     /* open log file for writing */
-    fp = fopen("log.txt", "w+");
+    //fp = fopen("log.txt", "w+");
 
     /* connect the gateway */
     x = lgw_connect();
@@ -679,17 +563,39 @@ int main(int argc, char **argv)
     }
 
     /* Close log file */
-    fclose(fp);
-
-    /* Board reset */
-    if (system("./reset_lgw.sh stop") != 0) {
-        printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-        exit(EXIT_FAILURE);
-    }
+    //fclose(fp);
 
     printf("=========== Test End ===========\n");
 
     return 0;
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+void info_and_delay(int loop)
+{
+    for(int i = 0; i < loop; i++){
+        printf("waiting %d...\n", i+1);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+    printf("\n!!! Note !!!\nPlease Reset SX1302 board first to run this test.\n");
+    printf("You can just power off then power on the whole system\n\n");
+
+    for(int i = loop; i > 0; i--){
+        printf("waiting %d...\n", i);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+void app_main(void)
+{
+    info_and_delay(3);
+
+    int ret = main_test();
+    printf("Test done with result = %d\n", ret);
+
+    while(true){
+        printf("hello\n");
+        vTaskDelay(8000 / portTICK_PERIOD_MS);
+    }
+
+    return;
+}
