@@ -1,1 +1,1 @@
-test/test_loragw_cal.c
+test/test_loragw_hal_rx.c

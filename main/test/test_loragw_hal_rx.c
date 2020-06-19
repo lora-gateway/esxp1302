@@ -31,39 +31,35 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <signal.h>
 #include <math.h>
 
+//#include "sdkconfig.h"
+//#include "esp_log.h"
+#include "esp_console.h"
+//#include "esp_vfs_fat.h"
+//#include "cmd_system.h"
+#include "argtable3/argtable3.h"
+
 #include "loragw_hal.h"
 #include "loragw_reg.h"
+#include "loragw_gpio.h"
 #include "loragw_aux.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
-
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define RAND_RANGE(min, max) (rand() % (max + 1 - min) + min)
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define DEFAULT_FREQ_HZ     868500000U
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
-
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
+// Global variables to simplify arguments parsing
+uint32_t fa = DEFAULT_FREQ_HZ;
+uint32_t fb = DEFAULT_FREQ_HZ;
+uint8_t clocksource = 0;
+lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
+bool single_input_mode = false;
+uint8_t max_rx_pkt = 16;
+float rssi_offset = 0.0;
+uint8_t channel_mode = 0; /* LoRaWAN-like */
+unsigned long nb_loop = 0;
 
 void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
@@ -80,32 +76,16 @@ void usage(void) {
     printf(" -j            Set radio in single input mode (SX1250 only)\n");
 }
 
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
-
-int main(int argc, char **argv)
+int test_hal_rx_main(void)
 {
-    struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-
     int i, j, x;
-    uint32_t fa = DEFAULT_FREQ_HZ;
-    uint32_t fb = DEFAULT_FREQ_HZ;
-    double arg_d = 0.0;
-    unsigned int arg_u;
-    uint8_t clocksource = 0;
-    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
-    uint8_t max_rx_pkt = 16;
-    bool single_input_mode = false;
-    float rssi_offset = 0.0;
-
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
 
-    unsigned long nb_pkt_crc_ok = 0, nb_loop = 0, cnt_loop;
+    unsigned long nb_pkt_crc_ok = 0, cnt_loop;
     int nb_pkt;
 
-    uint8_t channel_mode = 0; /* LoRaWAN-like */
 
     const int32_t channel_if_mode0[9] = {
         -400000,
@@ -132,115 +112,9 @@ int main(int argc, char **argv)
     };
 
     const uint8_t channel_rfchain_mode0[9] = { 1, 1, 1, 0, 0, 0, 0, 0, 1 };
-
     const uint8_t channel_rfchain_mode1[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-    /* parse command line options */
-    while ((i = getopt (argc, argv, "hja:b:k:r:n:z:m:o:")) != -1) {
-        switch (i) {
-            case 'h':
-                usage();
-                return -1;
-                break;
-            case 'r': /* <uint> Radio type */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
-                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    switch (arg_u) {
-                        case 1255:
-                            radio_type = LGW_RADIO_TYPE_SX1255;
-                            break;
-                        case 1257:
-                            radio_type = LGW_RADIO_TYPE_SX1257;
-                            break;
-                        default: /* 1250 */
-                            radio_type = LGW_RADIO_TYPE_SX1250;
-                            break;
-                    }
-                }
-                break;
-            case 'k': /* <uint> Clock Source */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 1)) {
-                    printf("ERROR: argument parsing of -k argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    clocksource = (uint8_t)arg_u;
-                }
-                break;
-            case 'j': /* Set radio in single input mode */
-                single_input_mode = true;
-                break;
-            case 'a': /* <float> Radio A RX frequency in MHz */
-                i = sscanf(optarg, "%lf", &arg_d);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    fa = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                }
-                break;
-            case 'b': /* <float> Radio B RX frequency in MHz */
-                i = sscanf(optarg, "%lf", &arg_d);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    fb = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                }
-                break;
-            case 'n': /* <uint> NUmber of packets to be received before exiting */
-                i = sscanf(optarg, "%u", &arg_u);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -n argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    nb_loop = arg_u;
-                }
-                break;
-            case 'z': /* <uint> Size of the RX packet array to be passed to lgw_receive() */
-                i = sscanf(optarg, "%u", &arg_u);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -z argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    max_rx_pkt = arg_u;
-                }
-                break;
-            case 'm':
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 1)) {
-                    printf("ERROR: argument parsing of -m argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    channel_mode = arg_u;
-                }
-                break;
-            case 'o': /* <float> RSSI offset in dB */
-                i = sscanf(optarg, "%lf", &arg_d);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    rssi_offset = (float)arg_d;
-                }
-                break;
-            default:
-                printf("ERROR: argument parsing\n");
-                usage();
-                return -1;
-        }
-    }
-
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
+    /* parse command line options are done in do_hal_config_cmd() */
 
     printf("===== sx1302 HAL RX test =====\n");
 
@@ -318,15 +192,12 @@ int main(int argc, char **argv)
 
     /* Loop until user quits */
     cnt_loop = 0;
-    while( (quit_sig != 1) && (exit_sig != 1) )
+    while(cnt_loop < 10)
     {
         cnt_loop += 1;
 
         /* Board reset */
-        if (system("./reset_lgw.sh start") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
-        }
+        lgw_reset();
 
         /* connect, configure and start the LoRa concentrator */
         x = lgw_start();
@@ -338,7 +209,7 @@ int main(int argc, char **argv)
         /* Loop until we have enough packets with CRC OK */
         printf("Waiting for packets...\n");
         nb_pkt_crc_ok = 0;
-        while (((nb_pkt_crc_ok < nb_loop) || nb_loop == 0) && (quit_sig != 1) && (exit_sig != 1)) {
+        while (((nb_pkt_crc_ok < nb_loop) || nb_loop == 0)) {
             /* fetch N packets */
             nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
 
@@ -379,17 +250,161 @@ int main(int argc, char **argv)
             printf("ERROR: failed to stop the gateway\n");
             return EXIT_FAILURE;
         }
-
-        /* Board reset */
-        if (system("./reset_lgw.sh stop") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
-        }
     }
+
+    /* Board reset */
+    lgw_reset();
 
     printf("=========== Test End ===========\n");
 
     return 0;
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+static struct {
+    struct arg_lit *help;
+    struct arg_lit *single_input;
+    struct arg_int *clock_source;
+    struct arg_int *radio_type;
+    struct arg_dbl *radio_a_freq;
+    struct arg_dbl *radio_b_freq;
+    struct arg_dbl *rssi_offset;
+    struct arg_int *num_packet;
+    struct arg_int *rx_array_size;
+    struct arg_int *freq_plan_mode;
+    struct arg_end *end;
+} hal_conf_args;
+
+static int do_hal_config_cmd(int argc, char **argv)
+{
+    uint32_t val;
+    double fval;
+    int nerrors;
+
+    nerrors = arg_parse(argc, argv, (void **)&hal_conf_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, hal_conf_args.end, argv[0]);
+        return 0;
+    }
+
+    // process '-h' or '--help'
+    if (hal_conf_args.help->count) {
+        usage();
+        return 0;
+    }
+
+    // process '-r' for radio type
+    if (hal_conf_args.radio_type->count > 0) {
+        val = (uint32_t)hal_conf_args.radio_type->ival[0];
+        if(val == 1255)
+            radio_type = LGW_RADIO_TYPE_SX1255;
+        else if(val == 1257)
+            radio_type = LGW_RADIO_TYPE_SX1257;
+        else if(val == 1250)
+            radio_type = LGW_RADIO_TYPE_SX1250;
+        else {
+            printf("'-r' with wrong value: %d; should be 1255/1257/1250\n", val);
+            return -1;
+        }
+    }
+
+    // process '-k' for clock source
+    if (hal_conf_args.clock_source->count > 0) {
+        val = (uint32_t)hal_conf_args.clock_source->ival[0];
+        if(val > 1){
+            printf("'-k' with wrong value: %d; should be 0 or 1\n", val);
+            return -1;
+        }
+        clocksource = val;
+    }
+
+    // process '-j' for single input mode
+    if (hal_conf_args.single_input->count > 0) {
+        single_input_mode = true;
+    }
+
+    // process '-a' for single input mode
+    if (hal_conf_args.radio_a_freq->count > 0) {
+        fval = hal_conf_args.radio_a_freq->dval[0];
+        fa = (uint32_t)((fval * 1e6) + 0.5); /* 0.5 Hz offset to get rounding */
+    }
+    // process '-b' for single input mode
+    if (hal_conf_args.radio_b_freq->count > 0) {
+        fval = hal_conf_args.radio_b_freq->dval[0];
+        fb = (uint32_t)((fval * 1e6) + 0.5); /* 0.5 Hz offset to get rounding */
+    }
+
+    // process '-n' for number of packets to be received before exiting
+    if (hal_conf_args.num_packet->count > 0) {
+        val = (uint32_t)hal_conf_args.num_packet->ival[0];
+        nb_loop = val;
+    }
+
+    // process '-z' for size of the RX packet array to be passed to lgw_receive()
+    if (hal_conf_args.rx_array_size->count > 0) {
+        val = (uint32_t)hal_conf_args.rx_array_size->ival[0];
+        max_rx_pkt = val;
+    }
+
+    // process '-m' for Channel frequency plan mode
+    if (hal_conf_args.freq_plan_mode->count > 0) {
+        val = (uint32_t)hal_conf_args.freq_plan_mode->ival[0];
+        if(val > 1){
+            printf("'-m' with wrong value: %d; should be 0 or 1\n", val);
+            return -1;
+        }
+        channel_mode = val;
+    }
+
+    // process '-o' for RSSI offset in dB
+    if (hal_conf_args.rssi_offset->count > 0) {
+        fval = hal_conf_args.rssi_offset->dval[0];
+        rssi_offset = (float)fval;
+    }
+
+    test_hal_rx_main();
+
+    return 0;
+}
+
+
+static void register_config(void)
+{
+    hal_conf_args.help           = arg_lit0("h", "help",          "print help");
+    hal_conf_args.clock_source   = arg_int0("k", NULL, "<uint>",  "Concentrator clock source (Radio A or Radio B) [0..1]");
+    hal_conf_args.radio_type     = arg_int1("r", NULL, "<uint>",  "Radio type (1255, 1257, 1250)");
+    hal_conf_args.radio_a_freq   = arg_dbl0("a", NULL, "<float>", "Radio A RX frequency in MHz");
+    hal_conf_args.radio_b_freq   = arg_dbl0("b", NULL, "<float>", "Radio B RX frequency in MHz");
+    hal_conf_args.rssi_offset    = arg_dbl0("o", NULL, "<float>", "RSSI Offset to be applied in dB");
+    hal_conf_args.num_packet     = arg_int0("n", NULL, "<uint>",  "Number of packet received with CRC OK for each HAL start/stop loop");
+    hal_conf_args.rx_array_size  = arg_int0("z", NULL, "<uint>",  "Size of the RX packet array to be passed to lgw_receive()");
+    hal_conf_args.freq_plan_mode = arg_int0("m", NULL, "<uint>",  "Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]");
+    hal_conf_args.single_input   = arg_lit0("j", NULL,            "Set radio in single input mode (SX1250 only)");
+    hal_conf_args.end = arg_end(2);
+
+    const esp_console_cmd_t hal_conf_cmd = {
+        .command = "hal_rx",
+        .help = "Config HAL for RX",
+        .hint = NULL,
+        .func = &do_hal_config_cmd,
+        .argtable = &hal_conf_args
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&hal_conf_cmd));
+}
+
+void app_main(void)
+{
+
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+    repl_config.prompt = "sx1302_hal>";
+
+    register_config();
+
+    // initialize console REPL environment
+    ESP_ERROR_CHECK(esp_console_repl_init(&repl_config));
+
+    arg_print_syntax(stdout, &hal_conf_args, "\n");
+    usage();
+
+    // start console REPL
+    ESP_ERROR_CHECK(esp_console_repl_start());
+}
