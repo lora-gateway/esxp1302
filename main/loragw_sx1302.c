@@ -144,6 +144,7 @@ void lora_crc16(const char data, int *crc);
 
 /* Log file */
 extern FILE * log_file;
+uint8_t fw_check[MCU_FW_SIZE];
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -947,7 +948,6 @@ int sx1302_gps_enable(bool enable) {
 
 int sx1302_agc_load_firmware(const uint8_t *firmware) {
     int32_t val;
-    uint8_t fw_check[MCU_FW_SIZE];
     int32_t gpio_sel = MCU_AGC;
 
     /* Configure GPIO to let AGC MCU access board LEDs */
@@ -1352,7 +1352,6 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_arb_load_firmware(const uint8_t *firmware) {
-    uint8_t fw_check[MCU_FW_SIZE];
     int32_t gpio_sel = MCU_ARB;
     int32_t val;
 
