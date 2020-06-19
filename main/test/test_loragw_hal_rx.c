@@ -54,7 +54,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 uint32_t fa = DEFAULT_FREQ_HZ;
 uint32_t fb = DEFAULT_FREQ_HZ;
 uint8_t clocksource = 0;
-lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
+lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1250;
 bool single_input_mode = false;
 uint8_t max_rx_pkt = 16;
 float rssi_offset = 0.0;
@@ -63,8 +63,9 @@ unsigned long nb_loop = 0;
 
 void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
-    printf("Available options:\n");
-    printf(" -h print this help\n");
+    printf("\n\n ---- test_loragw_hal_rx ----\n");
+    printf("\nAvailable options:\n");
+    printf(" -h            print this help\n");
     printf(" -k <uint>     Concentrator clock source (Radio A or Radio B) [0..1]\n");
     printf(" -r <uint>     Radio type (1255, 1257, 1250)\n");
     printf(" -a <float>    Radio A RX frequency in MHz\n");
@@ -370,19 +371,19 @@ static int do_hal_config_cmd(int argc, char **argv)
 static void register_config(void)
 {
     hal_conf_args.help           = arg_lit0("h", "help",          "print help");
-    hal_conf_args.clock_source   = arg_int0("k", NULL, "<uint>",  "Concentrator clock source (Radio A or Radio B) [0..1]");
-    hal_conf_args.radio_type     = arg_int1("r", NULL, "<uint>",  "Radio type (1255, 1257, 1250)");
+    hal_conf_args.clock_source   = arg_int0("k", NULL, "<0|1>",   "Concentrator clock source (Radio A or Radio B) [0..1]");
+    hal_conf_args.radio_type     = arg_int0("r", NULL, "<1250|1255|1257>",  "Radio type (1255, 1257, 1250)");
     hal_conf_args.radio_a_freq   = arg_dbl0("a", NULL, "<float>", "Radio A RX frequency in MHz");
     hal_conf_args.radio_b_freq   = arg_dbl0("b", NULL, "<float>", "Radio B RX frequency in MHz");
     hal_conf_args.rssi_offset    = arg_dbl0("o", NULL, "<float>", "RSSI Offset to be applied in dB");
     hal_conf_args.num_packet     = arg_int0("n", NULL, "<uint>",  "Number of packet received with CRC OK for each HAL start/stop loop");
     hal_conf_args.rx_array_size  = arg_int0("z", NULL, "<uint>",  "Size of the RX packet array to be passed to lgw_receive()");
-    hal_conf_args.freq_plan_mode = arg_int0("m", NULL, "<uint>",  "Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]");
+    hal_conf_args.freq_plan_mode = arg_int0("m", NULL, "<0|1>",   "Channel frequency plan mode [0:LoRaWAN-like, 1:Same frequency for all channels (-400000Hz on RF0)]");
     hal_conf_args.single_input   = arg_lit0("j", NULL,            "Set radio in single input mode (SX1250 only)");
     hal_conf_args.end = arg_end(2);
 
     const esp_console_cmd_t hal_conf_cmd = {
-        .command = "hal_rx",
+        .command = "test_loragw_hal_rx",
         .help = "Config HAL for RX",
         .hint = NULL,
         .func = &do_hal_config_cmd,
@@ -397,14 +398,11 @@ void app_main(void)
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     repl_config.prompt = "sx1302_hal>";
 
+    usage();
     register_config();
 
     // initialize console REPL environment
     ESP_ERROR_CHECK(esp_console_repl_init(&repl_config));
-
-    arg_print_syntax(stdout, &hal_conf_args, "\n");
-    usage();
-
     // start console REPL
     ESP_ERROR_CHECK(esp_console_repl_start());
 }
