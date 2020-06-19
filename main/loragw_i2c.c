@@ -36,7 +36,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #endif
 
 
-esp_err_t i2c_esp32_open(i2c_port_t i2c_num)
+static i2c_port_t i2c_num = I2C_MASTER_NUM;
+
+esp_err_t i2c_esp32_open(void)
 {
     i2c_config_t conf;
     int i2c_master_port = i2c_num;
@@ -61,7 +63,7 @@ esp_err_t i2c_esp32_open(i2c_port_t i2c_num)
     return ret;
 }
 
-esp_err_t i2c_esp32_read(i2c_port_t i2c_num, uint8_t device_addr, uint8_t reg_addr, uint8_t *data)
+esp_err_t i2c_esp32_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data)
 {
     esp_err_t ret;
 
@@ -83,7 +85,7 @@ esp_err_t i2c_esp32_read(i2c_port_t i2c_num, uint8_t device_addr, uint8_t reg_ad
     return ret;
 }
 
-esp_err_t i2c_esp32_write(i2c_port_t i2c_num, uint8_t device_addr, uint8_t reg_addr, uint8_t data)
+esp_err_t i2c_esp32_write(uint8_t device_addr, uint8_t reg_addr, uint8_t data)
 {
     esp_err_t ret;
 
@@ -100,7 +102,7 @@ esp_err_t i2c_esp32_write(i2c_port_t i2c_num, uint8_t device_addr, uint8_t reg_a
     return ret;
 }
 
-esp_err_t i2c_esp32_close(i2c_port_t i2c_num)
+esp_err_t i2c_esp32_close(void)
 {
     return i2c_driver_delete(i2c_num);
 }

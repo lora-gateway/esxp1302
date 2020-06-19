@@ -28,12 +28,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <time.h>
 
 #include "loragw_i2c.h"
+#include "loragw_stts751.h"
 #include "loragw_aux.h"
 #include "loragw_hal.h"
 
-
-#define I2C_MASTER_NUM          0
-#define I2C_PORT_STTS751        0x39
 
 #define STTS751_REG_TEMP_H      0x00
 #define STTS751_REG_TEMP_L      0x02
@@ -55,7 +53,6 @@ void app_main(void)
     uint8_t high_byte, low_byte;
     int8_t h;
     float temperature;
-    i2c_port_t i2c_num = I2C_MASTER_NUM;
 
     printf( "+++ Start of I2C test program +++\n" );
 
@@ -65,15 +62,15 @@ void app_main(void)
     // Since I don't like add too many indents, I choose the 1st one here.
 
     /* Open I2C port expander */
-    err = i2c_esp32_open(i2c_num);
+    err = i2c_esp32_open();
     if (err != 0)
     {
-        printf( "ERROR: failed to open I2C port %d (err=%i)\n", i2c_num, err);
+        printf( "ERROR: failed to open I2C port(err=%i)\n", err);
         goto out;
     }
 
     /* Get temperature sensor product ID */
-    err = i2c_esp32_read(i2c_num, I2C_PORT_STTS751, STTS751_REG_PROD_ID, &val);
+    err = i2c_esp32_read(I2C_PORT_STTS751, STTS751_REG_PROD_ID, &val);
     if ( err != 0 )
     {
         printf( "ERROR: failed to read I2C device 0x%x (err=%i)\n", I2C_PORT_STTS751, err );
@@ -93,7 +90,7 @@ void app_main(void)
     }
 
     /* Get temperature sensor  Manufacturer ID */
-    err = i2c_esp32_read(i2c_num, I2C_PORT_STTS751, STTS751_REG_MAN_ID, &val );
+    err = i2c_esp32_read(I2C_PORT_STTS751, STTS751_REG_MAN_ID, &val );
     if ( err != 0 )
     {
         printf( "ERROR: failed to read I2C device 0x%x (err=%i)\n", I2C_PORT_STTS751, err );
@@ -110,7 +107,7 @@ void app_main(void)
     }
 
     /* Get temperature sensor  revision number */
-    err = i2c_esp32_read(i2c_num, I2C_PORT_STTS751, STTS751_REG_REV_ID, &val);
+    err = i2c_esp32_read(I2C_PORT_STTS751, STTS751_REG_REV_ID, &val);
     if ( err != 0 )
     {
         printf( "ERROR: failed to read I2C device 0x%x (err=%i)\n", I2C_PORT_STTS751, err );
@@ -119,7 +116,7 @@ void app_main(void)
     printf("INFO: Revision number: 0x%02X\n", val);
 
     /* Set conversion resolution to 12 bits */
-    err = i2c_esp32_write(i2c_num, I2C_PORT_STTS751, STTS751_REG_CONF, 0x8C); /* TODO: do not hardcode the whole byte */
+    err = i2c_esp32_write(I2C_PORT_STTS751, STTS751_REG_CONF, 0x8C); /* TODO: do not hardcode the whole byte */
     if ( err != 0 )
     {
         printf( "ERROR: failed to write I2C device 0x%02X (err=%i)\n", I2C_PORT_STTS751, err );
@@ -127,7 +124,7 @@ void app_main(void)
     }
 
     /* Set conversion rate to 1 / second */
-    err = i2c_esp32_write(i2c_num, I2C_PORT_STTS751, STTS751_REG_RATE, 0x04);
+    err = i2c_esp32_write(I2C_PORT_STTS751, STTS751_REG_RATE, 0x04);
     if ( err != 0 )
     {
         printf( "ERROR: failed to write I2C device 0x%02X (err=%i)\n", I2C_PORT_STTS751, err );
@@ -136,7 +133,7 @@ void app_main(void)
 
     for(i=0; i<100; i++) {
         /* Read Temperature LSB */
-        err = i2c_esp32_read(i2c_num, I2C_PORT_STTS751, STTS751_REG_TEMP_L, &low_byte);
+        err = i2c_esp32_read(I2C_PORT_STTS751, STTS751_REG_TEMP_L, &low_byte);
         if ( err != 0 )
         {
             printf( "ERROR: failed to read I2C device 0x%02X (err=%i)\n", I2C_PORT_STTS751, err );
@@ -144,7 +141,7 @@ void app_main(void)
         }
 
         /* Read Temperature MSB */
-        err = i2c_esp32_read(i2c_num, I2C_PORT_STTS751, STTS751_REG_TEMP_H, &high_byte);
+        err = i2c_esp32_read(I2C_PORT_STTS751, STTS751_REG_TEMP_H, &high_byte);
         if ( err != 0 )
         {
             printf( "ERROR: failed to read I2C device 0x%02X (err=%i)\n", I2C_PORT_STTS751, err );
@@ -161,7 +158,7 @@ void app_main(void)
     /* Terminate */
     printf( "+++ End of I2C test program +++\n" );
 
-    err = i2c_esp32_close(i2c_num);
+    err = i2c_esp32_close();
     if ( err != 0 )
     {
         printf( "ERROR: failed to close I2C device (err=%i)\n", err );

@@ -21,11 +21,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "config.h"
 
 
+#define I2C_PORT_STTS751          0x39
 #define I2C_PORT_TEMP_SENSOR_0    0x39  /* STTS751-0DP3F */
 #define I2C_PORT_TEMP_SENSOR_1    0x3B  /* STTS751-1DP3F */
 
 
-int stts751_configure(i2c_port_t i2c_num, uint8_t i2c_addr);
-int stts751_get_temperature(i2c_port_t i2c_num, uint8_t i2c_addr, float * temperature);
+int stts751_configure(uint8_t i2c_addr);
+int stts751_get_temperature(uint8_t i2c_addr, float * temperature);
 
 #endif
