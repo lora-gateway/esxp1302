@@ -13,9 +13,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
     #define _XOPEN_SOURCE 600
@@ -29,35 +26,21 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
-#include <signal.h>     /* sigaction */
-#include <getopt.h>     /* getopt_long */
+
+#include "esp_console.h"
+#include "argtable3/argtable3.h"
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
+#include "loragw_gpio.h"
 #include "loragw_aux.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define RAND_RANGE(min, max) (rand() % (max + 1 - min) + min)
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-
-#define LINUXDEV_PATH_DEFAULT "/dev/spidev0.0"
 
 #define DEFAULT_CLK_SRC     0
 #define DEFAULT_FREQ_HZ     868500000U
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-/* Signal handling variables */
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 /* describe command line options */
 void usage(void) {
@@ -93,21 +76,8 @@ void usage(void) {
     printf(" --loop        Number of loops for HAL start/stop (HAL unitary test)\n");
 }
 
-/* handle signals */
-static void sig_handler(int sigio)
-{
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;
-    }
-    else if((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
 
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
-
-int main(int argc, char **argv)
+int test_hal_tx_main(void)
 {
     int i, x;
     uint32_t ft = DEFAULT_FREQ_HZ;
@@ -143,7 +113,6 @@ int main(int argc, char **argv)
     uint32_t trig_delay_us = 1000000;
     bool trig_delay = false;
 
-    static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     /* Initialize TX gain LUT */
     txlut.size = 0;
@@ -162,236 +131,6 @@ int main(int argc, char **argv)
         {0, 0, 0, 0}
     };
 
-    /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hjif:s:b:n:z:p:k:r:c:l:t:m:o:q:d:", long_options, &option_index)) != -1) {
-        switch (i) {
-            case 'h':
-                usage();
-                return -1;
-                break;
-            case 'i': /* Send packet using inverted modulation polarity */
-                invert_pol = true;
-                break;
-            case 'j': /* Set radio in single input mode */
-                single_input_mode = true;
-                break;
-            case 'r': /* <uint> Radio type */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || ((arg_u != 1255) && (arg_u != 1257) && (arg_u != 1250))) {
-                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    switch (arg_u) {
-                        case 1255:
-                            radio_type = LGW_RADIO_TYPE_SX1255;
-                            break;
-                        case 1257:
-                            radio_type = LGW_RADIO_TYPE_SX1257;
-                            break;
-                        default: /* 1250 */
-                            radio_type = LGW_RADIO_TYPE_SX1250;
-                            break;
-                    }
-                }
-                break;
-            case 'l': /* <uint> LoRa/FSK preamble length */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 65535)) {
-                    printf("ERROR: argument parsing of -l argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    preamble = (uint16_t)arg_u;
-                }
-                break;
-            case 'm': /* <str> Modulation type */
-                i = sscanf(optarg, "%s", arg_s);
-                if ((i != 1) || ((strcmp(arg_s, "CW") != 0) && (strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK")))) {
-                    printf("ERROR: invalid modulation type\n");
-                    return EXIT_FAILURE;
-                } else {
-                    sprintf(mod, "%s", arg_s);
-                }
-                break;
-            case 'o': /* <int> CW frequency offset from Radio TX frequency */
-                i = sscanf(optarg, "%d", &arg_i);
-                if ((arg_i < -65) || (arg_i > 65)) {
-                    printf("ERROR: invalid frequency offset\n");
-                    return EXIT_FAILURE;
-                } else {
-                    freq_offset = (int32_t)arg_i;
-                }
-                break;
-            case 'd': /* <uint> FSK frequency deviation */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u < 1) || (arg_u > 250)) {
-                    printf("ERROR: invalid FSK frequency deviation\n");
-                    return EXIT_FAILURE;
-                } else {
-                    fdev_khz = (uint8_t)arg_u;
-                }
-                break;
-            case 'q': /* <float> FSK bitrate */
-                i = sscanf(optarg, "%f", &xf);
-                if ((i != 1) || (xf < 0.5) || (xf > 250)) {
-                    printf("ERROR: invalid FSK bitrate\n");
-                    return EXIT_FAILURE;
-                } else {
-                    br_kbps = xf;
-                }
-                break;
-            case 't': /* <uint> Trigger delay in ms */
-                i = sscanf(optarg, "%u", &arg_u);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -t argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    trig_delay = true;
-                    trig_delay_us = (uint32_t)(arg_u * 1E3);
-                }
-                break;
-            case 'k': /* <uint> Clock Source */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 1)) {
-                    printf("ERROR: argument parsing of -k argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    clocksource = (uint8_t)arg_u;
-                }
-                break;
-            case 'c': /* <uint> RF chain */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u > 1)) {
-                    printf("ERROR: argument parsing of -c argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    rf_chain = (uint8_t)arg_u;
-                }
-                break;
-            case 'f': /* <float> Radio TX frequency in MHz */
-                i = sscanf(optarg, "%lf", &arg_d);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    ft = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                }
-                break;
-            case 's': /* <uint> LoRa datarate */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u < 5) || (arg_u > 12)) {
-                    printf("ERROR: argument parsing of -s argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    sf = (uint8_t)arg_u;
-                }
-                break;
-            case 'b': /* <uint> LoRa bandwidth in khz */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || ((arg_u != 125) && (arg_u != 250) && (arg_u != 500))) {
-                    printf("ERROR: argument parsing of -b argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    bw_khz = (uint16_t)arg_u;
-                }
-                break;
-            case 'n': /* <uint> Number of packets to be sent */
-                i = sscanf(optarg, "%u", &arg_u);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -n argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    nb_pkt = (uint32_t)arg_u;
-                }
-                break;
-            case 'p': /* <int> RF power */
-                i = sscanf(optarg, "%d", &arg_i);
-                if (i != 1) {
-                    printf("ERROR: argument parsing of -p argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    rf_power = (int8_t)arg_i;
-                    txlut.size = 1;
-                    txlut.lut[0].rf_power = rf_power;
-                }
-                break;
-            case 'z': /* <uint> packet size */
-                i = sscanf(optarg, "%u", &arg_u);
-                if ((i != 1) || (arg_u < 9) || (arg_u > 255)) {
-                    printf("ERROR: argument parsing of -z argument. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                } else {
-                    size = (uint8_t)arg_u;
-                }
-                break;
-            case 0:
-                if (strcmp(long_options[option_index].name, "pa") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 3)) {
-                        printf("ERROR: argument parsing of --pa argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].pa_gain = (uint8_t)arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "dac") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 3)) {
-                        printf("ERROR: argument parsing of --dac argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].dac_gain = (uint8_t)arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "mix") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 15)) {
-                        printf("ERROR: argument parsing of --mix argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].mix_gain = (uint8_t)arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "dig") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 3)) {
-                        printf("ERROR: argument parsing of --dig argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].dig_gain = (uint8_t)arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "pwid") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || (arg_u > 22)) {
-                        printf("ERROR: argument parsing of --pwid argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        txlut.size = 1;
-                        txlut.lut[0].mix_gain = 5; /* TODO: rework this, should not be needed for sx1250 */
-                        txlut.lut[0].pwr_idx = (uint8_t)arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "loop") == 0) {
-                    printf("%p\n", optarg);
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if (i != 1) {
-                        printf("ERROR: argument parsing of --loop argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        nb_loop = arg_u;
-                    }
-                } else if (strcmp(long_options[option_index].name, "nhdr") == 0) {
-                    no_header = true;
-                } else {
-                    printf("ERROR: argument parsing options. Use -h to print help\n");
-                    return EXIT_FAILURE;
-                }
-                break;
-            default:
-                printf("ERROR: argument parsing\n");
-                usage();
-                return -1;
-        }
-    }
 
     /* Summary of packet parameters */
     if (strcmp(mod, "CW") == 0) {
@@ -402,14 +141,6 @@ int main(int argc, char **argv)
     } else {
         printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble, %s header, %s polarity) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, preamble, (no_header == false) ? "explicit" : "implicit", (invert_pol == false) ? "non-inverted" : "inverted", rf_power);
     }
-
-    /* Configure signal handling */
-    sigemptyset( &sigact.sa_mask );
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction( SIGQUIT, &sigact, NULL );
-    sigaction( SIGINT, &sigact, NULL );
-    sigaction( SIGTERM, &sigact, NULL );
 
     /* Configure the gateway */
     memset( &boardconf, 0, sizeof boardconf);
@@ -452,10 +183,7 @@ int main(int argc, char **argv)
 
     for (cnt_loop = 0; cnt_loop < nb_loop; cnt_loop++) {
         /* Board reset */
-        if (system("./reset_lgw.sh start") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
-        }
+        lgw_reset();
 
         /* connect, configure and start the LoRa concentrator */
         x = lgw_start();
@@ -571,10 +299,7 @@ int main(int argc, char **argv)
         }
 
         /* Board reset */
-        if (system("./reset_lgw.sh stop") != 0) {
-            printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-            exit(EXIT_FAILURE);
-        }
+        lgw_reset();
     }
 
     printf("=========== Test End ===========\n");
@@ -582,4 +307,335 @@ int main(int argc, char **argv)
     return 0;
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+static struct {
+    struct arg_lit *help;
+    struct arg_int *clock_source;
+    struct arg_int *rf_chain;
+    struct arg_int *radio_type;
+    struct arg_dbl *radio_tx_freq;
+    struct arg_str *modu_type;
+    struct arg_int *cw_freq_offset;
+    struct arg_int *lora_datarate;
+    struct arg_int *lora_bandwidth;
+    struct arg_int *preamb_length;
+    struct arg_int *freq_deviation;
+    struct arg_dbl *lora_bitrate;
+    struct arg_int *n_packets;
+    struct arg_int *packet_size;
+    struct arg_int *tx_tmst_delay;
+    struct arg_int *lora_rf_power;
+    struct arg_lit *invt_polarity;
+    struct arg_lit *single_input;
+    struct arg_int *pa_gain;
+    struct arg_int *dig_gain;
+    struct arg_int *dac_gain;
+    struct arg_int *mix_gain;
+    struct arg_int *pow_index;
+    struct arg_lit *implicit_hd;
+    struct arg_int *loop_time;
+    struct arg_end *end;
+} hal_conf_args;
+
+static int do_hal_config_cmd(int argc, char **argv)
+{
+    uint32_t val;
+    int32_t ival;
+    double fval;
+    char *sval;
+    int nerrors;
+
+    nerrors = arg_parse(argc, argv, (void **)&hal_conf_args);
+
+    // process '-h' or '--help' first, before the error reporting
+    if (hal_conf_args.help->count) {
+        usage();
+        return 0;
+    }
+
+    if (nerrors != 0) {
+        arg_print_errors(stderr, hal_conf_args.end, argv[0]);
+        return 0;
+    }
+
+    // process '-i' for inverted modulation polarity
+    if (hal_conf_args.invt_polarity->count > 0) {
+        invt_pol = true;
+    }
+
+    // process '-j' for single input mode
+    if (hal_conf_args.single_input->count > 0) {
+        single_input_mode = true;
+    }
+
+    // process '-r' for radio type
+    if (hal_conf_args.radio_type->count > 0) {
+        val = (uint32_t)hal_conf_args.radio_type->ival[0];
+        if(val == 1255)
+            radio_type = LGW_RADIO_TYPE_SX1255;
+        else if(val == 1257)
+            radio_type = LGW_RADIO_TYPE_SX1257;
+        else if(val == 1250)
+            radio_type = LGW_RADIO_TYPE_SX1250;
+        else {
+            printf("'-r' with wrong value: %d; should be 1255/1257/1250\n", val);
+            return -1;
+        }
+    }
+
+    // process '-l' for preamble length
+    if (hal_conf_args.preamb_length->count > 0) {
+        val = (uint32_t)hal_conf_args.preamb_length->ival[0];
+        if(val > 65535){
+            printf("'-c' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        preamble = (uint16_t)val;
+    }
+
+    // process '-m' for modulation type
+    if (hal_conf_args.modu_type->count > 0) {
+        sval = hal_conf_args.modu_type->ival[0];
+        if((strcmp(sval, "CW") != 0) && (strcmp(sval, "LORA") != 0) && (strcmp(sval, "FSK"))){
+            printf("'-m' with wrong value: %s; Use -h to print help\n", sval);
+            return -1;
+        }
+        sprintf(mod, "%s", sval);
+    }
+
+    // process '-o' for CW frequency offset from Radio TX frequency
+    if (hal_conf_args.cw_freq_offset->count > 0) {
+        ival = (int32_t)hal_conf_args.cw_freq_offset->ival[0];
+        if((ival < -65) || (ival > 65)){
+            printf("'-o' with wrong value: %d; Use -h to print help\n", ival);
+            return -1;
+        }
+        freq_offset = ival;
+    }
+
+    // process '-d' for FSK frequency deviation
+    if (hal_conf_args.freq_deviation->count > 0) {
+        ival = (int32_t)hal_conf_args.freq_deviation->ival[0];
+        if((ival < 1) || (ival > 250)){
+            printf("'-d' with wrong value: %d; Use -h to print help\n", ival);
+            return -1;
+        }
+        fdev_khz = (uint8_t)ival;
+    }
+
+    // process '-q' for FSK bitrate
+    if (hal_conf_args.lora_bitrate->count > 0) {
+        fval = hal_conf_args.lora_bitrate->dval[0];
+        if((ival < 0.5) || (ival > 250)){
+            printf("'-q' with wrong value: %f; Use -h to print help\n", fval);
+            return -1;
+        }
+        br_kbps = (float)fval;
+    }
+
+    // process '-t' for single input mode
+    if (hal_conf_args.tx_tmst_delay->count > 0) {
+        val = hal_conf_args.tx_tmst_delay->ival[0];
+        trig_delay = true;
+        trig_delay_us = (uint32_t)(val * 1E3);
+    }
+
+    // process '-k' for clock source
+    if (hal_conf_args.clock_source->count > 0) {
+        val = (uint32_t)hal_conf_args.clock_source->ival[0];
+        if(val > 1){
+            printf("'-k' with wrong value: %d; should be 0 or 1\n", val);
+            return -1;
+        }
+        clocksource = (uint8_t)val;
+    }
+
+    // process '-c' for RF chain
+    if (hal_conf_args.rf_chain->count > 0) {
+        val = (uint32_t)hal_conf_args.rf_chain->ival[0];
+        if(val > 1){
+            printf("'-c' with wrong value: %d; should be 0 or 1\n", val);
+            return -1;
+        }
+        rf_chain = (uint8_t)val;
+    }
+
+    // process '-f' for Radio TX frequency in MHz
+    if (hal_conf_args.radio_tx_freq->count > 0) {
+        fval = hal_conf_args.radio_tx_freq->dval[0];
+        ft = (uint32_t)((fval*1e6) + 0.5); /* .5 Hz offset to get rounding */
+    }
+
+    // process '-s' for LoRa datarate
+    if (hal_conf_args.lora_datarate->count > 0) {
+        val = (uint32_t)hal_conf_args.lora_datarate->ival[0];
+        if((val < 5) || (val > 12)){
+            printf("'-s' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        sf = (uint8_t)val;
+    }
+
+    // process '-b' for LoRa bandwidth in khz
+    if (hal_conf_args.lora_bandwidth->count > 0) {
+        val = (uint32_t)hal_conf_args.lora_bandwidth->ival[0];
+        if((val != 125) && (val != 250) && (val != 500)){
+            printf("'-b' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        bw_khz = (uint16_t)val;
+    }
+
+    // process '-n' for number of packets to be sent
+    if (hal_conf_args.n_packets->count > 0) {
+        val = (uint32_t)hal_conf_args.n_packets->ival[0];
+        nb_pkt = val;
+    }
+
+    // process '-p' for RF power
+    if (hal_conf_args.lora_rf_power->count > 0) {
+        val = (uint32_t)hal_conf_args.lora_rf_power->ival[0];
+        rf_power = (int8_t)val;
+        txlut.size = 1;
+        txlut.lut[0].rf_power = rf_power;
+    }
+
+    // process '-z' for packet size
+    if (hal_conf_args.packet_size->count > 0) {
+        val = (uint32_t)hal_conf_args.packet_size->ival[0];
+        if((val < 9) || (val > 255)){
+            printf("'-z' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        size = (uint8_t)val;
+    }
+
+    // process '--pa' for PA gain
+    if (hal_conf_args.pa_gain->count > 0) {
+        val = (uint32_t)hal_conf_args.pa_gain->ival[0];
+        if(val > 3){
+            printf("'--pa' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        txlut.size = 1;
+        txlut.lut[0].pa_gain = (uint8_t)val;
+    }
+
+    // process '--dac' for sx125x DAC gain
+    if (hal_conf_args.dac_gain->count > 0) {
+        val = (uint32_t)hal_conf_args.dac_gain->ival[0];
+        if(val > 3){
+            printf("'--dac' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        txlut.size = 1;
+        txlut.lut[0].dac_gain = (uint8_t)val;
+    }
+
+    // process '--mix' for sx125x MIX gain
+    if (hal_conf_args.mix_gain->count > 0) {
+        val = (uint32_t)hal_conf_args.mix_gain->ival[0];
+        if(val > 15){
+            printf("'--mix' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        txlut.size = 1;
+        txlut.lut[0].mix_gain = (uint8_t)val;
+    }
+
+    // process '--dig' for sx1302 digital gain
+    if (hal_conf_args.dig_gain->count > 0) {
+        val = (uint32_t)hal_conf_args.dig_gain->ival[0];
+        if(val > 3){
+            printf("'--mix' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        txlut.size = 1;
+        txlut.lut[0].dig_gain = (uint8_t)val;
+    }
+
+    // process '--pwid' for sx1250 power index
+    if (hal_conf_args.pow_index->count > 0) {
+        val = (uint32_t)hal_conf_args.pow_index->ival[0];
+        if(val > 22){
+            printf("'--pwid' with wrong value: %d; Use -h to print help\n", val);
+            return -1;
+        }
+        txlut.size = 1;
+        txlut.lut[0].mix_gain = 5; /* TODO: rework this, should not be needed for sx1250 */
+        txlut.lut[0].pwr_idx = (uint8_t)val;
+    }
+
+    // process '--loop' for Number of loops for HAL start/stop
+    if (hal_conf_args.loop_time->count > 0) {
+        val = (uint32_t)hal_conf_args.loop_time->ival[0];
+        nb_loop = val;
+    }
+
+    // process '--nhdr' for Send LoRa packet with implicit header
+    if (hal_conf_args.implicit_hd->count > 0) {
+        no_header = true;
+    }
+
+    test_hal_tx_main();
+
+    return 0;
+}
+
+
+static void register_config(void)
+{
+    hal_conf_args.help           = arg_lit0("h", "help",          "print help");
+    hal_conf_args.clock_source   = arg_int0("k", NULL, "<0|1>",   "Concentrator clock source (Radio A or B) [0..1]");
+    hal_conf_args.rf_chain       = arg_int0("c", NULL, "<0|1>",   "RF chain to be used for TX (Radio A or B) [0..1]");
+    hal_conf_args.radio_type     = arg_int0("r", NULL, "<1250|1255|1257>",  "Radio type (1255, 1257, 1250)");
+    hal_conf_args.radio_tx_freq  = arg_dbl0("f", NULL, "<float>", "Radio TX frequency in MHz");
+    hal_conf_args.modu_type      = arg_str0("m", NULL, "<CW|LORA|FSK>", "modulation type ['CW', 'LORA', 'FSK']");
+    hal_conf_args.cw_freq_offset = arg_int0("o", NULL, "<[-65..65]>", "CW frequency offset from Radio TX frequency in kHz [-65..65]");
+    hal_conf_args.lora_datarate  = arg_int0("s", NULL, "<0|[5..12]>", "LoRa datarate 0:random, [5..12]");
+
+    hal_conf_args.lora_bandwidth = arg_int0("b", NULL, "<125|250|500>", "LoRa bandwidth in khz 0:random, [125, 250, 500]");
+    hal_conf_args.preamb_length  = arg_int0("l", NULL, "<[6.65535]>", "FSK/LoRa preamble length, [6..65535]");
+    hal_conf_args.freq_deviation = arg_int0("d", NULL, "<[1..250]>", "FSK frequency deviation in kHz [1:250]");
+    hal_conf_args.lora_bitrate   = arg_dbl0("q", NULL, "<[0.5..250]>", "FSK bitrate in kbps [0.5:250]");
+    hal_conf_args.n_packets      = arg_int0("n", NULL, "<uint>", "Number of packets to be sent");
+    hal_conf_args.packet_size    = arg_int0("z", NULL, "<[9..255]>", "size of packets to be sent 0:random, [9..255]");
+    hal_conf_args.tx_tmst_delay  = arg_int0("t", NULL, "<uint>", "TX mode timestamped with delay in ms. If delay is 0, TX mode GPS trigger");
+    hal_conf_args.lora_rf_power  = arg_int0("p", NULL, "<int>", "RF power in dBm");
+    hal_conf_args.invt_polarity  = arg_lit0("i", NULL, "Send LoRa packet using inverted modulation polarity");
+    hal_conf_args.single_input   = arg_lit0("j", NULL, "Set radio in single input mode (SX1250 only)");
+
+
+    hal_conf_args.pa_gain        = arg_int0(NULL, "pa", "<[0..3]|0|1>", "PA gain SX125x:[0..3], SX1250:[0,1]");
+    hal_conf_args.dig_gain       = arg_int0(NULL, "dig", "<[0..3]>", "sx1302 digital gain for sx125x [0..3]");
+    hal_conf_args.dac_gain       = arg_int0(NULL, "dac", "<[0..3]>", "sx125x DAC gain [0..3]");
+    hal_conf_args.mix_gain       = arg_int0(NULL, "mix", "<[5..15]>", "sx125x MIX gain [5..15]");
+    hal_conf_args.pow_index      = arg_int0(NULL, "pwid", "<[0..22]>", "sx1250 power index [0..22]");
+    hal_conf_args.implicit_hd    = arg_lit0(NULL, "nhdr", "Send LoRa packet with implicit header");
+    hal_conf_args.loop_time      = arg_int0(NULL, "loop", "<uint>", "Number of loops for HAL start/stop");
+    hal_conf_args.end = arg_end(2);
+
+    const esp_console_cmd_t hal_conf_cmd = {
+        .command = "test_loragw_hal_tx",
+        .help = "Config HAL for TX",
+        .hint = NULL,
+        .func = &do_hal_config_cmd,
+        .argtable = &hal_conf_args
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&hal_conf_cmd));
+}
+
+
+void app_main(void)
+{
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+    repl_config.task_stack_size = 4096 * 16;
+    repl_config.prompt = "sx1302_hal>";
+
+    usage();
+    register_config();
+
+    // initialize console REPL environment
+    ESP_ERROR_CHECK(esp_console_repl_init(&repl_config));
+    // start console REPL
+    ESP_ERROR_CHECK(esp_console_repl_start());
+}
