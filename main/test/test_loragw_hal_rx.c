@@ -13,9 +13,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
     #define _XOPEN_SOURCE 600
@@ -31,11 +28,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <signal.h>
 #include <math.h>
 
-//#include "sdkconfig.h"
-//#include "esp_log.h"
 #include "esp_console.h"
-//#include "esp_vfs_fat.h"
-//#include "cmd_system.h"
 #include "argtable3/argtable3.h"
 
 #include "loragw_hal.h"
@@ -47,8 +40,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define RAND_RANGE(min, max) (rand() % (max + 1 - min) + min)
 
-
 #define DEFAULT_FREQ_HZ     868500000U
+
 
 // Global variables to simplify arguments parsing
 uint32_t fa = DEFAULT_FREQ_HZ;
@@ -282,14 +275,15 @@ static int do_hal_config_cmd(int argc, char **argv)
     int nerrors;
 
     nerrors = arg_parse(argc, argv, (void **)&hal_conf_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, hal_conf_args.end, argv[0]);
+
+    // process '-h' or '--help' first, before the error reporting
+    if (hal_conf_args.help->count) {
+        usage();
         return 0;
     }
 
-    // process '-h' or '--help'
-    if (hal_conf_args.help->count) {
-        usage();
+    if (nerrors != 0) {
+        arg_print_errors(stderr, hal_conf_args.end, argv[0]);
         return 0;
     }
 
