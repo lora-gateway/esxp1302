@@ -721,10 +721,12 @@ int lgw_start(void) {
     }
 
     /* Try to configure temperature sensor STTS751-0DP3F */
-    err = stts751_configure(I2C_PORT_TEMP_SENSOR_0);
+    ts_addr = I2C_PORT_TEMP_SENSOR_0;
+    err = stts751_configure(ts_addr);
     if (err != LGW_I2C_SUCCESS) {
         /* Not found, try to configure temperature sensor STTS751-1DP3F */
-        err = stts751_configure(I2C_PORT_TEMP_SENSOR_1);
+        ts_addr = I2C_PORT_TEMP_SENSOR_1;
+        err = stts751_configure(ts_addr);
         if (err != LGW_I2C_SUCCESS) {
             printf("ERROR: failed to configure the temperature sensor\n");
             return LGW_HAL_ERROR;
