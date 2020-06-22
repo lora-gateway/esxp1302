@@ -76,61 +76,42 @@ void usage(void) {
     printf(" --loop        Number of loops for HAL start/stop (HAL unitary test)\n");
 }
 
+uint8_t size = 0;
+int8_t freq_offset = 0;
+uint32_t ft = DEFAULT_FREQ_HZ;
+int8_t rf_power = 0;
+uint8_t sf = 0;
+uint16_t bw_khz = 0;
+uint32_t nb_pkt = 1;
+char mod[64] = "LORA";
+float br_kbps = 50;
+uint8_t clocksource = 0;
+uint8_t rf_chain = 0;
+lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
+uint16_t preamble = 8;
+bool invert_pol = false;
+bool no_header = false;
+bool single_input_mode = false;
+uint8_t fdev_khz = 25;
+uint32_t trig_delay_us = 1000000;
+bool trig_delay = false;
+struct lgw_tx_gain_lut_s txlut; /* TX gain table */
+unsigned int nb_loop = 1, cnt_loop;
+
 
 int test_hal_tx_main(void)
 {
     int i, x;
-    uint32_t ft = DEFAULT_FREQ_HZ;
-    int8_t rf_power = 0;
-    uint8_t sf = 0;
-    uint16_t bw_khz = 0;
-    uint32_t nb_pkt = 1;
-    unsigned int nb_loop = 1, cnt_loop;
-    uint8_t size = 0;
-    char mod[64] = "LORA";
-    float br_kbps = 50;
-    uint8_t fdev_khz = 25;
-    int8_t freq_offset = 0;
-    double arg_d = 0.0;
-    unsigned int arg_u;
-    int arg_i;
-    char arg_s[64];
-    float xf = 0.0;
-    uint8_t clocksource = 0;
-    uint8_t rf_chain = 0;
-    lgw_radio_type_t radio_type = LGW_RADIO_TYPE_NONE;
-    uint16_t preamble = 8;
-    bool invert_pol = false;
-    bool no_header = false;
-    bool single_input_mode = false;
-
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_pkt_tx_s pkt;
-    struct lgw_tx_gain_lut_s txlut; /* TX gain table */
     uint8_t tx_status;
     uint32_t count_us;
-    uint32_t trig_delay_us = 1000000;
-    bool trig_delay = false;
 
 
     /* Initialize TX gain LUT */
     txlut.size = 0;
     memset(txlut.lut, 0, sizeof txlut.lut);
-
-    /* Parameter parsing */
-    int option_index = 0;
-    static struct option long_options[] = {
-        {"pa",   required_argument, 0, 0},
-        {"dac",  required_argument, 0, 0},
-        {"dig",  required_argument, 0, 0},
-        {"mix",  required_argument, 0, 0},
-        {"pwid", required_argument, 0, 0},
-        {"loop", required_argument, 0, 0},
-        {"nhdr", no_argument, 0, 0},
-        {0, 0, 0, 0}
-    };
-
 
     /* Summary of packet parameters */
     if (strcmp(mod, "CW") == 0) {
@@ -281,11 +262,8 @@ int test_hal_tx_main(void)
             do {
                 wait_ms(5);
                 lgw_status(pkt.rf_chain, TX_STATUS, &tx_status); /* get TX status */
-            } while ((tx_status != TX_FREE) && (quit_sig != 1) && (exit_sig != 1));
+            } while (tx_status != TX_FREE);
 
-            if ((quit_sig == 1) || (exit_sig == 1)) {
-                break;
-            }
             printf("TX done\n");
         }
 
@@ -341,7 +319,7 @@ static int do_hal_config_cmd(int argc, char **argv)
     uint32_t val;
     int32_t ival;
     double fval;
-    char *sval;
+    const char *sval;
     int nerrors;
 
     nerrors = arg_parse(argc, argv, (void **)&hal_conf_args);
@@ -359,7 +337,7 @@ static int do_hal_config_cmd(int argc, char **argv)
 
     // process '-i' for inverted modulation polarity
     if (hal_conf_args.invt_polarity->count > 0) {
-        invt_pol = true;
+        invert_pol = true;
     }
 
     // process '-j' for single input mode
@@ -394,7 +372,7 @@ static int do_hal_config_cmd(int argc, char **argv)
 
     // process '-m' for modulation type
     if (hal_conf_args.modu_type->count > 0) {
-        sval = hal_conf_args.modu_type->ival[0];
+        sval = hal_conf_args.modu_type->sval[0];
         if((strcmp(sval, "CW") != 0) && (strcmp(sval, "LORA") != 0) && (strcmp(sval, "FSK"))){
             printf("'-m' with wrong value: %s; Use -h to print help\n", sval);
             return -1;
@@ -425,7 +403,7 @@ static int do_hal_config_cmd(int argc, char **argv)
     // process '-q' for FSK bitrate
     if (hal_conf_args.lora_bitrate->count > 0) {
         fval = hal_conf_args.lora_bitrate->dval[0];
-        if((ival < 0.5) || (ival > 250)){
+        if((fval < 0.5) || (fval > 250)){
             printf("'-q' with wrong value: %f; Use -h to print help\n", fval);
             return -1;
         }
