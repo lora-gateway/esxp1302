@@ -22,4 +22,4 @@ while True:
     payload, client_addr = sock.recvfrom(1024)
     print "Got: ", payload
     print("Echoing data back to " + str(client_addr))
-    sent = sock.sendto(payload, client_addr)
+    sent = sock.sendto('OK: ' + payload, client_addr)
