@@ -47,7 +47,7 @@ static EventGroupHandle_t s_wifi_event_group;
 uint8_t wifi_ssid[32];
 uint8_t wifi_pswd[64];
 uint8_t udp_host[32];
-uint8_t udp_msg[64];
+char udp_msg[64] = "Message from SX1302 ESP32 PKT-FWD";
 uint32_t udp_port;
 
 static const char *TAG = "wifi station";
@@ -140,8 +140,6 @@ void wifi_init_sta(void)
 }
 
 
-static const char *payload = "Message from SX1302 ESP32 PKT-FWD";
-
 static void udp_client_task(void *pvParameters)
 {
     char rx_buffer[128];
@@ -167,7 +165,7 @@ static void udp_client_task(void *pvParameters)
         ESP_LOGI(TAG, "Socket created, sending to %s:%d", udp_host, udp_port);
 
         while (1) {
-            err = sendto(sock, payload, strlen(payload), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            err = sendto(sock, udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             if (err < 0) {
                 ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                 break;
@@ -243,6 +241,7 @@ void usage(void) {
 }
 
 // Note: No Error Checking!
+// TODO: Should release the resources with arg_freetable().
 // Please provide right arguments, or take whatever consequences.
 static int do_net_config_cmd(int argc, char **argv)
 {
@@ -290,7 +289,7 @@ static int do_net_config_cmd(int argc, char **argv)
     // process '-m' for modulation type
     if (net_conf_args.udp_msg->count > 0) {
         sval = net_conf_args.udp_msg->sval[0];
-        sprintf((char *)udp_msg, "%s", (char *)sval);
+        sprintf(udp_msg, "%s", (char *)sval);
     }
 
     test_network_connection();
