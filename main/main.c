@@ -1,1 +1,1 @@
-test/test_loragw_hal_tx.c
+test/test_network_connection.c
