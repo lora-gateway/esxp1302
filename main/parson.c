@@ -81,6 +81,7 @@ struct json_array_t {
 
 /* Various */
 static char * read_file(const char *filename);
+static char * copy_array(const char *conf_array);
 static void   remove_comments(char *string, const char *start_token, const char *end_token);
 static char * parson_strndup(const char *string, size_t n);
 static char * parson_strdup(const char *string);
@@ -251,6 +252,22 @@ static char * read_file(const char * filename) {
         }
     }
     fclose(fp);
+    file_contents[file_size] = '\0';
+    return file_contents;
+}
+
+static char * copy_array(const char *conf_array) {
+    size_t file_size;
+    long pos;
+    char *file_contents;
+
+    file_size = conf_array[0];
+
+    file_contents = (char*)parson_malloc(sizeof(char) * (file_size + 1));
+    if (!file_contents) {
+        return NULL;
+    }
+    memcpy(file_contents, conf_array+1, file_size);
     file_contents[file_size] = '\0';
     return file_contents;
 }
@@ -893,6 +910,16 @@ JSON_Value * json_parse_file(const char *filename) {
 
 JSON_Value * json_parse_file_with_comments(const char *filename) {
     char *file_contents = read_file(filename);
+    JSON_Value *output_value = NULL;
+    if (file_contents == NULL)
+        return NULL;
+    output_value = json_parse_string_with_comments(file_contents);
+    parson_free(file_contents);
+    return output_value;
+}
+
+JSON_Value * json_parse_array_with_comments(const char *conf_array) {
+    char *file_contents = copy_array(conf_array);
     JSON_Value *output_value = NULL;
     if (file_contents == NULL)
         return NULL;

@@ -67,6 +67,10 @@ JSON_Value * json_parse_file(const char *filename);
    returns NULL in case of error */
 JSON_Value * json_parse_file_with_comments(const char *filename);
 
+/* Parses first JSON value in an string and ignores comments (/ * * / and //),
+   returns NULL in case of error */
+JSON_Value * json_parse_array_with_comments(const char *conf_array);
+
 /*  Parses first JSON value in a string, returns NULL in case of error */
 JSON_Value * json_parse_string(const char *string);
 

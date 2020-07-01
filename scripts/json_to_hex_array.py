@@ -6,6 +6,7 @@ import sys
 
 with open(sys.argv[1]) as f:
     chars = f.read()
+print "0x%2X" %len(chars)  # print the length as the first byte
 
 for (i, x) in enumerate(chars):
     print "0x%02X," %ord(x),
