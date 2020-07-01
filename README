@@ -1,0 +1,51 @@
+README
+
+This is the ESP32 platform porting of SX1302_HAL project (https://github.com/Lora-net/sx1302_hal), based on the Version 1.0.5.
+I try to stick to the original code as much as possible, but also removed some line-seperating comments I think not necessary.
+And when involving ESP32 unique features, I have to invest my own way, which also imported some difference.
+
+
+How to Compile
+
+First, you need ESP32 development environment "esp-idf". You can get it from https://github.com/espressif/esp-idf.
+Please follow the guide to install the SDK as well as the tools.
+Below are the simplified steps for Linux platform:
+```
+mkdir ~/esp
+cd ~/esp
+git clone --recursive https://github.com/espressif/esp-idf.git
+cd esp-idf
+# git checkout v4.0  # this is not totally necessary, but it matches better with my development settings
+./install.sh  # install the compilers etc.
+. export.sh   # export and set up the environment
+```
+
+Now you can compile this project by simply change to the project folder and run './test.sh'.
+This script will compile the code, flash the ESP32 board, and open 'Minicom' to monitor the output, so make sure your ESP32 board is connected.
+If you are not under Linux, you need to change 'test.sh' to use other terminal tools instead.
+
+Configurations
+
+There are some compile targets indeed, just as under the original sx1302_hal project under "libloragw/tst/test_*".
+But you have to choose only one for compilation by change the file 'main/main.c', which is a symbol link to one of test/test_* files.
+The default is test/lora_pkt_fwd.c, but you can change to others such as test/test_loragw_hal_rx.c before you run 'test.sh'.
+
+Usage
+
+At the terminal, you should be able to input the command with your argument of option, such as:
+```
+test_loragw_hal_tx -r 1250 -c 0 -f 505.5 --pwid 22 -b 125 -n 20
+test_loragw_hal_tx -r 1250 -c 0 -f 505.5 --pwid 22 -b 125 -n 20 -m CW
+test_network_connection -u wireless_ssid -p wireless_password --host 192.168.1.200 --port 2000
+pkt_fwd -u wireless_ssid -p wireless_password --host 192.168.1.200 --port 1680 --gwid AA555A0000000000
+```
+
+
+Issues and TODOs
+
+There are some issues need to be fixed, and more features under development.
+Below is the list of some of them:
+1. A few test targets do no work: test_loragw_cal.c, test_loragw_counter.c, test_loragw_capture_ram.c and test_loragw_gps.c.
+2. GPS doesn't verify/work yet.
+3. Configuration from web site using ESP32 Wifi as Soft AP and web server.
+
