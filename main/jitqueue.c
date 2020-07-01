@@ -15,7 +15,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE     /* needed for qsort_r to be defined */
+#endif
+
 #include <stdlib.h>     /* qsort_r */
 #include <stdio.h>      /* printf, fprintf, snprintf, fopen, fputs */
 #include <string.h>     /* memset, memcpy */
