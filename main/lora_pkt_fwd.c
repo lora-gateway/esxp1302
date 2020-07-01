@@ -55,6 +55,28 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_reg.h"
 #include "loragw_gps.h"
 
+/// For ESP32
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "nvs_flash.h"
+#include "esp_console.h"
+#include "argtable3/argtable3.h"
+#include "esp_netif.h"
+
+#include "lwip/err.h"
+#include "lwip/sys.h"
+#include "lwip/sockets.h"
+#include <lwip/netdb.h>
+
+#include "global_json.h"
+
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -249,11 +271,11 @@ static void usage(void);
 
 static void sig_handler(int sigio);
 
-static int parse_SX130x_configuration(const char * conf_file);
+static int parse_SX130x_configuration(const char * conf_array);
 
-static int parse_gateway_configuration(const char * conf_file);
+static int parse_gateway_configuration(const char * conf_array);
 
-static int parse_debug_configuration(const char * conf_file);
+static int parse_debug_configuration(const char * conf_array);
 
 static uint16_t crc16(const uint8_t * data, unsigned size);
 
@@ -294,9 +316,9 @@ static void sig_handler(int sigio) {
     return;
 }
 
-static int parse_SX130x_configuration(const char * conf_file) {
+static int parse_SX130x_configuration(const char * conf_array) {
     int i, j;
-    char param_name[32]; /* used to generate variable parameter names */
+    char param_name[64]; /* used to generate variable parameter names */
     const char *str; /* used to store string value from JSON object */
     const char conf_obj_name[] = "SX130x_conf";
     JSON_Value *root_val = NULL;
@@ -314,31 +336,23 @@ static int parse_SX130x_configuration(const char * conf_file) {
     bool sx1250_tx_lut;
 
     /* try to parse JSON */
-    root_val = json_parse_file_with_comments(conf_file);
+    root_val = json_parse_array_with_comments(conf_array);
     if (root_val == NULL) {
-        MSG("ERROR: %s is not a valid JSON file\n", conf_file);
+        MSG("ERROR: conf array is not a valid JSON string\n");
         exit(EXIT_FAILURE);
     }
 
     /* point to the gateway configuration object */
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        MSG("INFO: conf array does not contain a JSON object named %s\n", conf_obj_name);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing SX1302 parameters\n", conf_file, conf_obj_name);
+        MSG("INFO: conf array does contain a JSON object named %s, parsing SX1302 parameters\n", conf_obj_name);
     }
 
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
-    str = json_object_get_string(conf_obj, "spidev_path");
-    if (str != NULL) {
-        strncpy(boardconf.spidev_path, str, sizeof boardconf.spidev_path);
-        boardconf.spidev_path[sizeof boardconf.spidev_path - 1] = '\0'; /* ensure string termination */
-    } else {
-        MSG("ERROR: spidev path must be configured in %s\n", conf_file);
-        return -1;
-    }
 
     val = json_object_get_value(conf_obj, "lorawan_public"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONBoolean) {
@@ -361,7 +375,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
         MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
         boardconf.full_duplex = false;
     }
-    MSG("INFO: spidev_path %s, lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.spidev_path, boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
+    MSG("INFO: lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");
@@ -383,7 +397,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     /* set timestamp configuration */
     conf_ts_obj = json_object_get_object(conf_obj, "precision_timestamp");
     if (conf_ts_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object for precision timestamp\n", conf_file);
+        MSG("INFO: conf array does not contain a JSON object for precision timestamp\n");
     } else {
         val = json_object_get_value(conf_ts_obj, "enable"); /* fetch value (if possible) */
         if (json_value_get_type(val) == JSONBoolean) {
@@ -748,7 +762,7 @@ static int parse_SX130x_configuration(const char * conf_file) {
     return 0;
 }
 
-static int parse_gateway_configuration(const char * conf_file) {
+static int parse_gateway_configuration(const char * conf_array) {
     const char conf_obj_name[] = "gateway_conf";
     JSON_Value *root_val;
     JSON_Object *conf_obj = NULL;
@@ -757,19 +771,19 @@ static int parse_gateway_configuration(const char * conf_file) {
     unsigned long long ull = 0;
 
     /* try to parse JSON */
-    root_val = json_parse_file_with_comments(conf_file);
+    root_val = json_parse_array_with_comments(conf_array);
     if (root_val == NULL) {
-        MSG("ERROR: %s is not a valid JSON file\n", conf_file);
+        MSG("ERROR: conf array is not a valid JSON string\n");
         exit(EXIT_FAILURE);
     }
 
     /* point to the gateway configuration object */
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        MSG("INFO: conf array does not contain a JSON object named %s\n", conf_obj_name);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing gateway parameters\n", conf_file, conf_obj_name);
+        MSG("INFO: conf array does contain a JSON object named %s, parsing gateway parameters\n", conf_obj_name);
     }
 
     /* gateway unique identifier (aka MAC address) (optional) */
@@ -947,7 +961,7 @@ static int parse_gateway_configuration(const char * conf_file) {
     return 0;
 }
 
-static int parse_debug_configuration(const char * conf_file) {
+static int parse_debug_configuration(const char * config_array) {
     int i;
     const char conf_obj_name[] = "debug_conf";
     JSON_Value *root_val;
@@ -960,20 +974,20 @@ static int parse_debug_configuration(const char * conf_file) {
     memset(&debugconf, 0, sizeof debugconf);
 
     /* try to parse JSON */
-    root_val = json_parse_file_with_comments(conf_file);
+    root_val = json_parse_array_with_comments(config_array);
     if (root_val == NULL) {
-        MSG("ERROR: %s is not a valid JSON file\n", conf_file);
+        MSG("ERROR: conf array is not a valid JSON string\n");
         exit(EXIT_FAILURE);
     }
 
     /* point to the gateway configuration object */
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        MSG("INFO: conf array does not contain a JSON object named %s\n", conf_obj_name);
         json_value_free(root_val);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing debug parameters\n", conf_file, conf_obj_name);
+        MSG("INFO: conf array does contain a JSON object named %s, parsing debug parameters\n", conf_obj_name);
     }
 
     /* Get reference payload configuration */
@@ -1159,16 +1173,18 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char ** argv)
+//int pkt_fwd_main(int argc, char ** argv)
+int pkt_fwd_main(void)
 {
-    struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
     int i; /* loop variable and temporary variable for return value */
     int x;
     int l, m;
 
     /* configuration file related */
-    const char defaut_conf_fname[] = JSON_CONF_DEFAULT;
-    const char * conf_fname = defaut_conf_fname; /* pointer to a string we won't touch */
+    //const char defaut_conf_fname[] = JSON_CONF_DEFAULT;
+    //const char *conf_fname = defaut_conf_fname; /* pointer to a string we won't touch */
+
+    const char *conf_array = (char *)global_conf; // pointer to array defined in global_conf.h
 
     /* threads */
     pthread_t thrid_up;
@@ -1229,26 +1245,6 @@ int main(int argc, char ** argv)
     float up_ack_ratio;
     float dw_ack_ratio;
 
-    /* Parse command line options */
-    while( (i = getopt( argc, argv, "hc:" )) != -1 )
-    {
-        switch( i )
-        {
-        case 'h':
-            usage( );
-            return EXIT_SUCCESS;
-            break;
-
-        case 'c':
-            conf_fname = optarg;
-            break;
-
-        default:
-            printf( "ERROR: argument parsing options, use -h option for help\n" );
-            usage( );
-            return EXIT_FAILURE;
-        }
-    }
 
     /* display version informations */
     MSG("*** Packet Forwarder ***\nVersion: " VERSION_STRING "\n");
@@ -1264,25 +1260,20 @@ int main(int argc, char ** argv)
     #endif
 
     /* load configuration files */
-    if (access(conf_fname, R_OK) == 0) { /* if there is a global conf, parse it  */
-        MSG("INFO: found configuration file %s, parsing it\n", conf_fname);
-        x = parse_SX130x_configuration(conf_fname);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        x = parse_gateway_configuration(conf_fname);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        x = parse_debug_configuration(conf_fname);
-        if (x != 0) {
-            MSG("INFO: no debug configuration\n");
-        }
-    } else {
-        MSG("ERROR: [main] failed to find any configuration file named %s\n", conf_fname);
+    x = parse_SX130x_configuration(conf_array);
+    if (x != 0) {
         exit(EXIT_FAILURE);
     }
+    x = parse_gateway_configuration(conf_array);
+    if (x != 0) {
+        exit(EXIT_FAILURE);
+    }
+    x = parse_debug_configuration(conf_array);
+    if (x != 0) {
+        MSG("INFO: no debug configuration\n");
+    }
 
+#if 0
     /* Start GPS a.s.a.p., to allow it to lock */
     if (gps_tty_path[0] != '\0') { /* do not try to open GPS device if no path set */
         i = lgw_gps_enable(gps_tty_path, "ubx7", 0, &gps_tty_fd); /* HAL only supports u-blox 7 for now */
@@ -1435,14 +1426,6 @@ int main(int argc, char ** argv)
             exit(EXIT_FAILURE);
         }
     }
-
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL); /* Ctrl-\ */
-    sigaction(SIGINT, &sigact, NULL); /* Ctrl-C */
-    sigaction(SIGTERM, &sigact, NULL); /* default "kill" command */
 
     /* main loop task : statistics collection */
     while (!exit_sig && !quit_sig) {
@@ -1651,6 +1634,7 @@ int main(int argc, char ** argv)
         printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
         exit(EXIT_FAILURE);
     }
+#endif
 
     MSG("INFO: Exiting packet forwarder program\n");
     exit(EXIT_SUCCESS);
@@ -1659,7 +1643,8 @@ int main(int argc, char ** argv)
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 1: RECEIVING PACKETS AND FORWARDING THEM ---------------------- */
 
-void thread_up(void) {
+void thread_up(void)
+{
     int i, j, k; /* loop variables */
     unsigned pkt_in_dgram; /* nb on Lora packet in the current datagram */
     char stat_timestamp[24];
@@ -2186,7 +2171,8 @@ void thread_up(void) {
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 2: POLLING SERVER AND ENQUEUING PACKETS IN JIT QUEUE ---------- */
 
-static int get_tx_gain_lut_index(uint8_t rf_chain, int8_t rf_power, uint8_t * lut_index) {
+static int get_tx_gain_lut_index(uint8_t rf_chain, int8_t rf_power, uint8_t * lut_index)
+{
     uint8_t pow_index;
     int current_best_index = -1;
     uint8_t current_best_match = 0xFF;
@@ -2225,7 +2211,8 @@ static int get_tx_gain_lut_index(uint8_t rf_chain, int8_t rf_power, uint8_t * lu
     return 0;
 }
 
-void thread_down(void) {
+void thread_down(void)
+{
     int i; /* loop variables */
 
     /* configuration and metadata for an outbound packet */
@@ -2901,7 +2888,8 @@ void thread_down(void) {
     MSG("\nINFO: End of downstream thread\n");
 }
 
-void print_tx_status(uint8_t tx_status) {
+void print_tx_status(uint8_t tx_status)
+{
     switch (tx_status) {
         case TX_OFF:
             MSG("INFO: [jit] lgw_status returned TX_OFF\n");
@@ -2925,7 +2913,8 @@ void print_tx_status(uint8_t tx_status) {
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 3: CHECKING PACKETS TO BE SENT FROM JIT QUEUE AND SEND THEM --- */
 
-void thread_jit(void) {
+void thread_jit(void)
+{
     int result = LGW_HAL_SUCCESS;
     struct lgw_pkt_tx_s pkt;
     int pkt_index = -1;
@@ -3014,7 +3003,8 @@ void thread_jit(void) {
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 4: PARSE GPS MESSAGE AND KEEP GATEWAY IN SYNC ----------------- */
 
-static void gps_process_sync(void) {
+static void gps_process_sync(void)
+{
     struct timespec gps_time;
     struct timespec utc;
     uint32_t trig_tstamp; /* concentrator timestamp associated with PPM pulse */
@@ -3044,7 +3034,8 @@ static void gps_process_sync(void) {
     }
 }
 
-static void gps_process_coords(void) {
+static void gps_process_coords(void)
+{
     /* position variable */
     struct coord_s coord;
     struct coord_s gpserr;
@@ -3063,7 +3054,8 @@ static void gps_process_coords(void) {
     pthread_mutex_unlock(&mx_meas_gps);
 }
 
-void thread_gps(void) {
+void thread_gps(void)
+{
     /* serial variables */
     char serial_buff[128]; /* buffer to receive GPS data */
     size_t wr_idx = 0;     /* pointer to end of chars in buffer */
@@ -3162,8 +3154,8 @@ void thread_gps(void) {
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 5: CHECK TIME REFERENCE AND CALCULATE XTAL CORRECTION --------- */
 
-void thread_valid(void) {
-
+void thread_valid(void)
+{
     /* GPS reference validation variables */
     long gps_ref_age = 0;
     bool ref_valid_local = false;
@@ -3243,4 +3235,18 @@ void thread_valid(void) {
     MSG("\nINFO: End of validation thread\n");
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+void app_main(void)
+{
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+    repl_config.task_stack_size = 4096 * 16;
+    repl_config.prompt = "pkt-fwd>";
+
+    usage();
+    //register_config();
+    pkt_fwd_main();
+
+    // initialize console REPL environment
+    ESP_ERROR_CHECK(esp_console_repl_init(&repl_config));
+    // start console REPL
+    ESP_ERROR_CHECK(esp_console_repl_start());
+}

@@ -321,7 +321,6 @@ static void register_config(void)
 
 void app_main(void)
 {
-
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     repl_config.task_stack_size = 4096 * 16;
     repl_config.prompt = "sx1302_hal>";
