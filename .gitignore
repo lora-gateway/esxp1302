@@ -1,2 +1,3 @@
 build/
 main/cscope.*
+main/global_json.h
