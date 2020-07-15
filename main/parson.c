@@ -261,13 +261,13 @@ static char * copy_array(const char *conf_array) {
     long pos;
     char *file_contents;
 
-    file_size = conf_array[0];
+    file_size = ((conf_array[0] << 8) | conf_array[1]);
 
     file_contents = (char*)parson_malloc(sizeof(char) * (file_size + 1));
     if (!file_contents) {
         return NULL;
     }
-    memcpy(file_contents, conf_array+1, file_size);
+    memcpy(file_contents, conf_array+2, file_size);
     file_contents[file_size] = '\0';
     return file_contents;
 }
