@@ -54,6 +54,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 #include "loragw_reg.h"
 #include "loragw_gps.h"
+#include "loragw_gpio.h"
 
 /// For ESP32
 #include <string.h>
@@ -139,8 +140,28 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_BEACON_POWER        14
 #define DEFAULT_BEACON_INFODESC     0
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
+
+// Imported the file test/test_network_connection.c
+
+#define EXAMPLE_ESP_MAXIMUM_RETRY  5
+
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
+
+/* The event group allows multiple bits for each event, but we only care about two events:
+ * - we are connected to the AP with an IP
+ * - we failed to connect after the maximum amount of retries */
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT      BIT1
+
+uint8_t wifi_ssid[32];
+uint8_t wifi_pswd[64];
+uint8_t udp_host[32];
+char udp_msg[64] = "Message from SX1302 ESP32 PKT-FWD";
+uint32_t udp_port;
+
+static const char *TAG = "wifi station";
+
 
 /* signal handling variables */
 volatile bool exit_sig = false; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
@@ -1001,8 +1022,13 @@ static int parse_debug_configuration(const char * config_array) {
     /* Get log file configuration */
     str = json_object_get_string(conf_obj, "log_file");
     if (str != NULL) {
-        strncpy(debugconf.log_file_name, str, sizeof debugconf.log_file_name);
-        debugconf.log_file_name[sizeof debugconf.log_file_name - 1] = '\0'; /* ensure string termination */
+        int slen = strlen(str);
+        int nlen = sizeof debugconf.log_file_name - 1;
+        if(slen > nlen)
+            slen = nlen;
+
+        strncpy(debugconf.log_file_name, str, slen);
+        debugconf.log_file_name[slen] = '\0'; /* ensure string termination */
         MSG("INFO: setting debug log file name to %s\n", debugconf.log_file_name);
     }
 
@@ -1261,7 +1287,7 @@ int pkt_fwd_main(void)
         MSG("INFO: no debug configuration\n");
     }
 
-#if 0
+#if 0   // TODO
     /* Start GPS a.s.a.p., to allow it to lock */
     if (gps_tty_path[0] != '\0') { /* do not try to open GPS device if no path set */
         i = lgw_gps_enable("ubx7", 0, &gps_tty_fd); /* HAL only supports u-blox 7 for now */
@@ -1275,6 +1301,7 @@ int pkt_fwd_main(void)
             gps_ref_valid = false;
         }
     }
+#endif
 
     /* get timezone info */
     tzset();
@@ -1286,35 +1313,44 @@ int pkt_fwd_main(void)
     net_mac_h = htonl((uint32_t)(0xFFFFFFFF & (lgwm>>32)));
     net_mac_l = htonl((uint32_t)(0xFFFFFFFF &  lgwm  ));
 
-    /* prepare hints to open network sockets */
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; /* WA: Forcing IPv4 as AF_UNSPEC makes connection on localhost to fail */
-    hints.ai_socktype = SOCK_DGRAM;
+    // some debug to see if everything goes all right
+    ESP_LOGI(TAG, "net_mac_h: %x", net_mac_h);
+    ESP_LOGI(TAG, "net_mac_l: %x", net_mac_l);
+    ESP_LOGI(TAG, "serv_addr: %s", serv_addr);
+    ESP_LOGI(TAG, "serv_port_up: %s", serv_port_up);
+    ESP_LOGI(TAG, "serv_port_down: %s", serv_port_down);
+    ESP_LOGI(TAG, "udp_host: %s", udp_host);
+    ESP_LOGI(TAG, "udp_port: %d", udp_port);
 
-    /* look for server address w/ upstream port */
-    i = getaddrinfo(serv_addr, serv_port_up, &hints, &result);
-    if (i != 0) {
-        MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
-        exit(EXIT_FAILURE);
-    }
+    // -------------------------------
+    char rx_buffer[128];
+    int addr_family = 0;
+    int ip_protocol = 0;
+    struct sockaddr_in dest_addr;
+    struct sockaddr_in source_addr;
+    //int sock;
+    int len, err;
 
-    /* try to open socket for upstream traffic */
-    for (q=result; q!=NULL; q=q->ai_next) {
-        sock_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
-        if (sock_up == -1) continue; /* try next field */
-        else break; /* success, get out of loop */
+    addr_family = AF_INET;
+    ip_protocol = IPPROTO_IP;
+    sock_up = socket(addr_family, SOCK_DGRAM, ip_protocol);
+    if (sock_up < 0) {
+        ESP_LOGE(TAG, "Unable to create up socket: errno %d", errno);
+        return -1;
     }
-    if (q == NULL) {
-        MSG("ERROR: [up] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
-        i = 1;
-        for (q=result; q!=NULL; q=q->ai_next) {
-            getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [up] result %i host:%s service:%s\n", i, host_name, port_name);
-            ++i;
-        }
-        exit(EXIT_FAILURE);
+    sock_down = socket(addr_family, SOCK_DGRAM, ip_protocol);
+    if (sock_down < 0) {
+        ESP_LOGE(TAG, "Unable to create down socket: errno %d", errno);
+        return -1;
     }
+    ESP_LOGI(TAG, "Socket created, sending to %s:%d", udp_host, udp_port);
 
+    dest_addr.sin_addr.s_addr = inet_addr((char *)udp_host);
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(udp_port);
+
+
+#if 0
     /* connect so we can send/receive packet with the server only */
     i = connect(sock_up, q->ai_addr, q->ai_addrlen);
     if (i != 0) {
@@ -1323,30 +1359,6 @@ int pkt_fwd_main(void)
     }
     freeaddrinfo(result);
 
-    /* look for server address w/ downstream port */
-    i = getaddrinfo(serv_addr, serv_port_down, &hints, &result);
-    if (i != 0) {
-        MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
-        exit(EXIT_FAILURE);
-    }
-
-    /* try to open socket for downstream traffic */
-    for (q=result; q!=NULL; q=q->ai_next) {
-        sock_down = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
-        if (sock_down == -1) continue; /* try next field */
-        else break; /* success, get out of loop */
-    }
-    if (q == NULL) {
-        MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
-        i = 1;
-        for (q=result; q!=NULL; q=q->ai_next) {
-            getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
-            ++i;
-        }
-        exit(EXIT_FAILURE);
-    }
-
     /* connect so we can send/receive packet with the server only */
     i = connect(sock_down, q->ai_addr, q->ai_addrlen);
     if (i != 0) {
@@ -1354,6 +1366,34 @@ int pkt_fwd_main(void)
         exit(EXIT_FAILURE);
     }
     freeaddrinfo(result);
+#endif
+
+    while (1) {
+        err = sendto(sock_up, udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+        if (err < 0) {
+            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+            break;
+        }
+        ESP_LOGI(TAG, "Message sent");
+
+        socklen_t socklen = sizeof(source_addr);
+        len = recvfrom(sock_down, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+
+        if (len < 0) {
+            ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
+            break;
+        } else {
+            rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+            ESP_LOGI(TAG, "Received %d bytes from %s:", len, udp_host);
+            ESP_LOGI(TAG, "%s", rx_buffer);
+            if (strncmp(rx_buffer, "OK: ", 4) == 0) {
+                ESP_LOGI(TAG, "Received expected message, reconnecting");
+                break;
+            }
+        }
+
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    }
 
     /* Board reset */
     lgw_reset();
@@ -1381,6 +1421,10 @@ int pkt_fwd_main(void)
         printf("INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
     }
 
+    MSG("DBG: I'm here @ line = %d\n", __LINE__);
+    // -------------------------------
+
+#if 0
     /* spawn threads to manage upstream and downstream */
     i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
@@ -1619,7 +1663,8 @@ int pkt_fwd_main(void)
 #endif
 
     MSG("INFO: Exiting packet forwarder program\n");
-    exit(EXIT_SUCCESS);
+    //exit(EXIT_SUCCESS);
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3218,27 +3263,6 @@ void thread_valid(void)
 }
 
 
-// Imported the file test/test_network_connection.c
-
-#define EXAMPLE_ESP_MAXIMUM_RETRY  5
-
-/* FreeRTOS event group to signal when we are connected*/
-static EventGroupHandle_t s_wifi_event_group;
-
-/* The event group allows multiple bits for each event, but we only care about two events:
- * - we are connected to the AP with an IP
- * - we failed to connect after the maximum amount of retries */
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
-
-
-uint8_t wifi_ssid[32];
-uint8_t wifi_pswd[64];
-uint8_t udp_host[32];
-char udp_msg[64] = "Message from SX1302 ESP32 PKT-FWD";
-uint32_t udp_port;
-
-static const char *TAG = "wifi station";
 static int s_retry_num = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
@@ -3384,6 +3408,79 @@ static void udp_client_task(void *pvParameters)
         close(sock);
     }
     vTaskDelete(NULL);
+
+    while(true){
+        printf("end\n");
+        vTaskDelay(8000 / portTICK_PERIOD_MS);
+    }
+}
+
+static void pkt_fwd_task(void *pvParameters)
+{
+#if 0
+    char rx_buffer[128];
+    int addr_family = 0;
+    int ip_protocol = 0;
+    struct sockaddr_in dest_addr;
+    struct sockaddr_in source_addr;
+    int sock;
+    int len, err;
+
+    dest_addr.sin_addr.s_addr = inet_addr((char *)udp_host);
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(udp_port);
+    addr_family = AF_INET;
+    ip_protocol = IPPROTO_IP;
+
+    sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
+    if (sock < 0) {
+        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+        return;
+    }
+    ESP_LOGI(TAG, "Socket created, sending to %s:%d", udp_host, udp_port);
+
+    while (1) {
+        err = sendto(sock, udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+        if (err < 0) {
+            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+            break;
+        }
+        ESP_LOGI(TAG, "Message sent");
+
+        socklen_t socklen = sizeof(source_addr);
+        len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+
+        if (len < 0) {
+            ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
+            break;
+        } else {
+            rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
+            ESP_LOGI(TAG, "Received %d bytes from %s:", len, udp_host);
+            ESP_LOGI(TAG, "%s", rx_buffer);
+            if (strncmp(rx_buffer, "OK: ", 4) == 0) {
+                ESP_LOGI(TAG, "Received expected message, reconnecting");
+                break;
+            }
+        }
+
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    }
+
+    if (sock != -1) {
+        ESP_LOGE(TAG, "Shutting down socket and restarting...");
+        shutdown(sock, 0);
+        close(sock);
+    }
+#endif
+
+    pkt_fwd_main();
+
+    vTaskDelete(NULL);
+
+    while(true){
+        printf("end\n");
+        vTaskDelay(8000 / portTICK_PERIOD_MS);
+    }
 }
 
 void test_network_connection(void)
@@ -3400,7 +3497,8 @@ void test_network_connection(void)
     wifi_init_sta();
 
     // TODO: deal with Wifi broken
-    xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
+    //xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
+    xTaskCreate(pkt_fwd_task, "pkt_fwd", 4096, NULL, 5, NULL);
 }
 
 
@@ -3511,7 +3609,6 @@ void app_main(void)
 
     usage();
     register_config();
-    pkt_fwd_main();
 
     // initialize console REPL environment
     ESP_ERROR_CHECK(esp_console_repl_init(&repl_config));
