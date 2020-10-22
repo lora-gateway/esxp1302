@@ -13,8 +13,8 @@ if n > 0xffff:
     print "File size excel 65535. Abort"
     sys.exit()
 
-print "0x%2X," %(n / 256),
-print "0x%2X," %(n % 256),
+print "0x%02X," %(n / 256),
+print "0x%02X," %(n % 256),
 
 for (i, x) in enumerate(chars, 3):
     print "0x%02X," %ord(x),
