@@ -15,9 +15,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
     #define _XOPEN_SOURCE 600
@@ -114,7 +111,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PKT_PULL_ACK    4
 #define PKT_TX_ACK      5
 
-#define NB_PKT_MAX      255 /* max number of packets per fetch/send cycle */
+#define NB_PKT_MAX      100  /* max number of packets per fetch/send cycle */
 
 #define MIN_LORA_PREAMB 6 /* minimum Lora preamble length for this application */
 #define STD_LORA_PREAMB 8
@@ -185,14 +182,14 @@ static uint32_t net_mac_l; /* Least Significant Nibble, network order */
 /* network sockets */
 static int sock_up; /* socket for upstream traffic */
 static int sock_down; /* socket for downstream traffic */
+struct sockaddr_in dest_addr;
+struct sockaddr_in source_addr;
 
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */
 static struct timeval pull_timeout = {0, (PULL_TIMEOUT_MS * 1000)}; /* non critical for throughput */
 
 /* hardware access control and correction */
-//pthread_mutex_t mx_concent = PTHREAD_MUTEX_INITIALIZER; /* control access to the concentrator */
-//static pthread_mutex_t mx_xcorr = PTHREAD_MUTEX_INITIALIZER; /* control access to the XTAL correction */
 SemaphoreHandle_t mx_concent; /* control access to the concentrator */
 static SemaphoreHandle_t mx_xcorr; /* control access to the XTAL correction */
 static bool xtal_correct_ok = false; /* set true when XTAL correction is stable enough */
@@ -204,7 +201,6 @@ static int gps_tty_fd = -1; /* file descriptor of the GPS TTY port */
 static bool gps_enabled = false; /* is GPS enabled on that gateway ? */
 
 /* GPS time reference */
-//static pthread_mutex_t mx_timeref = PTHREAD_MUTEX_INITIALIZER; /* control access to GPS time reference */
 static SemaphoreHandle_t mx_timeref; /* control access to GPS time reference */
 static bool gps_ref_valid; /* is GPS reference acceptable (ie. not too old) */
 static struct tref time_reference_gps; /* time reference used for GPS <-> timestamp conversion */
@@ -216,7 +212,6 @@ static struct coord_s reference_coord;
 static bool gps_fake_enable; /* enable the feature */
 
 /* measurements to establish statistics */
-//static pthread_mutex_t mx_meas_up = PTHREAD_MUTEX_INITIALIZER; /* control access to the upstream measurements */
 static SemaphoreHandle_t mx_meas_up; /* control access to the upstream measurements */
 static uint32_t meas_nb_rx_rcv = 0; /* count packets received */
 static uint32_t meas_nb_rx_ok = 0; /* count packets received with PAYLOAD CRC OK */
@@ -228,7 +223,6 @@ static uint32_t meas_up_payload_byte = 0; /* sum of radio payload bytes sent for
 static uint32_t meas_up_dgram_sent = 0; /* number of datagrams sent for upstream traffic */
 static uint32_t meas_up_ack_rcv = 0; /* number of datagrams acknowledged for upstream traffic */
 
-//static pthread_mutex_t mx_meas_dw = PTHREAD_MUTEX_INITIALIZER; /* control access to the downstream measurements */
 static SemaphoreHandle_t mx_meas_dw; /* control access to the downstream measurements */
 static uint32_t meas_dw_pull_sent = 0; /* number of PULL requests sent for downstream traffic */
 static uint32_t meas_dw_ack_rcv = 0; /* number of PULL requests acknowledged for downstream traffic */
@@ -246,13 +240,11 @@ static uint32_t meas_nb_beacon_queued = 0; /* count beacon inserted in jit queue
 static uint32_t meas_nb_beacon_sent = 0; /* count beacon actually sent to concentrator */
 static uint32_t meas_nb_beacon_rejected = 0; /* count beacon rejected for queuing */
 
-//static pthread_mutex_t mx_meas_gps = PTHREAD_MUTEX_INITIALIZER; /* control access to the GPS statistics */
 static SemaphoreHandle_t mx_meas_gps; /* control access to the GPS statistics */
 static bool gps_coord_valid; /* could we get valid GPS coordinates ? */
 static struct coord_s meas_gps_coord; /* GPS position of the gateway */
 static struct coord_s meas_gps_err; /* GPS position of the gateway */
 
-//static pthread_mutex_t mx_stat_rep = PTHREAD_MUTEX_INITIALIZER; /* control access to the status report */
 static SemaphoreHandle_t mx_stat_rep; /* control access to the status report */
 static bool report_ready = false; /* true when there is a new report to send to the server */
 static char status_report[STATUS_SIZE]; /* status report as a JSON object */
@@ -288,12 +280,8 @@ static uint32_t nb_pkt_received_fsk = 0;
 static struct lgw_conf_debug_s debugconf;
 static uint32_t nb_pkt_received_ref[16];
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 static void usage(void);
-
-static void sig_handler(int sigio);
 
 static int parse_SX130x_configuration(const char * conf_array);
 
@@ -318,7 +306,7 @@ void thread_jit(void);
 void thread_gps(void);
 void thread_valid(void);
 
-
+/*
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = true;
@@ -327,6 +315,7 @@ static void sig_handler(int sigio) {
     }
     return;
 }
+*/
 
 static int parse_SX130x_configuration(const char * conf_array) {
     int i, j;
@@ -387,7 +376,8 @@ static int parse_SX130x_configuration(const char * conf_array) {
         MSG("WARNING: Data type for full_duplex seems wrong, please check\n");
         boardconf.full_duplex = false;
     }
-    MSG("INFO: lorawan_public %d, clksrc %d, full_duplex %d\n", boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
+    MSG("INFO: lorawan_public %d, clksrc %d, full_duplex %d\n",
+            boardconf.lorawan_public, boardconf.clksrc, boardconf.full_duplex);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");
@@ -608,7 +598,8 @@ static int parse_SX130x_configuration(const char * conf_array) {
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, single input mode %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.single_input_mode);
+            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, single input mode %d\n",
+                    i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.single_input_mode);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {
@@ -717,7 +708,9 @@ static int parse_SX130x_configuration(const char * conf_array) {
                 }
             }
 
-            MSG("INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u, %s\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf, (ifconf.implicit_hdr == true) ? "Implicit header" : "Explicit header");
+            MSG("INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u, %s\n",
+                    ifconf.rf_chain, ifconf.freq_hz, bw, sf,
+                    (ifconf.implicit_hdr == true) ? "Implicit header" : "Explicit header");
         }
         if (lgw_rxif_setconf(8, &ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for Lora standard channel\n");
@@ -762,7 +755,8 @@ static int parse_SX130x_configuration(const char * conf_array) {
             else if (bw <= 500000) ifconf.bandwidth = BW_500KHZ;
             else ifconf.bandwidth = BW_UNDEFINED;
 
-            MSG("INFO: FSK channel> radio %i, IF %i Hz, %u Hz bw, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
+            MSG("INFO: FSK channel> radio %i, IF %i Hz, %u Hz bw, %u bps datarate\n",
+                    ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
         }
         if (lgw_rxif_setconf(9, &ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for FSK channel\n");
@@ -1187,8 +1181,6 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
     return send(sock_down, (void *)buff_ack, buff_index, 0);
 }
 
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
 
 //int pkt_fwd_main(int argc, char ** argv)
 int pkt_fwd_main(void)
@@ -1214,8 +1206,6 @@ int pkt_fwd_main(void)
     struct addrinfo hints;
     struct addrinfo *result; /* store result of getaddrinfo */
     struct addrinfo *q; /* pointer to move into *result data */
-    //char host_name[64];
-    //char port_name[64];
 
     /* variables to get local copies of measurements */
     uint32_t cp_nb_rx_rcv;
@@ -1326,8 +1316,6 @@ int pkt_fwd_main(void)
     net_mac_l = htonl((uint32_t)(0xFFFFFFFF &  lgwm  ));
 
     // some debug to see if everything goes all right
-    ESP_LOGI(TAG, "net_mac_h: %x", net_mac_h);
-    ESP_LOGI(TAG, "net_mac_l: %x", net_mac_l);
     ESP_LOGI(TAG, "serv_addr: %s", serv_addr);
     ESP_LOGI(TAG, "serv_port_up: %s", serv_port_up);
     ESP_LOGI(TAG, "serv_port_down: %s", serv_port_down);
@@ -1338,8 +1326,6 @@ int pkt_fwd_main(void)
     char rx_buffer[128];
     int addr_family = 0;
     int ip_protocol = 0;
-    struct sockaddr_in dest_addr;
-    struct sockaddr_in source_addr;
     //int sock;
     int len, err;
 
@@ -1380,7 +1366,8 @@ int pkt_fwd_main(void)
     freeaddrinfo(result);
 #endif
 
-    while (1) {
+    int count = 3;
+    while (--count > 0) {
         err = sendto(sock_up, udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
         if (err < 0) {
             ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
@@ -1389,7 +1376,7 @@ int pkt_fwd_main(void)
         ESP_LOGI(TAG, "Message sent");
 
         socklen_t socklen = sizeof(source_addr);
-        len = recvfrom(sock_down, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+        len = recvfrom(sock_up, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
 
         if (len < 0) {
             ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
@@ -1433,16 +1420,13 @@ int pkt_fwd_main(void)
         printf("INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
     }
 
-    MSG("DBG: I'm here @ line = %d\n", __LINE__);
-    // -------------------------------
-
-#if 0
     /* spawn threads to manage upstream and downstream */
     i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create upstream thread\n");
         exit(EXIT_FAILURE);
     }
+#if 0
     i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create downstream thread\n");
@@ -1467,9 +1451,12 @@ int pkt_fwd_main(void)
             exit(EXIT_FAILURE);
         }
     }
+#endif
 
+#if 1
     /* main loop task : statistics collection */
-    while (!exit_sig && !quit_sig) {
+    //while (!exit_sig && !quit_sig) {
+    while ( 1 ) {
         /* wait for next reporting interval */
         wait_ms(1000 * stat_interval);
 
@@ -1639,11 +1626,14 @@ int pkt_fwd_main(void)
         report_ready = true;
         xSemaphoreGive(mx_stat_rep);
     }
+#endif
 
     /* wait for upstream thread to finish (1 fetch cycle max) */
     pthread_join(thrid_up, NULL);
+#if 0
     pthread_cancel(thrid_down); /* don't wait for downstream thread */
     pthread_cancel(thrid_jit); /* don't wait for jit thread */
+
     if (gps_enabled == true) {
         pthread_cancel(thrid_gps); /* don't wait for GPS thread */
         pthread_cancel(thrid_valid); /* don't wait for validation thread */
@@ -1669,19 +1659,19 @@ int pkt_fwd_main(void)
             MSG("WARNING: failed to stop concentrator successfully\n");
         }
     }
+#endif
 
     /* Board reset */
     lgw_reset();
-#endif
 
     MSG("INFO: Exiting packet forwarder program\n");
     //exit(EXIT_SUCCESS);
     return 0;
 }
 
-/* -------------------------------------------------------------------------- */
-/* --- THREAD 1: RECEIVING PACKETS AND FORWARDING THEM ---------------------- */
 
+/* --- THREAD 1: RECEIVING PACKETS AND FORWARDING THEM ---------------------- */
+uint8_t buff_up[TX_BUFF_SIZE]; /* buffer to compose the upstream packet */
 void thread_up(void)
 {
     int i, j, k; /* loop variables */
@@ -1699,7 +1689,7 @@ void thread_up(void)
     struct tref local_ref; /* time reference used for UTC <-> timestamp conversion */
 
     /* data buffers */
-    uint8_t buff_up[TX_BUFF_SIZE]; /* buffer to compose the upstream packet */
+    //uint8_t buff_up[TX_BUFF_SIZE]; /* buffer to compose the upstream packet */
     int buff_index;
     uint8_t buff_ack[32]; /* buffer to receive acknowledges */
 
@@ -1724,12 +1714,14 @@ void thread_up(void)
     uint32_t mote_addr = 0;
     uint16_t mote_fcnt = 0;
 
+#if 0 // TODO
     /* set upstream socket RX timeout */
     i = setsockopt(sock_up, SOL_SOCKET, SO_RCVTIMEO, (void *)&push_timeout_half, sizeof push_timeout_half);
     if (i != 0) {
         MSG("ERROR: [up] setsockopt returned %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
+#endif
 
     /* pre-fill the data buffer with fixed fields */
     buff_up[0] = PROTOCOL_VERSION;
@@ -1737,7 +1729,8 @@ void thread_up(void)
     *(uint32_t *)(buff_up + 4) = net_mac_h;
     *(uint32_t *)(buff_up + 8) = net_mac_l;
 
-    while (!exit_sig && !quit_sig) {
+    //while (!exit_sig && !quit_sig) {
+    while ( 1 ) {
 
         /* fetch packets */
         xSemaphoreTake(mx_concent, portMAX_DELAY);
@@ -1758,6 +1751,7 @@ void thread_up(void)
             continue;
         }
 
+#if 0
         /* get a copy of GPS time reference (avoid 1 mutex per packet) */
         if ((nb_pkt > 0) && (gps_enabled == true)) {
             xSemaphoreTake(mx_timeref, portMAX_DELAY);
@@ -1767,6 +1761,7 @@ void thread_up(void)
         } else {
             ref_ok = false;
         }
+#endif
 
         /* get timestamp for statistics */
         t = time(NULL);
@@ -2174,15 +2169,18 @@ void thread_up(void)
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
         /* send datagram to server */
-        send(sock_up, (void *)buff_up, buff_index, 0);
+        //send(sock_up, (void *)buff_up, buff_index, 0);
+        sendto(sock_up, (void *)buff_up, buff_index, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
         clock_gettime(CLOCK_MONOTONIC, &send_time);
         xSemaphoreTake(mx_meas_up, portMAX_DELAY);
         meas_up_dgram_sent += 1;
         meas_up_network_byte += buff_index;
 
+#if 0
         /* wait for acknowledge (in 2 times, to catch extra packets) */
         for (i=0; i<2; ++i) {
-            j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
+            //j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
+            j = recvfrom(sock_up, (void *)buff_ack, sizeof buff_ack, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             clock_gettime(CLOCK_MONOTONIC, &recv_time);
             if (j == -1) {
                 if (errno == EAGAIN) { /* timeout */
@@ -2202,6 +2200,7 @@ void thread_up(void)
                 break;
             }
         }
+#endif
         xSemaphoreGive(mx_meas_up);
     }
     MSG("\nINFO: End of upstream thread\n");
@@ -2426,7 +2425,8 @@ void thread_down(void)
     jit_queue_init(&jit_queue[0]);
     jit_queue_init(&jit_queue[1]);
 
-    while (!exit_sig && !quit_sig) {
+    //while (!exit_sig && !quit_sig) {
+    while ( 1 ) {
 
         /* auto-quit if the threshold is crossed */
         if ((autoquit_threshold > 0) && (autoquit_cnt >= autoquit_threshold)) {
