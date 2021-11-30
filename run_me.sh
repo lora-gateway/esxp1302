@@ -38,7 +38,7 @@ fi
 
 # choose this when you flash ESP32 for the first time
 if [ "$1" = "flash_all" ]; then
-	echo $esp $tty $args $bootloader $app $part
+	$esp $tty $args $bootloader $app $part
 fi
 
 if [ "$1" = "run" -o "$2" = "run" ]; then
