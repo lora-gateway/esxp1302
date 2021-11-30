@@ -99,7 +99,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-#include "arb_fw.var"           /* text_arb_sx1302_13_Nov_3 */
+//#include "arb_fw.var"           /* text_arb_sx1302_13_Nov_3 */
 #include "agc_fw_sx1250.var"    /* text_agc_sx1250_05_Juillet_2019_3 */
 #include "agc_fw_sx1257.var"    /* text_agc_sx1257_19_Nov_1 */
 
@@ -665,7 +665,8 @@ int lgw_start(void) {
         return LGW_HAL_ERROR;
     }
     DEBUG_MSG("Loading ARB fw\n");
-    if (sx1302_arb_load_firmware(arb_firmware) != LGW_HAL_SUCCESS) {
+    //if (sx1302_arb_load_firmware(arb_firmware) != LGW_HAL_SUCCESS) {
+    if (sx1302_arb_load_firmware() != LGW_HAL_SUCCESS) {
         return LGW_HAL_ERROR;
     }
     if (sx1302_arb_start(FW_VERSION_ARB) != LGW_HAL_SUCCESS) {
@@ -779,7 +780,16 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     /* Check that AGC/ARB firmwares are not corrupted, and update internal counter */
     /* WARNING: this needs to be called regularly by the upper layer */
+    //wait_ms( 100 ); // wait for heap info printing
     res = sx1302_update();
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt  // TODO
+    {
+        while (1)
+        {
+            printf( "Heap errors after sx1302_update\n " );
+            wait_ms( 1000 );
+        }
+    }
     if (res != LGW_REG_SUCCESS) {
         return LGW_HAL_ERROR;
     }
@@ -803,6 +813,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     if (res != LGW_I2C_SUCCESS) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
+    }
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt  // TODO
+    {
+        while (1)
+        {
+            printf( "Heap errors after get_temper\n" );
+            wait_ms( 1000 );
+        }
     }
 
     /* Iterate on the RX buffer to get parsed packets */

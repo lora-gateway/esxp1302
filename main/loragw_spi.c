@@ -24,7 +24,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memset */
 
 #include "loragw_spi.h"
-//#include "loragw_aux.h"
+#include "loragw_aux.h"
 
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -259,11 +259,36 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
     int size_to_do, chunk_size, offset;
     int byte_transfered = 0;
     uint8_t tbuf[LGW_BURST_CHUNK] = {0x00};
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
+    {
+        while (1)
+        {
+            printf( "Heap errors in lgw_spi_rb4\n" );
+            heap_caps_dump( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
+            heap_caps_print_heap_info( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
+            wait_ms( 1000 );
+        }
+    }
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
+    {
+        while (1)
+        {
+            printf( "Heap errors in lgw_spi_rb3\n" );
+            wait_ms( 1000 );
+        }
+    }
     if(err != ESP_OK)
         return err;
-
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
+    {
+        while (1)
+        {
+            printf( "Heap errors in lgw_spi_rb2\n" );
+            wait_ms( 1000 );
+        }
+    }
     memset(&et, 0, sizeof(et));
     et.command_bits = 8;
     et.address_bits = 8 * 3;
@@ -274,7 +299,14 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
     //et.base.tx_data[0] = 0x00;
     et.base.tx_buffer = tbuf;
     //et.base.length = 8;
-
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
+    {
+        while (1)
+        {
+            printf( "Heap errors in lgw_spi_rb1\n" );
+            wait_ms( 1000 );
+        }
+    }
     size_to_do = size;
     for(int i = 0; size_to_do > 0; ++i) {
         chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
@@ -290,7 +322,14 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
         DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
         size_to_do -= chunk_size;
     }
-
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
+    {
+        while (1)
+        {
+            printf( "Heap errors in lgw_spi_rb\n" );
+            wait_ms( 1000 );
+        }
+    }
     /* TODO: check transfered bits, and determine return code */
     /*
     if(byte_transfered != size) {

@@ -36,6 +36,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_agc_params.h"
 #include "loragw_cal.h"
 #include "loragw_debug.h"
+#include "arb_fw.var"           /* text_arb_sx1302_13_Nov_3 */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -240,22 +241,45 @@ int sx1302_get_eui(uint64_t * eui) {
 
 int sx1302_update(void) {
     int32_t val;
-
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
+    {
+        while (1)
+        {
+            printf( "Heap errors in sx1302_update3\n" );
+            wait_ms( 1000 );
+        }
+    }
     /* Check MCUs parity errors */
     lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
     if (val != 0) {
         printf("ERROR: Parity error check failed on AGC firmware\n");
         return LGW_REG_ERROR;
     }
+
     lgw_reg_r(SX1302_REG_ARB_MCU_CTRL_PARITY_ERROR, &val);
     if (val != 0) {
         printf("ERROR: Parity error check failed on ARB firmware\n");
         return LGW_REG_ERROR;
     }
-
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
+    {
+        while (1)
+        {
+            printf( "Heap errors in sx1302_update1\n" );
+            wait_ms( 1000 );
+        }
+    }
     /* Update internal timestamp counter wrapping status */
     timestamp_counter_get(&counter_us, false); /* maintain inst counter */
     timestamp_counter_get(&counter_us, true); /* maintain pps counter */
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
+    {
+        while (1)
+        {
+            printf( "Heap errors in sx1302_update\n" );
+            wait_ms( 1000 );
+        }
+    }
 
     return LGW_REG_SUCCESS;
 }
@@ -1351,7 +1375,9 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_arb_load_firmware(const uint8_t *firmware) {
+//int sx1302_arb_load_firmware(const uint8_t *firmware) {
+int sx1302_arb_load_firmware(void) {
+    const uint8_t *firmware = arb_firmware;
     int32_t gpio_sel = MCU_ARB;
     int32_t val;
 
@@ -1371,10 +1397,15 @@ int sx1302_arb_load_firmware(const uint8_t *firmware) {
     lgw_reg_w(SX1302_REG_COMMON_PAGE_PAGE, 0x00);
 
     /* Write ARB fw in ARB MEM */
-    lgw_mem_wb(ARB_MEM_ADDR, &firmware[0], MCU_FW_SIZE);
+    //lgw_mem_wb(ARB_MEM_ADDR, &firmware[0], MCU_FW_SIZE);
+    for(int i = 0; i<MCU_FW_SIZE; i+=256)
+        lgw_mem_wb(ARB_MEM_ADDR + i, firmware + i, 256);
 
     /* Read back and check */
-    lgw_mem_rb(ARB_MEM_ADDR, fw_check, MCU_FW_SIZE, false);
+    //lgw_mem_rb(ARB_MEM_ADDR, fw_check, MCU_FW_SIZE, false);
+    for(int i = 0; i<MCU_FW_SIZE; i+=256)
+        lgw_mem_rb(ARB_MEM_ADDR + i, fw_check + i, 256, false);
+
     if (memcmp(firmware, fw_check, sizeof fw_check) != 0) {
         printf ("ERROR: Failed to load fw\n");
         return -1;

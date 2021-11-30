@@ -52,6 +52,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_reg.h"
 #include "loragw_gps.h"
 #include "loragw_gpio.h"
+#include "loragw_aux.h"
 
 /// For ESP32
 #include <string.h>
@@ -75,6 +76,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <lwip/netdb.h>
 
 #include "global_json.h"
+#include "driver/gpio.h"
 
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
@@ -95,7 +97,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PUSH_TIMEOUT_MS     100
 #define PULL_TIMEOUT_MS     200
 #define GPS_REF_MAX_AGE     30          /* maximum admitted delay in seconds of GPS loss before considering latest GPS sync unusable */
-#define FETCH_SLEEP_MS      10          /* nb of ms waited when a fetch return no packets */
+#define FETCH_SLEEP_MS      100          /* nb of ms waited when a fetch return no packets */
 #define BEACON_POLL_MS      50          /* time in ms between polling of beacon TX status */
 
 #define PROTOCOL_VERSION    2           /* v1.3 */
@@ -111,7 +113,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PKT_PULL_ACK    4
 #define PKT_TX_ACK      5
 
-#define NB_PKT_MAX      100  /* max number of packets per fetch/send cycle */
+#define NB_PKT_MAX      10  /* max number of packets per fetch/send cycle */
 
 #define MIN_LORA_PREAMB 6 /* minimum Lora preamble length for this application */
 #define STD_LORA_PREAMB 8
@@ -146,6 +148,11 @@ static EventGroupHandle_t s_wifi_event_group;
  * - we failed to connect after the maximum amount of retries */
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
+
+#define BLINK_GPIO      2
+#define LED_BLUE_GPIO   33
+#define LED_GREEN_GPIO  26
+#define LED_RED_GPIO    27
 
 uint8_t wifi_ssid[32];
 uint8_t wifi_pswd[64];
@@ -280,8 +287,12 @@ static uint32_t nb_pkt_received_fsk = 0;
 static struct lgw_conf_debug_s debugconf;
 static uint32_t nb_pkt_received_ref[16];
 
+TaskHandle_t pJit;
+TaskHandle_t pThreadUp;
 
 static void usage(void);
+
+//static void sig_handler(int sigio);
 
 static int parse_SX130x_configuration(const char * conf_array);
 
@@ -316,6 +327,20 @@ static void sig_handler(int sigio) {
     return;
 }
 */
+
+void Init_Led( void )
+{
+    gpio_pad_select_gpio( LED_BLUE_GPIO );
+    gpio_pad_select_gpio( LED_GREEN_GPIO );
+    gpio_pad_select_gpio( LED_RED_GPIO );
+    gpio_set_direction( LED_BLUE_GPIO, GPIO_MODE_OUTPUT );
+    gpio_set_direction( LED_GREEN_GPIO, GPIO_MODE_OUTPUT );
+    gpio_set_direction( LED_RED_GPIO, GPIO_MODE_OUTPUT );
+    gpio_set_level( LED_BLUE_GPIO, 1 );   // Default state
+    gpio_set_level( LED_GREEN_GPIO, 1 );   // Default state
+    gpio_set_level( LED_RED_GPIO, 1 );   // Default state
+}
+
 
 static int parse_SX130x_configuration(const char * conf_array) {
     int i, j;
@@ -1178,9 +1203,93 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
     buff_ack[buff_index] = 0; /* add string terminator, for safety */
 
     /* send datagram to server */
-    return send(sock_down, (void *)buff_ack, buff_index, 0);
+    //return send(sock_down, (void *)buff_ack, buff_index, 0);
+    return sendto(sock_down, (void *)buff_ack, buff_index, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
 }
 
+// This example demonstrates how a human readable table of run time stats
+// information is generated from raw data provided by uxTaskGetSystemState().
+// The human readable table is written to pcWriteBuffer
+void vTaskGetRunTimeStats( char *pcWriteBuffer )
+{
+    TaskStatus_t *pxTaskStatusArray;
+    volatile UBaseType_t uxArraySize, x;
+    uint32_t ulTotalRunTime, ulStatsAsPercentage;
+
+    // Make sure the write buffer does not contain a string.
+    *pcWriteBuffer = 0x00;
+
+    // Take a snapshot of the number of tasks in case it changes while this
+    // function is executing.
+    uxArraySize = uxTaskGetNumberOfTasks();
+
+    // Allocate a TaskStatus_t structure for each task.  An array could be
+    // allocated statically at compile time.
+    pxTaskStatusArray = pvPortMalloc( uxArraySize * sizeof( TaskStatus_t ) );
+
+    if( pxTaskStatusArray != NULL ) {
+        // Generate raw status information about each task.
+        uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulTotalRunTime );
+
+        // For percentage calculations.
+        ulTotalRunTime /= 100UL;
+
+        // Avoid divide by zero errors.
+        if( ulTotalRunTime > 0 ) {
+            // For each populated position in the pxTaskStatusArray array,
+            // format the raw data as human readable ASCII data
+            for( x = 0; x < uxArraySize; x++ ) {
+                // What percentage of the total run time has the task used?
+                // This will always be rounded down to the nearest integer.
+                // ulTotalRunTimeDiv100 has already been divided by 100.
+                ulStatsAsPercentage = pxTaskStatusArray[ x ].ulRunTimeCounter / ulTotalRunTime;
+
+                if( ulStatsAsPercentage > 0UL ) {
+                    sprintf( pcWriteBuffer, "%s\t\t%u\t\t%u%%\r\n", pxTaskStatusArray[ x ].pcTaskName, pxTaskStatusArray[ x ].ulRunTimeCounter, ulStatsAsPercentage );
+                } else {
+                    // If the percentage is zero here then the task has
+                    // consumed less than 1% of the total run time.
+                    sprintf( pcWriteBuffer, "%s\t\t%u\t\t<1%%\r\n", pxTaskStatusArray[ x ].pcTaskName, pxTaskStatusArray[ x ].ulRunTimeCounter );
+                }
+
+                pcWriteBuffer += strlen( ( char * ) pcWriteBuffer );
+            }
+        }
+
+        // The array is no longer needed, free the memory it consumes.
+        vPortFree( pxTaskStatusArray );
+    }
+}
+
+void esp_print_tasks( void )
+{
+    char *pbuffer = (char *)calloc( 1, 2048);
+
+    printf( "------------------ heap: %u ------------------\n", esp_get_free_heap_size());
+    vTaskList( pbuffer );
+    printf( "%s", pbuffer );
+    printf( "-------------------------------------------------\n" );
+    free( pbuffer );
+}
+
+void esp_print_state_table( void )
+{
+    char *pbuffer = (char *)calloc( 1, 2048);
+
+    printf( "---------- state table ----------\n" );
+    vTaskGetRunTimeStats( pbuffer );
+    printf( "%s", pbuffer );
+    printf( "------------------------------\n" );
+    free( pbuffer );
+}
+
+void esp_print_stacktop( TaskHandle_t const pThread )
+{
+    printf( "Thread handle: %p\n", pThread );
+    printf( "Top of stack: %p\n", (void *)(*(unsigned long *)pThread) );
+    //printf( "Thread_up pointer: %p\n", thread_up );
+    esp_print_tasks();
+}
 
 //int pkt_fwd_main(int argc, char ** argv)
 int pkt_fwd_main(void)
@@ -1278,10 +1387,12 @@ int pkt_fwd_main(void)
     /* load configuration files */
     x = parse_SX130x_configuration(conf_array);
     if (x != 0) {
+        MSG("INFO: no SX130x configuration\n");
         exit(EXIT_FAILURE);
     }
     x = parse_gateway_configuration(conf_array);
     if (x != 0) {
+        MSG("INFO: no gateway configuration\n");
         exit(EXIT_FAILURE);
     }
     x = parse_debug_configuration(conf_array);
@@ -1347,6 +1458,7 @@ int pkt_fwd_main(void)
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(udp_port);
 
+    Init_Led(); // Initialize LED
 
 #if 0
     /* connect so we can send/receive packet with the server only */
@@ -1365,6 +1477,13 @@ int pkt_fwd_main(void)
     }
     freeaddrinfo(result);
 #endif
+
+    /* set upstream socket RX timeout */
+    i = setsockopt(sock_up, SOL_SOCKET, SO_RCVTIMEO, (void *)&push_timeout_half, sizeof push_timeout_half);
+    if (i != 0) {
+        MSG("ERROR: [up] setsockopt returned %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     int count = 3;
     while (--count > 0) {
@@ -1412,6 +1531,7 @@ int pkt_fwd_main(void)
         exit(EXIT_FAILURE);
     }
 
+#if 0
     /* get the concentrator EUI */
     i = lgw_get_eui(&eui);
     if (i != LGW_HAL_SUCCESS) {
@@ -1419,14 +1539,61 @@ int pkt_fwd_main(void)
     } else {
         printf("INFO: concentrator EUI: 0x%016" PRIx64 "\n", eui);
     }
+#endif
 
+    /* JIT queue initialization */
+    jit_queue_init(&jit_queue[0]);
+    jit_queue_init(&jit_queue[1]);
+
+    //heap_caps_dump( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
+    printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
+    esp_print_tasks();
+
+    if( xTaskCreatePinnedToCore(((TaskFunction_t) thread_up), "thread_up", (4096*4), NULL, 6, &pThreadUp, tskNO_AFFINITY) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
+        printf( "Failed to spawn thread_up\n");
+        printf( "largest_free_block: %d\n", heap_caps_get_largest_free_block( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT ));
+    } else {
+        printf( "Thread_up spawned\n" );
+        esp_print_stacktop( pThreadUp );
+        //printf( "Thread_up handle: %p\n", pThreadUp );
+        //printf( "Top of stack: %p\n", (void *)(*(unsigned long *)pThreadUp) );
+    }
+
+    //esp_print_state_table();
+    //esp_print_tasks();
+    //heap_caps_dump( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
+    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt  // TODO
+    {
+        while (1)
+        {
+            printf( "Heap errors after Task creation\n" );
+            wait_ms( 1000 );
+        }
+    }
+    //printf( "Useful free bytes: %d\n", heap_caps_get_free_size( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT ));
+    //heap_caps_print_heap_info( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
+    if( xTaskCreatePinnedToCore(((TaskFunction_t) thread_down), "thread_down", 4096*2, NULL, 6, NULL, tskNO_AFFINITY) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
+        printf( "Failed to spawn thread_down\n");
+    } else {
+        printf( "Thread_down spawned\n" );
+    }
+
+    //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
+    if( xTaskCreatePinnedToCore(((TaskFunction_t) thread_jit), "thread_jit", 4096*2, (void *)pJit, 6, NULL, tskNO_AFFINITY) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
+        printf( "Failed to spawn thread_jit\n");
+    } else {
+        printf( "Thread_jit spawned\n" );
+    }
+
+    //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
+
+#if 0
     /* spawn threads to manage upstream and downstream */
     i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create upstream thread\n");
         exit(EXIT_FAILURE);
     }
-#if 0
     i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create downstream thread\n");
@@ -1437,7 +1604,9 @@ int pkt_fwd_main(void)
         MSG("ERROR: [main] impossible to create JIT thread\n");
         exit(EXIT_FAILURE);
     }
+#endif
 
+#if 0
     /* spawn thread to manage GPS */
     if (gps_enabled == true) {
         i = pthread_create( &thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
@@ -1453,12 +1622,13 @@ int pkt_fwd_main(void)
     }
 #endif
 
-#if 1
     /* main loop task : statistics collection */
     //while (!exit_sig && !quit_sig) {
     while ( 1 ) {
         /* wait for next reporting interval */
-        wait_ms(1000 * stat_interval);
+        //wait_ms(1000 * stat_interval);
+        vTaskDelay(1000 * stat_interval / portTICK_PERIOD_MS);
+        esp_print_tasks();
 
         /* get timestamp for statistics */
         t = time(NULL);
@@ -1626,11 +1796,10 @@ int pkt_fwd_main(void)
         report_ready = true;
         xSemaphoreGive(mx_stat_rep);
     }
-#endif
 
+#if 0
     /* wait for upstream thread to finish (1 fetch cycle max) */
     pthread_join(thrid_up, NULL);
-#if 0
     pthread_cancel(thrid_down); /* don't wait for downstream thread */
     pthread_cancel(thrid_jit); /* don't wait for jit thread */
 
@@ -1672,6 +1841,7 @@ int pkt_fwd_main(void)
 
 /* --- THREAD 1: RECEIVING PACKETS AND FORWARDING THEM ---------------------- */
 uint8_t buff_up[TX_BUFF_SIZE]; /* buffer to compose the upstream packet */
+struct lgw_pkt_rx_s rxpkt[NB_PKT_MAX]; /* array containing inbound packets + metadata */
 void thread_up(void)
 {
     int i, j, k; /* loop variables */
@@ -1680,7 +1850,6 @@ void thread_up(void)
     time_t t;
 
     /* allocate memory for packet fetching and processing */
-    struct lgw_pkt_rx_s rxpkt[NB_PKT_MAX]; /* array containing inbound packets + metadata */
     struct lgw_pkt_rx_s *p; /* pointer on a RX packet */
     int nb_pkt;
 
@@ -1714,23 +1883,23 @@ void thread_up(void)
     uint32_t mote_addr = 0;
     uint16_t mote_fcnt = 0;
 
-#if 0 // TODO
     /* set upstream socket RX timeout */
     i = setsockopt(sock_up, SOL_SOCKET, SO_RCVTIMEO, (void *)&push_timeout_half, sizeof push_timeout_half);
     if (i != 0) {
         MSG("ERROR: [up] setsockopt returned %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-#endif
 
     /* pre-fill the data buffer with fixed fields */
     buff_up[0] = PROTOCOL_VERSION;
     buff_up[3] = PKT_PUSH_DATA;
     *(uint32_t *)(buff_up + 4) = net_mac_h;
     *(uint32_t *)(buff_up + 8) = net_mac_l;
-
+    //esp_print_tasks();
     //while (!exit_sig && !quit_sig) {
     while ( 1 ) {
+        //esp_print_tasks();
+        //heap_caps_dump( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
 
         /* fetch packets */
         xSemaphoreTake(mx_concent, portMAX_DELAY);
@@ -1747,11 +1916,13 @@ void thread_up(void)
 
         /* wait a short time if no packets, nor status report */
         if ((nb_pkt == 0) && (send_report == false)) {
-            wait_ms(FETCH_SLEEP_MS);
+            //wait_ms(FETCH_SLEEP_MS);
+            vTaskDelay(FETCH_SLEEP_MS / portTICK_PERIOD_MS);
             continue;
         }
 
-#if 0
+        gpio_set_level(LED_BLUE_GPIO, 0);
+
         /* get a copy of GPS time reference (avoid 1 mutex per packet) */
         if ((nb_pkt > 0) && (gps_enabled == true)) {
             xSemaphoreTake(mx_timeref, portMAX_DELAY);
@@ -1761,7 +1932,6 @@ void thread_up(void)
         } else {
             ref_ok = false;
         }
-#endif
 
         /* get timestamp for statistics */
         t = time(NULL);
@@ -2176,11 +2346,11 @@ void thread_up(void)
         meas_up_dgram_sent += 1;
         meas_up_network_byte += buff_index;
 
-#if 0
         /* wait for acknowledge (in 2 times, to catch extra packets) */
+        socklen_t socklen = sizeof(source_addr);
         for (i=0; i<2; ++i) {
             //j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
-            j = recvfrom(sock_up, (void *)buff_ack, sizeof buff_ack, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            j = recvfrom(sock_up, (void *)buff_ack, sizeof buff_ack, 0, (struct sockaddr *)&dest_addr, &socklen);
             clock_gettime(CLOCK_MONOTONIC, &recv_time);
             if (j == -1) {
                 if (errno == EAGAIN) { /* timeout */
@@ -2189,10 +2359,10 @@ void thread_up(void)
                     break;
                 }
             } else if ((j < 4) || (buff_ack[0] != PROTOCOL_VERSION) || (buff_ack[3] != PKT_PUSH_ACK)) {
-                //MSG("WARNING: [up] ignored invalid non-ACL packet\n");
+                MSG("WARNING: [up] ignored invalid non-ACL packet\n");
                 continue;
             } else if ((buff_ack[1] != token_h) || (buff_ack[2] != token_l)) {
-                //MSG("WARNING: [up] ignored out-of sync ACK packet\n");
+                MSG("WARNING: [up] ignored out-of sync ACK packet\n");
                 continue;
             } else {
                 MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
@@ -2200,8 +2370,9 @@ void thread_up(void)
                 break;
             }
         }
-#endif
         xSemaphoreGive(mx_meas_up);
+
+        gpio_set_level(LED_BLUE_GPIO, 1);
     }
     MSG("\nINFO: End of upstream thread\n");
 }
@@ -2249,6 +2420,7 @@ static int get_tx_gain_lut_index(uint8_t rf_chain, int8_t rf_power, uint8_t * lu
     return 0;
 }
 
+uint8_t buff_down[1000]; /* buffer to receive downstream packets */
 void thread_down(void)
 {
     int i; /* loop variables */
@@ -2262,7 +2434,6 @@ void thread_down(void)
     struct timespec recv_time; /* time of return from recv socket call */
 
     /* data buffers */
-    uint8_t buff_down[1000]; /* buffer to receive downstream packets */
     uint8_t buff_req[12]; /* buffer to compose pull requests */
     int msg_len;
 
@@ -2425,8 +2596,7 @@ void thread_down(void)
     jit_queue_init(&jit_queue[0]);
     jit_queue_init(&jit_queue[1]);
 
-    //while (!exit_sig && !quit_sig) {
-    while ( 1 ) {
+    while (!exit_sig && !quit_sig) {
 
         /* auto-quit if the threshold is crossed */
         if ((autoquit_threshold > 0) && (autoquit_cnt >= autoquit_threshold)) {
@@ -2442,7 +2612,8 @@ void thread_down(void)
         buff_req[2] = token_l;
 
         /* send PULL request and record time */
-        send(sock_down, (void *)buff_req, sizeof buff_req, 0);
+        //send(sock_down, (void *)buff_req, sizeof buff_req, 0);
+        sendto(sock_down, (void *)buff_req, sizeof buff_req, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
         clock_gettime(CLOCK_MONOTONIC, &send_time);
         xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
         meas_dw_pull_sent += 1;
@@ -2452,10 +2623,12 @@ void thread_down(void)
 
         /* listen to packets and process them until a new PULL request must be sent */
         recv_time = send_time;
+        socklen_t socklen = sizeof(source_addr);
         while ((int)difftimespec(recv_time, send_time) < keepalive_time) {
 
             /* try to receive a datagram */
-            msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0);
+            //msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0);
+            msg_len = recvfrom(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0, (struct sockaddr *)&dest_addr, &socklen);
             clock_gettime(CLOCK_MONOTONIC, &recv_time);
 
             /* Pre-allocate beacon slots in JiT queue, to check downlink collisions */
@@ -2575,6 +2748,9 @@ void thread_down(void)
                         msg_len, buff_down[0], buff_down[3]);
                 continue;
             }
+
+
+            //gpio_set_level( LED_GREEN_GPIO, 0 );   // On to indicate downlink
 
             /* if the datagram is an ACK, check token */
             if (buff_down[3] == PKT_PULL_ACK) {
@@ -2867,6 +3043,8 @@ void thread_down(void)
             /* free the JSON parse tree from memory */
             json_value_free(root_val);
 
+            gpio_set_level( LED_GREEN_GPIO, 0 );   // Off to indicate downlink finish
+
             /* select TX mode */
             if (sent_immediate) {
                 txpkt.tx_mode = IMMEDIATE;
@@ -2922,6 +3100,8 @@ void thread_down(void)
 
             /* Send acknoledge datagram to server */
             send_tx_ack(buff_down[1], buff_down[2], jit_result, warning_value);
+
+            gpio_set_level( LED_GREEN_GPIO, 1 );   // Off to indicate downlink finish
         }
     }
     MSG("\nINFO: End of downstream thread\n");
@@ -2964,7 +3144,8 @@ void thread_jit(void)
     int i;
 
     while (!exit_sig && !quit_sig) {
-        wait_ms(10);
+        //wait_ms(10);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
 
         for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
             /* transfer data and metadata to the concentrator, and schedule TX */
@@ -3037,6 +3218,7 @@ void thread_jit(void)
             }
         }
     }
+    vTaskDelete( pJit );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3219,7 +3401,8 @@ void thread_valid(void)
 
     /* main loop task */
     while (!exit_sig && !quit_sig) {
-        wait_ms(1000);
+        //wait_ms(1000);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
 
         /* calculate when the time reference was last updated */
         xSemaphoreTake(mx_timeref, portMAX_DELAY);
@@ -3428,63 +3611,9 @@ static void udp_client_task(void *pvParameters)
 }
 
 static void pkt_fwd_task(void *pvParameters)
+//static void pkt_fwd_task(void)
 {
-#if 0
-    char rx_buffer[128];
-    int addr_family = 0;
-    int ip_protocol = 0;
-    struct sockaddr_in dest_addr;
-    struct sockaddr_in source_addr;
-    int sock;
-    int len, err;
-
-    dest_addr.sin_addr.s_addr = inet_addr((char *)udp_host);
-    dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(udp_port);
-    addr_family = AF_INET;
-    ip_protocol = IPPROTO_IP;
-
-    sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
-    if (sock < 0) {
-        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-        return;
-    }
-    ESP_LOGI(TAG, "Socket created, sending to %s:%d", udp_host, udp_port);
-
-    while (1) {
-        err = sendto(sock, udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-        if (err < 0) {
-            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-            break;
-        }
-        ESP_LOGI(TAG, "Message sent");
-
-        socklen_t socklen = sizeof(source_addr);
-        len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
-
-        if (len < 0) {
-            ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
-            break;
-        } else {
-            rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-            ESP_LOGI(TAG, "Received %d bytes from %s:", len, udp_host);
-            ESP_LOGI(TAG, "%s", rx_buffer);
-            if (strncmp(rx_buffer, "OK: ", 4) == 0) {
-                ESP_LOGI(TAG, "Received expected message, reconnecting");
-                break;
-            }
-        }
-
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-    }
-
-    if (sock != -1) {
-        ESP_LOGE(TAG, "Shutting down socket and restarting...");
-        shutdown(sock, 0);
-        close(sock);
-    }
-#endif
-
+    heap_caps_check_integrity_all( true );
     pkt_fwd_main();
 
     vTaskDelete(NULL);
@@ -3497,6 +3626,7 @@ static void pkt_fwd_task(void *pvParameters)
 
 void test_network_connection(void)
 {
+    TaskHandle_t pPktFwd;
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -3510,7 +3640,9 @@ void test_network_connection(void)
 
     // TODO: deal with Wifi broken
     //xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
-    xTaskCreate(pkt_fwd_task, "pkt_fwd", 4096, NULL, 5, NULL);
+    xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pPktFwd, 0);
+    printf( "pkt_fwd_task handle: %p\n", pPktFwd );
+    //pkt_fwd_task();
 }
 
 
@@ -3616,8 +3748,12 @@ static void register_config(void)
 void app_main(void)
 {
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    repl_config.task_stack_size = 4096 * 16;
+    repl_config.task_stack_size = 4096 * 8;
     repl_config.prompt = "pkt-fwd>";
+
+    gpio_pad_select_gpio(BLINK_GPIO);
+    gpio_set_direction(BLINK_GPIO,GPIO_MODE_OUTPUT);
+    gpio_set_level(BLINK_GPIO, 1);
 
     usage();
     register_config();
@@ -3626,4 +3762,6 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_console_repl_init(&repl_config));
     // start console REPL
     ESP_ERROR_CHECK(esp_console_repl_start());
+    gpio_set_level(BLINK_GPIO, 0);
 }
+

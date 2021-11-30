@@ -12,8 +12,6 @@ Description:
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE     /* needed for qsort_r to be defined */
@@ -29,11 +27,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "trace.h"
 #include "jitqueue.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
+
 #define TX_START_DELAY          1500    /* microseconds */
                                         /* TODO: get this value from HAL? */
 #define TX_MARGIN_DELAY         1000    /* Packet overlap margin in microseconds */
@@ -45,24 +42,17 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
                                             to ensure beacon can be sent */
 #define BEACON_RESERVED         2120000 /* Time on air of the beacon, with some margin */
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
-static pthread_mutex_t mx_jit_queue = PTHREAD_MUTEX_INITIALIZER; /* control access to JIT queue */
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS DEFINITION ----------------------------------------- */
+static SemaphoreHandle_t mx_jit_queue; /* control access to JIT queue */
 
 bool jit_queue_is_full(struct jit_queue_s *queue) {
     bool result;
 
-    pthread_mutex_lock(&mx_jit_queue);
+    xSemaphoreTake(mx_jit_queue, portMAX_DELAY);
 
     result = (queue->num_pkt == JIT_QUEUE_MAX)?true:false;
 
-    pthread_mutex_unlock(&mx_jit_queue);
+    xSemaphoreGive(mx_jit_queue);
 
     return result;
 }
@@ -70,11 +60,11 @@ bool jit_queue_is_full(struct jit_queue_s *queue) {
 bool jit_queue_is_empty(struct jit_queue_s *queue) {
     bool result;
 
-    pthread_mutex_lock(&mx_jit_queue);
+    xSemaphoreTake(mx_jit_queue, portMAX_DELAY);
 
     result = (queue->num_pkt == 0)?true:false;
 
-    pthread_mutex_unlock(&mx_jit_queue);
+    xSemaphoreGive(mx_jit_queue);
 
     return result;
 }
@@ -82,7 +72,8 @@ bool jit_queue_is_empty(struct jit_queue_s *queue) {
 void jit_queue_init(struct jit_queue_s *queue) {
     int i;
 
-    pthread_mutex_lock(&mx_jit_queue);
+    mx_jit_queue = xSemaphoreCreateMutex();
+    xSemaphoreTake(mx_jit_queue, portMAX_DELAY);
 
     memset(queue, 0, sizeof(*queue));
     for (i=0; i<JIT_QUEUE_MAX; i++) {
@@ -90,7 +81,7 @@ void jit_queue_init(struct jit_queue_s *queue) {
         queue->nodes[i].post_delay = 0;
     }
 
-    pthread_mutex_unlock(&mx_jit_queue);
+    xSemaphoreGive(mx_jit_queue);
 }
 
 int compare(const void *a, const void *b, void *arg)
@@ -167,7 +158,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
             break;
     }
 
-    pthread_mutex_lock(&mx_jit_queue);
+    xSemaphoreTake(mx_jit_queue, portMAX_DELAY);
 
     /* An immediate downlink becomes a timestamped downlink "ASAP" */
     /* Set the packet count_us to the first available slot */
@@ -232,7 +223,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
      */
     if ((packet->count_us - time_us) <= (TX_START_DELAY + TX_MARGIN_DELAY + TX_JIT_DELAY)) {
         MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, already too late to send it (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
-        pthread_mutex_unlock(&mx_jit_queue);
+        xSemaphoreGive(mx_jit_queue);
         return JIT_ERROR_TOO_LATE;
     }
 
@@ -250,7 +241,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
     if ((pkt_type == JIT_PKT_TYPE_DOWNLINK_CLASS_A) || (pkt_type == JIT_PKT_TYPE_DOWNLINK_CLASS_B)) {
         if ((packet->count_us - time_us) > TX_MAX_ADVANCE_DELAY) {
             MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, timestamp seems wrong, too much in advance (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
-            pthread_mutex_unlock(&mx_jit_queue);
+            xSemaphoreGive(mx_jit_queue);
             return JIT_ERROR_TOO_EARLY;
         }
     }
@@ -293,7 +284,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
                     assert(0);
                     break;
             }
-            pthread_mutex_unlock(&mx_jit_queue);
+            xSemaphoreGive(mx_jit_queue);
             return err_collision;
         }
     }
@@ -312,7 +303,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct
     jit_sort_queue(queue);
 
     /* Done */
-    pthread_mutex_unlock(&mx_jit_queue);
+    xSemaphoreGive(mx_jit_queue);
 
     jit_print_queue(queue, false, DEBUG_JIT);
 
@@ -337,7 +328,7 @@ enum jit_error_e jit_dequeue(struct jit_queue_s *queue, int index, struct lgw_pk
         return JIT_ERROR_EMPTY;
     }
 
-    pthread_mutex_lock(&mx_jit_queue);
+    xSemaphoreTake(mx_jit_queue, portMAX_DELAY);
 
     /* Dequeue requested packet */
     memcpy(packet, &(queue->nodes[index].pkt), sizeof(struct lgw_pkt_tx_s));
@@ -356,7 +347,7 @@ enum jit_error_e jit_dequeue(struct jit_queue_s *queue, int index, struct lgw_pk
     jit_sort_queue(queue);
 
     /* Done */
-    pthread_mutex_unlock(&mx_jit_queue);
+    xSemaphoreGive(mx_jit_queue);
 
     jit_print_queue(queue, false, DEBUG_JIT);
 
@@ -378,7 +369,7 @@ enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_
         return JIT_ERROR_EMPTY;
     }
 
-    pthread_mutex_lock(&mx_jit_queue);
+    xSemaphoreTake(mx_jit_queue, portMAX_DELAY);
 
     /* Search for highest priority packet to be sent */
     for (i=0; i<queue->num_pkt; i++) {
@@ -432,7 +423,7 @@ enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_
         *pkt_idx = -1;
     }
 
-    pthread_mutex_unlock(&mx_jit_queue);
+    xSemaphoreGive(mx_jit_queue);
 
     return JIT_ERROR_OK;
 }
@@ -444,7 +435,7 @@ void jit_print_queue(struct jit_queue_s *queue, bool show_all, int debug_level) 
     if (jit_queue_is_empty(queue)) {
         MSG_DEBUG(debug_level, "INFO: [jit] queue is empty\n");
     } else {
-        pthread_mutex_lock(&mx_jit_queue);
+        xSemaphoreTake(mx_jit_queue, portMAX_DELAY);
 
         MSG_DEBUG(debug_level, "INFO: [jit] queue contains %d packets:\n", queue->num_pkt);
         MSG_DEBUG(debug_level, "INFO: [jit] queue contains %d beacons:\n", queue->num_beacon);
@@ -456,6 +447,6 @@ void jit_print_queue(struct jit_queue_s *queue, bool show_all, int debug_level) 
                         queue->nodes[i].pkt_type);
         }
 
-        pthread_mutex_unlock(&mx_jit_queue);
+        xSemaphoreGive(mx_jit_queue);
     }
 }

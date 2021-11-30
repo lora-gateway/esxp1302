@@ -16,8 +16,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #ifndef _LORA_PKTFWD_JIT_H
 #define _LORA_PKTFWD_JIT_H
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
@@ -25,14 +23,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_hal.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 #define JIT_QUEUE_MAX           32  /* Maximum number of packets to be stored in JiT queue */
 #define JIT_NUM_BEACON_IN_QUEUE 3   /* Number of beacons to be loaded in JiT queue at any time */
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC TYPES --------------------------------------------------------- */
 
 enum jit_pkt_type_e {
     JIT_PKT_TYPE_DOWNLINK_CLASS_A,

@@ -284,7 +284,8 @@ int sx1302_agc_start(uint8_t version, lgw_radio_type_t radio_type, uint8_t ana_g
 @param TODO
 @return TODO
 */
-int sx1302_arb_load_firmware(const uint8_t *firmware);
+//int sx1302_arb_load_firmware(const uint8_t *firmware);
+int sx1302_arb_load_firmware(void);
 
 /**
 @brief TODO

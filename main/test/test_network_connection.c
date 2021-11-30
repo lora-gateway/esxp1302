@@ -215,7 +215,7 @@ void test_network_connection(void)
     wifi_init_sta();
 
     // TODO: deal with Wifi broken
-    xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
+    xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL, 0);
 }
 
 
