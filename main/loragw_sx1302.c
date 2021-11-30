@@ -241,14 +241,8 @@ int sx1302_get_eui(uint64_t * eui) {
 
 int sx1302_update(void) {
     int32_t val;
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in sx1302_update3\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
+
     /* Check MCUs parity errors */
     lgw_reg_r(SX1302_REG_AGC_MCU_CTRL_PARITY_ERROR, &val);
     if (val != 0) {
@@ -261,25 +255,12 @@ int sx1302_update(void) {
         printf("ERROR: Parity error check failed on ARB firmware\n");
         return LGW_REG_ERROR;
     }
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in sx1302_update1\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
+
     /* Update internal timestamp counter wrapping status */
     timestamp_counter_get(&counter_us, false); /* maintain inst counter */
     timestamp_counter_get(&counter_us, true); /* maintain pps counter */
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in sx1302_update\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
 
     return LGW_REG_SUCCESS;
 }

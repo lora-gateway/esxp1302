@@ -100,14 +100,7 @@ uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
     uint32_t counter_us_raw_27bits_now;
     int32_t msb;
 
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in timestamp get4\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
 
     /* Get the 32MHz timestamp counter - 4 bytes */
     /*
@@ -119,14 +112,7 @@ uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
         return 0;
     }
     */
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in timestamp get2\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
 
     /* Workaround concentrator chip issue:
         - read MSB again
@@ -139,14 +125,7 @@ uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
         printf("ERROR: Failed to get timestamp counter MSB value\n");
         return 0;
     }
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in timestamp get1\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
 
     if (buff[0] != (uint8_t)msb) {
         x = lgw_reg_rb((pps == true) ? SX1302_REG_TIMESTAMP_TIMESTAMP_PPS_MSB2_TIMESTAMP_PPS :
@@ -162,14 +141,8 @@ uint32_t timestamp_counter_get(timestamp_counter_t * self, bool pps) {
 
     /* Scale to 1MHz */
     counter_us_raw_27bits_now /= 32;
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in timestamp get\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
+
     /* Update counter wrapping status */
     timestamp_counter_update(self, pps, counter_us_raw_27bits_now);
 

@@ -1562,14 +1562,8 @@ int pkt_fwd_main(void)
     //esp_print_state_table();
     //esp_print_tasks();
     //heap_caps_dump( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt  // TODO
-    {
-        while (1)
-        {
-            printf( "Heap errors after Task creation\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
+
     //printf( "Useful free bytes: %d\n", heap_caps_get_free_size( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT ));
     //heap_caps_print_heap_info( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
     if( xTaskCreatePinnedToCore(((TaskFunction_t) thread_down), "thread_down", 4096*2, NULL, 6, NULL, tskNO_AFFINITY) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {

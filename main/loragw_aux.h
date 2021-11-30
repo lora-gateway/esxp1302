@@ -28,6 +28,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 #define TAKE_N_BITS_FROM(b, p, n) (((b) >> (p)) & ((1 << (n)) - 1))
 
+#define CHECK_HEAP_INTEGRITY \
+    if( heap_caps_check_integrity_all( true ) == false ){ \
+        while (1){ \
+            printf( "Heap errors in %s:%d\n", __FILE__, __LINE__ ); \
+            wait_ms( 1000 ); }}
+
 /**
 @brief Wait for a certain time (millisecond accuracy)
 @param t number of milliseconds to wait.

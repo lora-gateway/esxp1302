@@ -271,24 +271,11 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
     }
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in lgw_spi_rb3\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
     if(err != ESP_OK)
         return err;
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in lgw_spi_rb2\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
+
     memset(&et, 0, sizeof(et));
     et.command_bits = 8;
     et.address_bits = 8 * 3;
@@ -299,14 +286,8 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
     //et.base.tx_data[0] = 0x00;
     et.base.tx_buffer = tbuf;
     //et.base.length = 8;
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in lgw_spi_rb1\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
+
     size_to_do = size;
     for(int i = 0; size_to_do > 0; ++i) {
         chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
@@ -322,14 +303,8 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
         DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
         size_to_do -= chunk_size;
     }
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in lgw_spi_rb\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
+
     /* TODO: check transfered bits, and determine return code */
     /*
     if(byte_transfered != size) {

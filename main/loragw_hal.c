@@ -782,14 +782,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     /* WARNING: this needs to be called regularly by the upper layer */
     //wait_ms( 100 ); // wait for heap info printing
     res = sx1302_update();
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt  // TODO
-    {
-        while (1)
-        {
-            printf( "Heap errors after sx1302_update\n " );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
     if (res != LGW_REG_SUCCESS) {
         return LGW_HAL_ERROR;
     }
@@ -814,14 +807,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         printf("ERROR: failed to get current temperature\n");
         return LGW_HAL_ERROR;
     }
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt  // TODO
-    {
-        while (1)
-        {
-            printf( "Heap errors after get_temper\n" );
-            wait_ms( 1000 );
-        }
-    }
+    CHECK_HEAP_INTEGRITY;
 
     /* Iterate on the RX buffer to get parsed packets */
     for (nb_pkt_found = 0; nb_pkt_found < ((nb_pkt_fetched <= max_pkt) ? nb_pkt_fetched : max_pkt); nb_pkt_found++) {
