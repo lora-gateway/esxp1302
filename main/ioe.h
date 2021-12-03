@@ -32,11 +32,11 @@ enum { LED_OFF, LED_GREEN, LED_RED, LED_RG };
 void ioe_init();
 void led_mode(int mode, int intv, int duty_cycle);
 void oled_init();
-void OLED_ShowStr(uint8_t x, uint8_t y, char ch[], uint8_t TextSize);
-void OLED_OFF(void);
-void OLED_ON(void);
-void OLED_CLS(void);
-void OLED_Fill(uint8_t fill_Data);
-void OLED_SetPos(uint8_t x, uint8_t y);
+void oled_show_str(uint8_t x, uint8_t y, char ch[], uint8_t text_size);
+void oled_off(void);
+void oled_on(void);
+void oled_cls(void);
+void oled_fill(uint8_t fill_Data);
+void oled_set_pos(uint8_t x, uint8_t y);
 
 #endif // _ioe_h_

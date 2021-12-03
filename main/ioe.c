@@ -107,7 +107,7 @@ const unsigned char F6x8[][6] =
 };
 
 /****************************************8*16 table************************************/
-const unsigned char F8X16[]=
+const unsigned char F8X16[] =
 {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //  0
     0x00, 0x00, 0x00, 0xF8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x33, 0x30, 0x00, 0x00, 0x00,  //! 1
@@ -206,8 +206,8 @@ const unsigned char F8X16[]=
     0x00, 0x06, 0x01, 0x01, 0x02, 0x02, 0x04, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //~ 94
 };
 
-static xTimerHandle ledSetTmr;
-static xTimerHandle ledClrTmr;
+static xTimerHandle led_set_tmr;
+static xTimerHandle led_clr_tmr;
 
 static int led_md = 0;
 static int led_off = LED_OFF;
@@ -246,13 +246,13 @@ static void led_set(int mode)
 static void led_set_cb(xTimerHandle tmr)
 {
     led_set(led_md);
-    xTimerReset(ledClrTmr, 0);
+    xTimerReset(led_clr_tmr, 0);
 }
 
 static void led_clear_cb(xTimerHandle tmr)
 {
     led_set(led_off);
-    xTimerReset(ledSetTmr, 0);
+    xTimerReset(led_set_tmr, 0);
 }
 
 void led_mode(int mode, int intv /* [ms] */, int duty_cycle /* [%] */)
@@ -265,12 +265,12 @@ void led_mode(int mode, int intv /* [ms] */, int duty_cycle /* [%] */)
     led_off = mode == LED_RG ? LED_RED : LED_OFF;
     led_intv = intv;
     led_dc = duty_cycle;
-    xTimerStop(ledClrTmr, 0);
-    xTimerStop(ledSetTmr, 0);
+    xTimerStop(led_clr_tmr, 0);
+    xTimerStop(led_set_tmr, 0);
     if(led_intv >= LED_MIN_INTV_MS && led_dc >= LED_MIN_DC && led_dc <= (100-LED_MIN_DC)) {
-        xTimerChangePeriod( ledClrTmr, led_intv*led_dc/100/portTICK_RATE_MS, 0);
-        xTimerChangePeriod( ledSetTmr, led_intv*(100-led_dc)/100/portTICK_RATE_MS, 0);
-        led_set_cb(ledSetTmr);
+        xTimerChangePeriod( led_clr_tmr, led_intv*led_dc/100/portTICK_RATE_MS, 0);
+        xTimerChangePeriod( led_set_tmr, led_intv*(100-led_dc)/100/portTICK_RATE_MS, 0);
+        led_set_cb(led_set_tmr);
     } else {
         led_set(led_md);
     }
@@ -282,17 +282,17 @@ void ioe_init(void)
     ioe_set_mode(IOE_LED_GREEN, 2);
     ioe_set_mode(IOE_LED_BLUE, 2);
     oled_init();
-    OLED_CLS();
-    ledSetTmr = xTimerCreate("TimerLedSet", 100/portTICK_RATE_MS, false, NULL, led_set_cb );
-    ledClrTmr = xTimerCreate("TimerledClr", 100/portTICK_RATE_MS, false, NULL, led_clear_cb );
+    oled_cls();
+    led_set_tmr = xTimerCreate("TimerLedSet", 100/portTICK_RATE_MS, false, NULL, led_set_cb );
+    led_clr_tmr = xTimerCreate("TimerledClr", 100/portTICK_RATE_MS, false, NULL, led_clear_cb );
 }
 
-static void WriteCmd(uint8_t cmd)
+static void write_cmd(uint8_t cmd)
 {
     i2c_esp32_write(SSD1306_ADDR, 0x00, cmd); //dispaly off
 }
 
-static void WriteDat(uint8_t data)
+static void write_data(uint8_t data)
 {
     i2c_esp32_write(SSD1306_ADDR, 0x40, data); //dispaly off
 }
@@ -300,119 +300,117 @@ static void WriteDat(uint8_t data)
 void oled_init()
 {
     i2c_esp32_open();
+
     wait_ms(100);
-    WriteCmd(0xAE); //display off
-    WriteCmd(0x20); //Set Memory Addressing Mode
-    WriteCmd(0x10); //00,Horizontal Addressing Mode;01,Vertical Addressing Mode;10,Page Addressing Mode (RESET);11,Invalid
-    WriteCmd(0xb0); //Set Page Start Address for Page Addressing Mode,0-7
-    WriteCmd(0xc8); //Set COM Output Scan Direction
-    WriteCmd(0x00); //---set low column address
-    WriteCmd(0x10); //---set high column address
-    WriteCmd(0x40); //--set start line address
-    WriteCmd(0x81); //--set contrast control register
-    WriteCmd(0xff); //brightless 0x00~0xff
-    WriteCmd(0xa1); //--set segment re-map 0 to 127
-    WriteCmd(0xa6); //--set normal display
-    WriteCmd(0xa8); //--set multiplex ratio(1 to 64)
-    WriteCmd(0x3F); //
-    WriteCmd(0xa4); //0xa4,Output follows RAM content;0xa5,Output ignores RAM content
-    WriteCmd(0xd3); //-set display offset
-    WriteCmd(0x00); //-not offset
-    WriteCmd(0xd5); //--set display clock divide ratio/oscillator frequency
-    WriteCmd(0xf0); //--set divide ratio
-    WriteCmd(0xd9); //--set pre-charge period
-    WriteCmd(0x22); //
-    WriteCmd(0xda); //--set com pins hardware configuration
-    WriteCmd(0x12);
-    WriteCmd(0xdb); //--set vcomh
-    WriteCmd(0x20); //0x20,0.77xVcc
-    WriteCmd(0x8d); //--set DC-DC enable
-    WriteCmd(0x14); //
-    WriteCmd(0xaf); //--turn on oled panel
+    write_cmd(0xAE); //display off
+    write_cmd(0x20); //Set Memory Addressing Mode
+    write_cmd(0x10); //00,Horizontal Addressing Mode;01,Vertical Addressing Mode;10,Page Addressing Mode (RESET);11,Invalid
+    write_cmd(0xb0); //Set Page Start Address for Page Addressing Mode,0-7
+    write_cmd(0xc8); //Set COM Output Scan Direction
+    write_cmd(0x00); //---set low column address
+    write_cmd(0x10); //---set high column address
+    write_cmd(0x40); //--set start line address
+    write_cmd(0x81); //--set contrast control register
+    write_cmd(0xff); //brightless 0x00~0xff
+    write_cmd(0xa1); //--set segment re-map 0 to 127
+    write_cmd(0xa6); //--set normal display
+    write_cmd(0xa8); //--set multiplex ratio(1 to 64)
+    write_cmd(0x3F); //
+    write_cmd(0xa4); //0xa4,Output follows RAM content;0xa5,Output ignores RAM content
+    write_cmd(0xd3); //-set display offset
+    write_cmd(0x00); //-not offset
+    write_cmd(0xd5); //--set display clock divide ratio/oscillator frequency
+    write_cmd(0xf0); //--set divide ratio
+    write_cmd(0xd9); //--set pre-charge period
+    write_cmd(0x22); //
+    write_cmd(0xda); //--set com pins hardware configuration
+    write_cmd(0x12);
+    write_cmd(0xdb); //--set vcomh
+    write_cmd(0x20); //0x20,0.77xVcc
+    write_cmd(0x8d); //--set DC-DC enable
+    write_cmd(0x14); //
+    write_cmd(0xaf); //--turn on oled panel
 }
 
-void OLED_SetPos(uint8_t x, uint8_t y) //set the start position
+void oled_set_pos(uint8_t x, uint8_t y) //set the start position
 {
-    WriteCmd(0xb0+y);
-    WriteCmd(((x&0xf0)>>4)|0x10);
-    WriteCmd((x&0x0f)|0x01);
+    write_cmd(0xb0 + y);
+    write_cmd(((x & 0xf0) >> 4) | 0x10);
+    write_cmd((x & 0x0f) | 0x01);
 }
 
-void OLED_Fill(uint8_t fill_Data)//fill the screen
+void oled_fill(uint8_t fill_Data)//fill the screen
 {
-    unsigned char m,n;
-    for(m=0;m<8;m++)
-    {
-        WriteCmd(0xb0+m);  //page0-page1
-        WriteCmd(0x00);    //low column start address
-        WriteCmd(0x10);    //high column start address
-        for(n=0;n<128;n++)
-        {
-            WriteDat(fill_Data);
+    unsigned char m, n;
+
+    for(m=0; m<8; m++) {
+        write_cmd(0xb0+m);  //page0-page1
+        write_cmd(0x00);    //low column start address
+        write_cmd(0x10);    //high column start address
+        for(n=0; n<128; n++) {
+            write_data(fill_Data);
         }
     }
 }
 
-void OLED_CLS(void) //clear screen
+void oled_cls(void) //clear screen
 {
-    OLED_Fill(0x00);
+    oled_fill(0x00);
 }
 
-void OLED_ON(void)
+void oled_on(void)
 {
-    WriteCmd(0X8D);  //setup pump
-    WriteCmd(0X14);  //turn on pump
-    WriteCmd(0XAF);  //OLED wakeup
+    write_cmd(0X8D);  //setup pump
+    write_cmd(0X14);  //turn on pump
+    write_cmd(0XAF);  //OLED wakeup
 }
 
-void OLED_OFF(void)
+void oled_off(void)
 {
-    WriteCmd(0X8D);  //
-    WriteCmd(0X10);  //close pump
-    WriteCmd(0XAE);  //OLED sleep
+    write_cmd(0X8D);  //
+    write_cmd(0X10);  //close pump
+    write_cmd(0XAE);  //OLED sleep
 }
 
-void OLED_ShowStr(uint8_t x, uint8_t y, char ch[], uint8_t TextSize)
+void oled_show_str(uint8_t x, uint8_t y, char ch[], uint8_t text_size)
 {
-    unsigned char c = 0,i = 0,j = 0;
-    switch(TextSize)
-    {
+    unsigned char c = 0, i = 0, j = 0;
+
+    switch(text_size) {
         case 1:
-            {
-                while(ch[j] != '\0')
-                {
-                    c = ch[j] - 32;
-                    if(x > 126)
-                    {
-                        x = 0;
-                        y++;
-                    }
-                    OLED_SetPos(x,y);
-                    for(i=0;i<6;i++)
-                        WriteDat(F6x8[c][i]);
-                    x += 6;
-                    j++;
+            while(ch[j] != '\0') {
+                if(x > 126) {
+                    x = 0;
+                    y++;
                 }
-            }break;
+
+                c = ch[j] - 32;
+                oled_set_pos(x, y);
+                for(i=0; i<6; i++)
+                    write_data(F6x8[c][i]);
+                x += 6;
+                j++;
+            }
+            break;
+
         case 2:
-            {
-                while(ch[j] != '\0')
-                {
-                    c = ch[j] - 32;
-                    if(x > 120)
-                    {
-                        x = 0;
-                        y++;
-                    }
-                    OLED_SetPos(x,y);
-                    for(i=0;i<8;i++)
-                        WriteDat(F8X16[c*16+i]);
-                    OLED_SetPos(x,y+1);
-                    for(i=0;i<8;i++)
-                        WriteDat(F8X16[c*16+i+8]);
-                    x += 8;
-                    j++;
+            while(ch[j] != '\0') {
+                if(x > 120) {
+                    x = 0;
+                    y++;
                 }
-            }break;
+
+                c = ch[j] - 32;
+                oled_set_pos(x, y);
+                for(i=0; i<8; i++)
+                    write_data(F8X16[c * 16 + i]);
+
+                oled_set_pos(x,y+1);
+                for(i=0; i<8; i++)
+                    write_data(F8X16[c * 16 + i + 8]);
+                x += 8;
+                j++;
+            }
+            break;
     }
 }

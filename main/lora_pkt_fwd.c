@@ -1589,8 +1589,8 @@ int pkt_fwd_main(void)
 
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
     oled_init();
-    OLED_CLS();
-    OLED_ShowStr(1, 0, "OLED display test", 1);
+    oled_cls();
+    oled_show_str(0, 0, "OLED display test", 1);
     //sprintf(oled_display_str_buf, "AP : %s",config.ap.ssid);
 
 #if 0
