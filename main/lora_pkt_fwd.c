@@ -79,6 +79,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "driver/gpio.h"
 
 #include "led_indication.h"
+#include "ioe.h"
 
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
@@ -1587,6 +1588,10 @@ int pkt_fwd_main(void)
     }
 
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
+    oled_init();
+    OLED_CLS();
+    OLED_ShowStr(1, 0, "OLED display test", 1);
+    //sprintf(oled_display_str_buf, "AP : %s",config.ap.ssid);
 
 #if 0
     /* spawn threads to manage upstream and downstream */
