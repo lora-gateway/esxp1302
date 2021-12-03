@@ -50,6 +50,7 @@ esp_err_t i2c_esp32_open(void)
     conf.scl_io_num = I2C_MASTER_SCL_IO;
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
     conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+    conf.clk_flags = I2C_SCLK_SRC_FLAG_FOR_NOMAL;
     i2c_param_config(i2c_master_port, &conf);
 
     ret = i2c_driver_install(i2c_master_port, conf.mode,

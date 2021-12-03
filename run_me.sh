@@ -13,13 +13,13 @@ tty="--port /dev/ttyUSB0 --baud 921600"
 args="--chip esp32 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect"
 bootloader="0x1000 $pth/build/bootloader/bootloader.bin"
 app="0x10000 $pth/build/ESXP1302-Pkt-Fwd.bin"
-part="0x8000 $pth/build/partitions_singleapp.bin"
+part="0x8000 $pth/build/partition_table/partition-table.bin"
 
 hd_name=main/global_json.h
 json_file=main/conf/global_conf.cn490.json
 
 if [ "$#" -eq 0 -o "$1" = "-h" -o "$1" = "--help" ]; then
-	echo "Usage: $0 [make|flash|flash_all|run]\n"
+	echo "Usage: $0 [make|make_all|flash|flash_all|run]\n"
 	exit
 fi
 
@@ -29,7 +29,16 @@ if [ "$1" = "make" ]; then
 	scripts/json_to_hex_array.py $json_file >> $hd_name
 	echo '};' >> $hd_name
 
-	make
+	idf.py app
+fi
+
+if [ "$1" = "make_all" ]; then
+	# prepare the C array comes from global_conf.json
+	echo 'static uint8_t global_conf[] = {' > $hd_name
+	scripts/json_to_hex_array.py $json_file >> $hd_name
+	echo '};' >> $hd_name
+
+	idf.py build
 fi
 
 if [ "$1" = "flash" ]; then
