@@ -153,6 +153,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_FAIL_BIT      BIT1
 
 #define BLINK_GPIO      2
+#define TIME_REFRESH    5  // display the time on screen every 5s
 
 uint8_t wifi_ssid[32];
 uint8_t wifi_pswd[64];
@@ -160,6 +161,7 @@ uint8_t udp_host[32];
 char self_ip[16] = "(unknown)";
 char udp_msg[64] = "Message from SX1302 ESP32 PKT-FWD";
 uint32_t udp_port;
+uint32_t time_count = 0;  // used for display time on screen
 
 static const char *TAG = "wifi station";
 
@@ -1645,14 +1647,20 @@ int pkt_fwd_main(void)
     /* main loop task : statistics collection */
     //while (!exit_sig && !quit_sig) {
     while ( 1 ) {
-        /* wait for next reporting interval */
-        //wait_ms(1000 * stat_interval);
-        vTaskDelay(1000 * stat_interval / portTICK_PERIOD_MS);
         esp_print_tasks();
 
-        /* get timestamp for statistics */
-        t = time(NULL);
-        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
+        time_count = 0;
+        while(time_count < stat_interval) {
+            /* wait for next reporting interval */
+            //wait_ms(1000 * stat_interval);
+            vTaskDelay(1000 * TIME_REFRESH / portTICK_PERIOD_MS);
+            time_count += TIME_REFRESH;
+
+            /* get timestamp for statistics */
+            t = time(NULL);
+            strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
+            oled_show_str(0, 6, stat_timestamp, 1);
+        }
 
         /* access upstream statistics, copy and reset them */
         xSemaphoreTake(mx_meas_up, portMAX_DELAY);
