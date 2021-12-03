@@ -1591,6 +1591,7 @@ int pkt_fwd_main(void)
     oled_init();
     oled_cls();
     oled_show_str(0, 0, "OLED display test", 1);
+    oled_show_str(0, 1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", 2);
     //sprintf(oled_display_str_buf, "AP : %s",config.ap.ssid);
 
 #if 0

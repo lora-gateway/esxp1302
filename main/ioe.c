@@ -265,11 +265,13 @@ void led_mode(int mode, int intv /* [ms] */, int duty_cycle /* [%] */)
     led_off = mode == LED_RG ? LED_RED : LED_OFF;
     led_intv = intv;
     led_dc = duty_cycle;
+
     xTimerStop(led_clr_tmr, 0);
     xTimerStop(led_set_tmr, 0);
+
     if(led_intv >= LED_MIN_INTV_MS && led_dc >= LED_MIN_DC && led_dc <= (100-LED_MIN_DC)) {
-        xTimerChangePeriod( led_clr_tmr, led_intv*led_dc/100/portTICK_RATE_MS, 0);
-        xTimerChangePeriod( led_set_tmr, led_intv*(100-led_dc)/100/portTICK_RATE_MS, 0);
+        xTimerChangePeriod( led_clr_tmr, led_intv * led_dc / 100 / portTICK_RATE_MS, 0);
+        xTimerChangePeriod( led_set_tmr, led_intv * (100 - led_dc) / 100 / portTICK_RATE_MS, 0);
         led_set_cb(led_set_tmr);
     } else {
         led_set(led_md);
@@ -281,20 +283,22 @@ void ioe_init(void)
     ioe_set_mode(IOE_LED_RED, 2);
     ioe_set_mode(IOE_LED_GREEN, 2);
     ioe_set_mode(IOE_LED_BLUE, 2);
+
     oled_init();
     oled_cls();
+
     led_set_tmr = xTimerCreate("TimerLedSet", 100/portTICK_RATE_MS, false, NULL, led_set_cb );
     led_clr_tmr = xTimerCreate("TimerledClr", 100/portTICK_RATE_MS, false, NULL, led_clear_cb );
 }
 
 static void write_cmd(uint8_t cmd)
 {
-    i2c_esp32_write(SSD1306_ADDR, 0x00, cmd); //dispaly off
+    i2c_esp32_write(SSD1306_ADDR, 0x00, cmd);
 }
 
 static void write_data(uint8_t data)
 {
-    i2c_esp32_write(SSD1306_ADDR, 0x40, data); //dispaly off
+    i2c_esp32_write(SSD1306_ADDR, 0x40, data);
 }
 
 void oled_init()
@@ -397,7 +401,7 @@ void oled_show_str(uint8_t x, uint8_t y, char ch[], uint8_t text_size)
             while(ch[j] != '\0') {
                 if(x > 120) {
                     x = 0;
-                    y++;
+                    y += 2;
                 }
 
                 c = ch[j] - 32;
@@ -405,7 +409,7 @@ void oled_show_str(uint8_t x, uint8_t y, char ch[], uint8_t text_size)
                 for(i=0; i<8; i++)
                     write_data(F8X16[c * 16 + i]);
 
-                oled_set_pos(x,y+1);
+                oled_set_pos(x, y+1);
                 for(i=0; i<8; i++)
                     write_data(F8X16[c * 16 + i + 8]);
                 x += 8;
