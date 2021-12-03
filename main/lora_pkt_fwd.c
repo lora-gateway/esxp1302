@@ -157,6 +157,7 @@ static EventGroupHandle_t s_wifi_event_group;
 uint8_t wifi_ssid[32];
 uint8_t wifi_pswd[64];
 uint8_t udp_host[32];
+char self_ip[16] = "(unknown)";
 char udp_msg[64] = "Message from SX1302 ESP32 PKT-FWD";
 uint32_t udp_port;
 
@@ -1590,9 +1591,21 @@ int pkt_fwd_main(void)
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
     oled_init();
     oled_cls();
-    oled_show_str(0, 0, "OLED display test", 1);
-    oled_show_str(0, 1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", 2);
-    //sprintf(oled_display_str_buf, "AP : %s",config.ap.ssid);
+    oled_show_str(0, 0, " ESXP32 GATEWAY", 2);
+
+    // we prepare info more than a row can display (max=22)
+    // generally, the characters go to next line will be overwrote.
+    char out_info[48];
+
+    // display gateway's own IP
+    sprintf(out_info, "IP=%s", (char *)self_ip);
+    oled_show_str(0, 3, out_info, 1);
+
+    // display Wi-Fi SSID and NS IP and port
+    sprintf(out_info, "WiFi=%s", (char *)wifi_ssid);
+    oled_show_str(0, 4, out_info, 1);
+    sprintf(out_info, "NS=%s:%d", (char *)udp_host, udp_port);
+    oled_show_str(0, 5, out_info, 1);
 
 #if 0
     /* spawn threads to manage upstream and downstream */
@@ -3480,6 +3493,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        sprintf(self_ip, "%d.%d.%d.%d", IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
