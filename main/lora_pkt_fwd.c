@@ -78,6 +78,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "global_json.h"
 #include "driver/gpio.h"
 
+#include "led_indication.h"
+
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
 #define STRINGIFY(x)    #x
@@ -150,9 +152,6 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_FAIL_BIT      BIT1
 
 #define BLINK_GPIO      2
-#define LED_BLUE_GPIO   33
-#define LED_GREEN_GPIO  26
-#define LED_RED_GPIO    27
 
 uint8_t wifi_ssid[32];
 uint8_t wifi_pswd[64];
@@ -289,6 +288,7 @@ static uint32_t nb_pkt_received_ref[16];
 
 TaskHandle_t pJit;
 TaskHandle_t pThreadUp;
+TaskHandle_t pLed;
 
 static void usage(void);
 
@@ -1501,6 +1501,7 @@ int pkt_fwd_main(void)
             ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
             break;
         } else {
+            vBackhaulFlash( 10 );
             rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
             ESP_LOGI(TAG, "Received %d bytes from %s:", len, udp_host);
             ESP_LOGI(TAG, "%s", rx_buffer);
@@ -1577,6 +1578,12 @@ int pkt_fwd_main(void)
         printf( "Failed to spawn thread_jit\n");
     } else {
         printf( "Thread_jit spawned\n" );
+    }
+
+    if( xTaskCreatePinnedToCore(((TaskFunction_t) vDaemonLedIndication), "led_flash", 4096, (void *)pLed, 1, NULL, tskNO_AFFINITY) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
+        printf( "Failed to spawn led_flash\n");
+    } else {
+        printf( "led_flash spawned\n" );
     }
 
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
@@ -1914,8 +1921,8 @@ void thread_up(void)
             vTaskDelay(FETCH_SLEEP_MS / portTICK_PERIOD_MS);
             continue;
         }
-
-        gpio_set_level(LED_BLUE_GPIO, 0);
+        if (nb_pkt > 0)
+            vUplinkFlash(10);
 
         /* get a copy of GPS time reference (avoid 1 mutex per packet) */
         if ((nb_pkt > 0) && (gps_enabled == true)) {
@@ -2361,12 +2368,11 @@ void thread_up(void)
             } else {
                 MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
                 meas_up_ack_rcv += 1;
+                vBackhaulFlash( 10 );
                 break;
             }
         }
         xSemaphoreGive(mx_meas_up);
-
-        gpio_set_level(LED_BLUE_GPIO, 1);
     }
     MSG("\nINFO: End of upstream thread\n");
 }
@@ -2736,15 +2742,15 @@ void thread_down(void)
                 continue;
             }
 
+            /* program coming here means a datagram received */
+            vBackhaulFlash( 10 );
+
             /* if the datagram does not respect protocol, just ignore it */
             if ((msg_len < 4) || (buff_down[0] != PROTOCOL_VERSION) || ((buff_down[3] != PKT_PULL_RESP) && (buff_down[3] != PKT_PULL_ACK))) {
                 MSG("WARNING: [down] ignoring invalid packet len=%d, protocol_version=%d, id=%d\n",
                         msg_len, buff_down[0], buff_down[3]);
                 continue;
             }
-
-
-            //gpio_set_level( LED_GREEN_GPIO, 0 );   // On to indicate downlink
 
             /* if the datagram is an ACK, check token */
             if (buff_down[3] == PKT_PULL_ACK) {
@@ -3037,8 +3043,6 @@ void thread_down(void)
             /* free the JSON parse tree from memory */
             json_value_free(root_val);
 
-            gpio_set_level( LED_GREEN_GPIO, 0 );   // Off to indicate downlink finish
-
             /* select TX mode */
             if (sent_immediate) {
                 txpkt.tx_mode = IMMEDIATE;
@@ -3094,8 +3098,6 @@ void thread_down(void)
 
             /* Send acknoledge datagram to server */
             send_tx_ack(buff_down[1], buff_down[2], jit_result, warning_value);
-
-            gpio_set_level( LED_GREEN_GPIO, 1 );   // Off to indicate downlink finish
         }
     }
     MSG("\nINFO: End of downstream thread\n");
@@ -3200,6 +3202,7 @@ void thread_jit(void)
                             meas_nb_tx_ok += 1;
                             xSemaphoreGive(mx_meas_dw);
                             MSG_DEBUG(DEBUG_PKT_FWD, "lgw_send done on rf_chain %d: count_us=%u\n", i, pkt.count_us);
+                            vDownlinkFlash( 10 );
                         }
                     } else {
                         MSG("ERROR: jit_dequeue failed on rf_chain %d with %d\n", i, jit_result);
@@ -3579,6 +3582,7 @@ static void udp_client_task(void *pvParameters)
             ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
             break;
         } else {
+            vBackhaulFlash( 10 );
             rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
             ESP_LOGI(TAG, "Received %d bytes from %s:", len, udp_host);
             ESP_LOGI(TAG, "%s", rx_buffer);

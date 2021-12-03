@@ -16,6 +16,7 @@ idf_component_register(SRCS "main.c"
                     "loragw_sx1302.c"
                     "loragw_sx1302_rx.c"
                     "loragw_sx1302_timestamp.c"
+		    "led_indication.c"
                     "parson.c"
                     "tinymt32.c"
                     INCLUDE_DIRS "")
