@@ -340,7 +340,7 @@ void oled_set_pos(uint8_t x, uint8_t y) //set the start position
 {
     write_cmd(0xb0 + y);
     write_cmd(((x & 0xf0) >> 4) | 0x10);
-    write_cmd((x & 0x0f) | 0x01);
+    write_cmd((x & 0x0f) | 0x00);
 }
 
 void oled_fill(uint8_t fill_Data)//fill the screen
@@ -383,7 +383,7 @@ void oled_show_str(uint8_t x, uint8_t y, char ch[], uint8_t text_size)
     switch(text_size) {
         case 1:
             while(ch[j] != '\0') {
-                if(x > 126) {
+                if(x > (128 - 6)) {
                     x = 0;
                     y++;
                 }
@@ -399,7 +399,7 @@ void oled_show_str(uint8_t x, uint8_t y, char ch[], uint8_t text_size)
 
         case 2:
             while(ch[j] != '\0') {
-                if(x > 120) {
+                if(x > (128 - 8)) {
                     x = 0;
                     y += 2;
                 }
