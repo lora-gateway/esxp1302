@@ -273,6 +273,7 @@ int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr
     CHECK_NULL(uart_ptr);
     *uart_ptr = uart_num;
 
+#if 0
     /* manage the different GPS modules families */
     if (gps_family == NULL) {
         DEBUG_MSG("WARNING: this version of GPS module may not be supported\n");
@@ -284,6 +285,7 @@ int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr
         /* see lgw_parse_ubx() function for details */
         DEBUG_MSG("WARNING: this version of GPS module may not be supported\n");
     }
+#endif
 
     /* manage the target bitrate */
     if (target_brate != 0) {
@@ -295,16 +297,18 @@ int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr
     uart_param_config(uart_num, &uart_config);
 
     // TODO: something wrong here; needs more check
-    err = uart_set_pin(uart_num, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
+    err = uart_set_pin(uart_num, GPS_UART_TXD, GPS_UART_RXD, GPS_UART_RTS, GPS_UART_CTS);
     if(err != ESP_OK)
         return LGW_GPS_ERROR;
 
+#if 0
     /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
     /* This is a binary message, serial port has to be properly configured to handle this */
     ssize_t num_written = uart_write_bytes(uart_num, (const char *)ubx_cmd_timegps, UBX_MSG_NAVTIMEGPS_LEN);
     if (num_written != UBX_MSG_NAVTIMEGPS_LEN) {
         DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
     }
+#endif
 
     /* get timezone info */
     tzset();

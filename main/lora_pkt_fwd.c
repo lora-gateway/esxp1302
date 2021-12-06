@@ -1404,20 +1404,20 @@ int pkt_fwd_main(void)
         MSG("INFO: no debug configuration\n");
     }
 
-#if 0   // TODO
+#if 1   // TODO
     /* Start GPS a.s.a.p., to allow it to lock */
-    if (gps_tty_path[0] != '\0') { /* do not try to open GPS device if no path set */
-        i = lgw_gps_enable("ubx7", 0, &gps_tty_fd); /* HAL only supports u-blox 7 for now */
+    //if (gps_tty_path[0] != '\0') { /* do not try to open GPS device if no path set */
+        i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); /* HAL only supports atgm336h or u-blox 7 for now */
         if (i != LGW_GPS_SUCCESS) {
             printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
             gps_enabled = false;
             gps_ref_valid = false;
         } else {
             printf("INFO: [main] TTY port %s open for GPS synchronization\n", gps_tty_path);
-            gps_enabled = true;
-            gps_ref_valid = false;
+            //gps_enabled = true;
+            //gps_ref_valid = false;
         }
-    }
+    //}
 #endif
 
     /* get timezone info */
@@ -1661,6 +1661,16 @@ int pkt_fwd_main(void)
             // we use "Z" to replace the "GMT" to shorten the display
             strftime(stat_timestamp, sizeof stat_timestamp, "%F %T Z", gmtime(&t));
             oled_show_str(0, 6, stat_timestamp, 1);
+
+            // Read data from GPS UART.
+            uint8_t data[1024];
+            int length, min;
+
+            ESP_ERROR_CHECK(uart_get_buffered_data_len(gps_tty_fd, (size_t *)&length));
+            min = (length < 1024) ? length : 1024;
+            length = uart_read_bytes(gps_tty_fd, data, min, 100);
+            data[min] = '\0';
+            printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
         }
         strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
 
