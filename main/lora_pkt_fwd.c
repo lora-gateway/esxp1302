@@ -1658,9 +1658,11 @@ int pkt_fwd_main(void)
 
             /* get timestamp for statistics */
             t = time(NULL);
-            strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
+            // we use "Z" to replace the "GMT" to shorten the display
+            strftime(stat_timestamp, sizeof stat_timestamp, "%F %T Z", gmtime(&t));
             oled_show_str(0, 6, stat_timestamp, 1);
         }
+        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
 
         /* access upstream statistics, copy and reset them */
         xSemaphoreTake(mx_meas_up, portMAX_DELAY);
@@ -1811,6 +1813,9 @@ int pkt_fwd_main(void)
             printf("### Concentrator temperature unknown ###\n");
         } else {
             printf("### Concentrator temperature: %.0f C ###\n", temperature);
+
+            sprintf(out_info, "Temp=%.1fC  GPS=(N/A)", temperature);
+            oled_show_str(0, 7, out_info, 1);
         }
         printf("##### END #####\n");
 
