@@ -296,7 +296,6 @@ int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr
     uart_driver_install(uart_num, UART_BUF_SIZE, 0, 0, NULL, 0);
     uart_param_config(uart_num, &uart_config);
 
-    // TODO: something wrong here; needs more check
     err = uart_set_pin(uart_num, GPS_UART_TXD, GPS_UART_RXD, GPS_UART_RTS, GPS_UART_CTS);
     if(err != ESP_OK)
         return LGW_GPS_ERROR;

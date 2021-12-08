@@ -78,6 +78,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "global_json.h"
 #include "driver/gpio.h"
 
+#include "http_server.h"
 #include "led_indication.h"
 #include "ioe.h"
 
@@ -3667,7 +3668,8 @@ static void pkt_fwd_task(void *pvParameters)
 
 void test_network_connection(void)
 {
-    TaskHandle_t pPktFwd;
+    TaskHandle_t pkt_fwd_handle;
+
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -3681,8 +3683,9 @@ void test_network_connection(void)
 
     // TODO: deal with Wifi broken
     //xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
-    xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pPktFwd, 0);
-    printf( "pkt_fwd_task handle: %p\n", pPktFwd );
+    xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
+    xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
+    printf( "pkt_fwd_task handle: %p\n", pkt_fwd_handle );
     //pkt_fwd_task();
 }
 

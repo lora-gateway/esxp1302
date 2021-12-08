@@ -1,6 +1,7 @@
 idf_component_register(SRCS "main.c"
                     "base64.c"
                     "ioe.c"
+                    "http_server.c"
                     "jitqueue.c"
                     "loragw_aux.c"
                     "loragw_cal.c"
