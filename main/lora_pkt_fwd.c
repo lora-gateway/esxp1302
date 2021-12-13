@@ -3792,7 +3792,7 @@ static void register_config(void)
 void app_main(void)
 {
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    repl_config.task_stack_size = 4096 * 8;
+    repl_config.task_stack_size = 4096 * 2;
     repl_config.prompt = "pkt-fwd>";
 
     gpio_pad_select_gpio(BLINK_GPIO);
