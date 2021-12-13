@@ -1547,6 +1547,12 @@ int pkt_fwd_main(void)
     }
 #endif
 
+    if( xTaskCreatePinnedToCore(((TaskFunction_t) vDaemonLedIndication), "led_flash", 4096, (void *)pLed, 1, NULL, tskNO_AFFINITY) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
+        printf( "Failed to spawn led_flash\n");
+    } else {
+        printf( "led_flash spawned\n" );
+    }
+
     /* JIT queue initialization */
     jit_queue_init(&jit_queue[0]);
     jit_queue_init(&jit_queue[1]);
@@ -1583,12 +1589,6 @@ int pkt_fwd_main(void)
         printf( "Failed to spawn thread_jit\n");
     } else {
         printf( "Thread_jit spawned\n" );
-    }
-
-    if( xTaskCreatePinnedToCore(((TaskFunction_t) vDaemonLedIndication), "led_flash", 4096, (void *)pLed, 1, NULL, tskNO_AFFINITY) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
-        printf( "Failed to spawn led_flash\n");
-    } else {
-        printf( "led_flash spawned\n" );
     }
 
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
