@@ -11,6 +11,7 @@
 #include <esp_http_server.h>
 
 #include "http_server.h"
+#include "webpage.h"
 
 
 static const char *TAG = "esp32 web server";
@@ -130,7 +131,7 @@ static esp_err_t gw_config_handler(httpd_req_t *req)
     }
 
     /* Send response with custom headers and body */
-    const char* resp_str = (const char *) "Hello ESXP1302 Gateway";
+    const char *resp_str = webpage_str;
     httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
 
     return ESP_OK;

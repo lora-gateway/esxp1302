@@ -15,6 +15,9 @@ bootloader="0x1000 $pth/build/bootloader/bootloader.bin"
 app="0x10000 $pth/build/ESXP1302-Pkt-Fwd.bin"
 part="0x8000 $pth/build/partition_table/partition-table.bin"
 
+web_file=main/webpage.html
+web_hd_name=main/webpage.h
+
 hd_name=main/global_json.h
 json_file=main/conf/global_conf.cn490.json
 
@@ -24,6 +27,9 @@ if [ "$#" -eq 0 -o "$1" = "-h" -o "$1" = "--help" ]; then
 fi
 
 if [ "$1" = "make" ]; then
+	# prepare the webpage by dumping it to a string
+	scripts/dump_html.py $web_file > $web_hd_name
+
 	# prepare the C array comes from global_conf.json
 	echo 'static uint8_t global_conf[] = {' > $hd_name
 	scripts/json_to_hex_array.py $json_file >> $hd_name
