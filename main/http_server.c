@@ -101,13 +101,9 @@ static esp_err_t check_basic_auth(httpd_req_t *req)
     return ESP_OK;
 }
 
-static esp_err_t gw_config_handler(httpd_req_t *req)
+static esp_err_t handle_basic_auth(httpd_req_t *req)
 {
-    char*  buf;
-    size_t buf_len;
-    esp_err_t err;
-
-    err = check_basic_auth(req);
+    esp_err_t err = check_basic_auth(req);
     if(err == ESP_FAIL){
         ESP_LOGE(TAG, "No auth header received");
         httpd_resp_set_status(req, HTTPD_401);
@@ -115,8 +111,20 @@ static esp_err_t gw_config_handler(httpd_req_t *req)
         httpd_resp_set_hdr(req, "Connection", "keep-alive");
         httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"\"");
         httpd_resp_send(req, NULL, 0);
-        return ESP_OK;
+        return ESP_FAIL;
     }
+    return ESP_OK;
+}
+
+static esp_err_t gw_config_handler(httpd_req_t *req)
+{
+    char*  buf;
+    size_t buf_len;
+    esp_err_t err;
+
+    err = handle_basic_auth(req);
+    if(err == ESP_FAIL)
+        return err;
 
     /* Get header value string length and allocate memory for length + 1,
      * extra byte for null termination */
@@ -137,11 +145,68 @@ static esp_err_t gw_config_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t gw_response_handler(httpd_req_t *req)
+{
+    char buf[256];
+
+    esp_err_t err = handle_basic_auth(req);
+    if(err == ESP_FAIL)
+        return err;
+
+    size_t recv_size = MIN(req->content_len, sizeof(buf)-1);
+    int ret = httpd_req_recv(req, buf, recv_size);
+    if (ret <= 0) {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
+    buf[ret] = '\0';
+    ESP_LOGI(TAG, "Found Data: %s", buf);
+
+    /* Send response with custom headers and body */
+    const char *resp_str = (const char *) req->user_ctx;
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
+
+static esp_err_t gw_reboot_handler(httpd_req_t *req)
+{
+    esp_err_t err = handle_basic_auth(req);
+    if(err == ESP_FAIL)
+        return err;
+
+    ESP_LOGW(TAG, "Reboot required");
+
+    /* Send response with custom headers and body */
+    const char *resp_str = (const char *) req->user_ctx;
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
+
 static const httpd_uri_t gw_config = {
     .uri       = "/",
     .method    = HTTP_GET,
     .handler   = gw_config_handler,
     .user_ctx  = "Hello ESXP1302 Gateway!"
+};
+
+// response
+static const httpd_uri_t resp_config = {
+    .uri       = "/resp",
+    .method    = HTTP_POST,
+    .handler   = gw_response_handler,
+    .user_ctx  = "Response"
+};
+
+// reboot
+static const httpd_uri_t reboot_config = {
+    .uri       = "/reboot",
+    .method    = HTTP_POST,
+    .handler   = gw_reboot_handler,
+    .user_ctx  = "Reboot"
 };
 
 static httpd_handle_t start_web_server(void)
@@ -159,6 +224,8 @@ static httpd_handle_t start_web_server(void)
         web_auth_info.password = web_password;
 
         httpd_register_uri_handler(server, &gw_config);
+        httpd_register_uri_handler(server, &resp_config);
+        httpd_register_uri_handler(server, &reboot_config);
         return server;
     }
 
