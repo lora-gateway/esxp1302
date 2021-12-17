@@ -183,6 +183,8 @@ static esp_err_t gw_reboot_handler(httpd_req_t *req)
     const char *resp_str = (const char *) req->user_ctx;
     httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
 
+    esp_restart();
+
     return ESP_OK;
 }
 
@@ -206,7 +208,7 @@ static const httpd_uri_t reboot_config = {
     .uri       = "/reboot",
     .method    = HTTP_POST,
     .handler   = gw_reboot_handler,
-    .user_ctx  = "Reboot"
+    .user_ctx  = "ESP32 is rebooting"
 };
 
 static httpd_handle_t start_web_server(void)
