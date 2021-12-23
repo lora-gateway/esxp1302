@@ -7,7 +7,7 @@
 			form {
 			  /* Center the form on the page */
 			  margin: 0 auto;
-			  width: 450px;
+			  width: 480px;
 			  /* Form outline */
 			  padding: 1em;
 			  border: 1px solid #CCC;
@@ -18,7 +18,7 @@
 			label {
 			  /* Uniform size & alignment */
 			  display: inline-block;
-			  width: 90px;
+			  width: 140px;
 			  text-align: right;
 			}
 
@@ -37,11 +37,18 @@
 	<body>
 		<H1>Configure Gateway</H1>
 		<form action="/resp" method="post">
-			<label for="ns_ip">NS IP:</label>
-			<input type="text" id="ip" name="ns_ip"></br>
+			<label for="wifi_ssid">Wi-Fi SSID:</label>
+			<input type="text" id="ssid" name="wifi_ssid"></br>
+
+			<label for="wifi_pswd">Wi-Fi Password:</label>
+			<input type="text" id="pswd" name="wifi_pswd"></br>
+
+			<label for="ns_host">NS Host:</label>
+			<input type="text" id="ip" name="ns_host"></br>
 
 			<label for="ns_port">NS Port:</label>
 			<input type="text" id="port" name="ns_port"></br></br>
+
 			<button type="submit" name="apply">Apply</button></br>
 		</form>
 		<form action="/reboot" method="post" style="text-align: center">

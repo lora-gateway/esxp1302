@@ -17,7 +17,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 
 typedef enum {
-    WIFI_USERNAME = 0,
+    WIFI_SSID  = 0,
     WIFI_PASSWORD,
     NS_HOST,
     NS_PORT,

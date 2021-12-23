@@ -15,7 +15,7 @@ typedef struct {
 } config_s;
 
 config_s config[CONFIG_NUM] = {
-    { WIFI_USERNAME, "wifi_name", NULL, 0 },
+    { WIFI_SSID, "wifi_ssid", NULL, 0 },
     { WIFI_PASSWORD, "wifi_pswd", NULL, 0 },
     { NS_HOST, "ns_host", NULL, 0 },
     { NS_PORT, "ns_port", NULL, 0 },
@@ -44,6 +44,8 @@ int update_config(char *str, int len)
     if(tag < CONFIG_NUM){
         name_len = strlen(config[tag].name);
         n = len - name_len; // the space for '=' is saved used for '\0'
+        if(n == 1) // no value, so return directly without overwrite the old value
+            return 0;
         p = malloc(n);
         if(!p)
             return -1;
@@ -55,6 +57,7 @@ int update_config(char *str, int len)
         config[tag].val = p;
         config[tag].len = n - 1;
     }
+    return 0;
 }
 
 void dump_config(void)
@@ -139,7 +142,7 @@ void extract_data_items(char *str)
 /*
 int main(int argc, char *argv[])
 {
-    char buf[128] = "ns_host=192.168.1.232&wifi_name=mywifi&wifi_pswd=mypswd&ns_port=1680&apply=";
+    char buf[128] = "ns_host=192.168.1.232&wifi_ssid=mywifi&wifi_pswd=mypswd&ns_port=1680&apply=";
 
     extract_data_items(buf);
     dump_config();
