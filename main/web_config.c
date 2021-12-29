@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <web_config.h>
 
-/*
- * Chunis Deng (chunchengfh@gmail.com)
- */
+#include "web_config.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+
+
+bool nvs_ready = false;
+static const char *TAG = "esp32 web config";
 
 typedef struct {
     tag_e tag;
@@ -34,6 +37,25 @@ tag_e name2tag(char *name)
     }
     return CONFIG_ERR;
 }
+
+esp_err_t init_config_storage(void)
+{
+    if(nvs_ready)  // already ready; no need to init again
+        return ESP_OK;
+
+    // Initialize NVS
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        // NVS partition was truncated and needs to be erased; retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    if(err == ESP_OK)
+        nvs_ready = true;
+
+    return err;
+}
+
 
 int update_config(char *str, int len)
 {
@@ -68,57 +90,78 @@ void dump_config(void)
     }
 }
 
-void read_config(char *buf, int buf_len)
+esp_err_t read_config(void)
 {
-    int index = 0;
-    int len;
+    nvs_handle_t my_handle;
+    size_t len;
     char *p = NULL;
-    tag_e tag;
 
-    while(1) {
-        tag = buf[index++];
-        if(tag == CONFIG_END)
-            break;
-
-        if(tag < CONFIG_NUM){
-            len = buf[index++];
-            p = malloc(len + 1);
-            if(!p) {
-                printf("Warning: malloc() for tag = %d failed\n", tag);
-                continue;  // just ignore if failed
-            }
-
-            strncpy(p, buf + index, len);
-            p[len + 1] = '\0';
-            if(config[tag].val)  // should not needed
-                free(config[tag].val);
-            config[tag].val = p;
-            config[tag].len = len;
-            index += len;
-
-            if(index >= buf_len)
-                break;
-        }
+    if(nvs_ready != true){
+        ESP_LOGW(TAG, "NVS storage not available");
+        return ESP_FAIL;
     }
+
+    esp_err_t err = nvs_open("nvs", NVS_READONLY, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "opening NVS handle failed: %s!", esp_err_to_name(err));
+        ESP_LOGW(TAG, "Config not updated");
+        return ESP_FAIL;
+    }
+
+    for(int i = 0; i < CONFIG_NUM; i++){
+        // get length and malloc space
+        err = nvs_get_str(my_handle, config[i].name, NULL, &len);
+        if(err != ESP_OK){
+            printf("Error (%s) reading %s!\n", esp_err_to_name(err), config[i].name);
+        }
+        p = malloc(len);
+        if(!p) {
+            printf("Warning: malloc() for %u bytes failed\n", len);
+            continue;  // just ignore if failed
+        }
+
+        // get value and save to config list
+        err = nvs_get_str(my_handle, config[i].name, p, &len);
+        if(err != ESP_OK){
+            printf("Error (%s) reading %s!\n", esp_err_to_name(err), config[i].name);
+        }
+        if(config[i].val)  // should not needed
+            free(config[i].val);
+        config[i].val = p;
+        config[i].len = len - 1;
+    }
+    return ESP_OK;
 }
 
-char conf_buf[128];
 int save_config(void)
 {
-    int index = 0;
+    if(nvs_ready != true){
+        ESP_LOGW(TAG, "NVS storage not available");
+        return ESP_FAIL;
+    }
 
+    nvs_handle_t my_handle;
+    esp_err_t err = nvs_open("nvs", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "opening NVS handle failed: %s!", esp_err_to_name(err));
+        ESP_LOGW(TAG, "Config not updated");
+        return ESP_FAIL;
+    }
+
+    // Update config
     for(int i = 0; i < CONFIG_NUM; i++) {
         if(config[i].val != NULL){
-            conf_buf[index++] = config[i].tag;
-            conf_buf[index++] = config[i].len;
-            strncpy(conf_buf+index, config[i].val, config[i].len);
-            index += config[i].len;
+            err = nvs_set_str(my_handle, config[i].name, config[i].val);
+            printf("set %s: %s\n", config[i].name, (err != ESP_OK) ? "Failed!" : "Done");
         }
     }
-    conf_buf[index] = CONFIG_END;  // end of the config
-    printf("saved config length = %d\n", index);
 
-    return index;
+    // Commit config
+    printf("Save config to NVS... ");
+    err = nvs_commit(my_handle);
+    printf((err != ESP_OK) ? "Failed!\n" : "Done\n");
+    nvs_close(my_handle);
+    return ESP_OK;
 }
 
 void extract_data_items(char *str)

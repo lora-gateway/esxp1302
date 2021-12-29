@@ -21,4 +21,5 @@ idf_component_register(SRCS "main.c"
                     "led_indication.c"
                     "parson.c"
                     "tinymt32.c"
+                    "web_config.c"
                     INCLUDE_DIRS "")

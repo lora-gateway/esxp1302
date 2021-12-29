@@ -7,7 +7,7 @@
   (C)2019 Semtech
 
 Description:
-    LoRa concentrator HAL common auxiliary functions
+    Services for Http server
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */

@@ -12,6 +12,7 @@
 
 #include "http_server.h"
 #include "webpage.h"
+#include "web_config.h"
 
 
 static const char *TAG = "esp32 web server";
@@ -163,6 +164,9 @@ static esp_err_t gw_response_handler(httpd_req_t *req)
     }
     buf[ret] = '\0';
     ESP_LOGI(TAG, "Found Data: %s", buf);
+
+    extract_data_items(buf);
+    save_config();
 
     /* Send response with custom headers and body */
     const char *resp_str = (const char *) req->user_ctx;

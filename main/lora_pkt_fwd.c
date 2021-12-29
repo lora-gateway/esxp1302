@@ -81,6 +81,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "http_server.h"
 #include "led_indication.h"
 #include "ioe.h"
+#include "web_config.h"
 
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
@@ -1437,6 +1438,10 @@ int pkt_fwd_main(void)
     ESP_LOGI(TAG, "serv_port_down: %s", serv_port_down);
     ESP_LOGI(TAG, "udp_host: %s", udp_host);
     ESP_LOGI(TAG, "udp_port: %d", udp_port);
+
+    // check configs from nvs
+    read_config();
+    dump_config();
 
     // -------------------------------
     char rx_buffer[128];
@@ -3680,6 +3685,9 @@ void test_network_connection(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
+
+    // init nvs storage
+    init_config_storage();
 
     // TODO: deal with Wifi broken
     //xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
