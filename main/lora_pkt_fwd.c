@@ -162,7 +162,7 @@ char wifi_ssid[32];
 char wifi_pswd[64];
 char udp_host[32];
 char self_ip[16] = "(unknown)";
-char gwid[32];
+char gw_id[32];
 uint32_t udp_port;
 uint32_t time_count = 0;  // used for display time on screen
 
@@ -1429,16 +1429,24 @@ int pkt_fwd_main(void)
     /* sanity check on configuration variables */
     // TODO
 
-    /* process some of the configuration variables */
-    net_mac_h = htonl((uint32_t)(0xFFFFFFFF & (lgwm>>32)));
-    net_mac_l = htonl((uint32_t)(0xFFFFFFFF &  lgwm  ));
-
     // some debug to see if everything goes all right
     ESP_LOGI(TAG, "serv_addr: %s", serv_addr);
     ESP_LOGI(TAG, "serv_port_up: %s", serv_port_up);
     ESP_LOGI(TAG, "serv_port_down: %s", serv_port_down);
     ESP_LOGI(TAG, "udp_host: %s", udp_host);
     ESP_LOGI(TAG, "udp_port: %d", udp_port);
+    ESP_LOGI(TAG, "gw_id: %s", gw_id);
+
+    unsigned long long ull = 0;
+    if (gw_id[0] != '\0') {
+        sscanf(gw_id, "%llx", &ull);
+        lgwm = ull;
+        MSG("INFO: gateway MAC address is configured to %016llX\n", ull);
+    }
+
+    /* process some of the configuration variables */
+    net_mac_h = htonl((uint32_t)(0xFFFFFFFF & (lgwm>>32)));
+    net_mac_l = htonl((uint32_t)(0xFFFFFFFF &  lgwm  ));
 
     // -------------------------------
     char rx_buffer[128];
@@ -3611,6 +3619,9 @@ void test_network_connection(void)
             ESP_LOGI(TAG, "Convert port(%s) failed", config[NS_PORT].val);
     }
 
+    if(gw_id[0] == '\0' && config[GW_ID].len == 16)
+        strncpy(gw_id, config[GW_ID].val, config[GW_ID].len);
+
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
 
@@ -3628,7 +3639,7 @@ static struct {
     struct arg_str *wifi_pswd;
     struct arg_str *udp_host;
     struct arg_int *udp_port;
-    struct arg_str *gwid;
+    struct arg_str *gw_id;
     struct arg_end *end;
 } net_conf_args;
 
@@ -3690,9 +3701,9 @@ static int do_net_config_cmd(int argc, char **argv)
     }
 
     // process '--gwid' for modulation type
-    if (net_conf_args.gwid->count > 0) {
-        sval = net_conf_args.gwid->sval[0];
-        sprintf(gwid, "%s", (char *)sval);
+    if (net_conf_args.gw_id->count > 0) {
+        sval = net_conf_args.gw_id->sval[0];
+        sprintf(gw_id, "%s", (char *)sval);
     }
 
     test_network_connection();
@@ -3708,7 +3719,7 @@ static void register_config(void)
     net_conf_args.wifi_pswd  = arg_str0("p", NULL, "<wifi password>", "Wifi Password");
     net_conf_args.udp_host   = arg_str0(NULL, "host", "<UDP Host>", "UDP Host");
     net_conf_args.udp_port   = arg_int0(NULL, "port", "<UDP Port>",  "UDP Port");
-    net_conf_args.gwid       = arg_str0(NULL, "gwid", "<gateway id>", "Gateway Id");
+    net_conf_args.gw_id      = arg_str0(NULL, "gwid", "<gateway id>", "Gateway Id");
     net_conf_args.end = arg_end(2);
 
     const esp_console_cmd_t hal_conf_cmd = {

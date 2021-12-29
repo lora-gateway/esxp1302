@@ -37,17 +37,23 @@
 	<body>
 		<H1>Configure Gateway</H1>
 		<form action="/resp" method="post">
+                        <label for="usage" style="width: 480px; text-align: center">
+                            Leave it empty if you want the old value not be changed</label></br></br>
+
 			<label for="wifi_ssid">Wi-Fi SSID:</label>
 			<input type="text" id="ssid" name="wifi_ssid"></br>
 
 			<label for="wifi_pswd">Wi-Fi Password:</label>
-			<input type="text" id="pswd" name="wifi_pswd"></br>
+                        <input type="text" id="pswd" name="wifi_pswd"></br></br>
 
 			<label for="ns_host">NS Host:</label>
 			<input type="text" id="ip" name="ns_host"></br>
 
 			<label for="ns_port">NS Port:</label>
 			<input type="text" id="port" name="ns_port"></br></br>
+
+			<label for="gw_id">Gateway ID:</label>
+			<input type="text" id="gw_id" name="gw_id"></br></br>
 
 			<button type="submit" name="apply">Apply</button></br>
 		</form>
