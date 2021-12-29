@@ -73,9 +73,9 @@ int update_config(char *str, int len)
             return -1;
 
         strncpy(p, str + name_len + 1, n - 1);
-        p[n] = '\0';
         if(config[tag].val)
             free(config[tag].val);
+        p[n-1] = '\0';
         config[tag].val = p;
         config[tag].len = n - 1;
     }
@@ -113,6 +113,8 @@ esp_err_t read_config(void)
         err = nvs_get_str(my_handle, config[i].name, NULL, &len);
         if(err != ESP_OK){
             printf("Error (%s) reading %s!\n", esp_err_to_name(err), config[i].name);
+            config[i].val = NULL;
+            config[i].len = 0;
         }
         p = malloc(len);
         if(!p) {
@@ -127,9 +129,11 @@ esp_err_t read_config(void)
         }
         if(config[i].val)  // should not needed
             free(config[i].val);
+        p[len-1] = '\0';
         config[i].val = p;
         config[i].len = len - 1;
     }
+    nvs_close(my_handle);
     return ESP_OK;
 }
 
