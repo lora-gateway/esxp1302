@@ -26,6 +26,12 @@ typedef enum {
     CONFIG_ERR = 255
 } tag_e;
 
+typedef struct {
+    tag_e tag;
+    char name[16];
+    char *val;
+    int len;  // length of the string pointed by val
+} config_s;
 
 tag_e name2tag(char *name);
 esp_err_t init_config_storage(void);

@@ -10,12 +10,6 @@
 bool nvs_ready = false;
 static const char *TAG = "esp32 web config";
 
-typedef struct {
-    tag_e tag;
-    char name[16];
-    char *val;
-    int len;  // length of the string pointed by val
-} config_s;
 
 config_s config[CONFIG_NUM] = {
     { WIFI_SSID, "wifi_ssid", NULL, 0 },

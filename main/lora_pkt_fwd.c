@@ -157,9 +157,10 @@ static EventGroupHandle_t s_wifi_event_group;
 #define BLINK_GPIO      2
 #define TIME_REFRESH    5  // display the time on screen every 5s
 
-uint8_t wifi_ssid[32];
-uint8_t wifi_pswd[64];
-uint8_t udp_host[32];
+extern config_s config[CONFIG_NUM];
+char wifi_ssid[32];
+char wifi_pswd[64];
+char udp_host[32];
 char self_ip[16] = "(unknown)";
 char udp_msg[64] = "Message from SX1302 ESP32 PKT-FWD";
 uint32_t udp_port;
@@ -1438,10 +1439,6 @@ int pkt_fwd_main(void)
     ESP_LOGI(TAG, "serv_port_down: %s", serv_port_down);
     ESP_LOGI(TAG, "udp_host: %s", udp_host);
     ESP_LOGI(TAG, "udp_port: %d", udp_port);
-
-    // check configs from nvs
-    read_config();
-    dump_config();
 
     // -------------------------------
     char rx_buffer[128];
@@ -3683,11 +3680,31 @@ void test_network_connection(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();
-
     // init nvs storage
     init_config_storage();
+
+    // check configs from nvs
+    read_config();
+    dump_config();
+
+    // update arguments if not set from command line
+    if(wifi_ssid[0] == '\0' && config[WIFI_SSID].len < 32)
+        strncpy(wifi_ssid, config[WIFI_SSID].val, config[WIFI_SSID].len);
+
+    if(wifi_pswd[0] == '\0' && config[WIFI_PASSWORD].len < 64)
+        strncpy(wifi_pswd, config[WIFI_PASSWORD].val, config[WIFI_PASSWORD].len);
+
+    if(udp_host[0] == '\0' && config[NS_HOST].len < 32)
+        strncpy(udp_host, config[NS_HOST].val, config[NS_HOST].len);
+
+    if(udp_port == '\0' && config[NS_PORT].len < 32){
+        udp_port = atoi(config[NS_PORT].val);
+        if(udp_port == 0)
+            ESP_LOGI(TAG, "Convert port(%s) failed", config[NS_PORT].val);
+    }
+
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    wifi_init_sta();
 
     // TODO: deal with Wifi broken
     //xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
