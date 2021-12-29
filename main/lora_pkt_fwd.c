@@ -141,8 +141,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_BEACON_INFODESC     0
 
 
-// Imported the file test/test_network_connection.c
-
 #define EXAMPLE_ESP_MAXIMUM_RETRY  5
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -3571,7 +3569,6 @@ void wifi_init_sta(void)
 
 
 static void pkt_fwd_task(void *pvParameters)
-//static void pkt_fwd_task(void)
 {
     heap_caps_check_integrity_all( true );
     pkt_fwd_main();
@@ -3584,18 +3581,8 @@ static void pkt_fwd_task(void *pvParameters)
     }
 }
 
-void test_network_connection(void)
+void update_config_from_nvs(void)
 {
-    TaskHandle_t pkt_fwd_handle;
-
-    //Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-      ESP_ERROR_CHECK(nvs_flash_erase());
-      ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
     // init nvs storage
     init_config_storage();
 
@@ -3621,14 +3608,16 @@ void test_network_connection(void)
 
     if(gw_id[0] == '\0' && config[GW_ID].len == 16)
         strncpy(gw_id, config[GW_ID].val, config[GW_ID].len);
+}
+
+void start_wifi_and_pkt_fwd(void)
+{
+    update_config_from_nvs();
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();
+    wifi_init_sta();  // TODO: deal with Wifi broken
 
-    // TODO: deal with Wifi broken
-    xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
-    xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
-    printf( "pkt_fwd_task handle: %p\n", pkt_fwd_handle );
+    xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, NULL, 0);
     //pkt_fwd_task();
 }
 
@@ -3644,14 +3633,14 @@ static struct {
 } net_conf_args;
 
 void usage(void) {
-    printf("\n\n ---- test_network_connection ----\n");
+    printf("\n\n ---- pkt_fwd ----\n");
     printf("\nAvailable options:\n");
     printf(" -h                   print this help\n");
     printf(" -u <wifi ssid>       Wifi SSID\n");
     printf(" -p <wifi password>   Wifi Password\n");
     printf(" --host <UDP Host>    UDP Host\n");
     printf(" --port <UDP Port>    UDP Port\n");
-    printf(" -m <string>          UDP message for test\n");
+    printf(" --gwid <gateway id>  Gateway ID\n");
 }
 
 // Note: No Error Checking!
@@ -3706,7 +3695,8 @@ static int do_net_config_cmd(int argc, char **argv)
         sprintf(gw_id, "%s", (char *)sval);
     }
 
-    test_network_connection();
+    // TODO: stop wifi and pkt-fwd if necessary, then restart them
+    //start_wifi_and_pkt_fwd();
 
     return 0;
 }
@@ -3723,8 +3713,8 @@ static void register_config(void)
     net_conf_args.end = arg_end(2);
 
     const esp_console_cmd_t hal_conf_cmd = {
-        .command = "test_network_connection",
-        .help = "Test Wifi/UDP network connection",
+        .command = "pkt_fwd",
+        .help = "ESP32 packet forwarder based on sx1302_hal",
         .hint = NULL,
         .func = &do_net_config_cmd,
         .argtable = &net_conf_args
@@ -3734,9 +3724,12 @@ static void register_config(void)
 
 void app_main(void)
 {
+    start_wifi_and_pkt_fwd();
+    xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
+
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     repl_config.task_stack_size = 4096 * 2;
-    repl_config.prompt = "pkt-fwd>";
+    repl_config.prompt = "ESXP1302_GW>";
 
     gpio_pad_select_gpio(BLINK_GPIO);
     gpio_set_direction(BLINK_GPIO,GPIO_MODE_OUTPUT);
