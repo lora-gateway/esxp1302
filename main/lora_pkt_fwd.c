@@ -162,7 +162,7 @@ char wifi_ssid[32];
 char wifi_pswd[64];
 char udp_host[32];
 char self_ip[16] = "(unknown)";
-char udp_msg[64] = "Message from SX1302 ESP32 PKT-FWD";
+char gwid[32];
 uint32_t udp_port;
 uint32_t time_count = 0;  // used for display time on screen
 
@@ -1490,35 +1490,6 @@ int pkt_fwd_main(void)
     if (i != 0) {
         MSG("ERROR: [up] setsockopt returned %s\n", strerror(errno));
         exit(EXIT_FAILURE);
-    }
-
-    int count = 3;
-    while (--count > 0) {
-        err = sendto(sock_up, udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-        if (err < 0) {
-            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-            break;
-        }
-        ESP_LOGI(TAG, "Message sent");
-
-        socklen_t socklen = sizeof(source_addr);
-        len = recvfrom(sock_up, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
-
-        if (len < 0) {
-            ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
-            break;
-        } else {
-            vBackhaulFlash( 10 );
-            rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-            ESP_LOGI(TAG, "Received %d bytes from %s:", len, udp_host);
-            ESP_LOGI(TAG, "%s", rx_buffer);
-            if (strncmp(rx_buffer, "OK: ", 4) == 0) {
-                ESP_LOGI(TAG, "Received expected message, reconnecting");
-                break;
-            }
-        }
-
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
 
     /* Board reset */
@@ -3590,69 +3561,6 @@ void wifi_init_sta(void)
 }
 
 
-static void udp_client_task(void *pvParameters)
-{
-    char rx_buffer[128];
-    int addr_family = 0;
-    int ip_protocol = 0;
-    struct sockaddr_in dest_addr;
-    struct sockaddr_in source_addr;
-    int sock;
-    int len, err;
-
-    dest_addr.sin_addr.s_addr = inet_addr((char *)udp_host);
-    dest_addr.sin_family = AF_INET;
-    dest_addr.sin_port = htons(udp_port);
-    addr_family = AF_INET;
-    ip_protocol = IPPROTO_IP;
-
-    sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
-    if (sock < 0) {
-        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-        return;
-    }
-    ESP_LOGI(TAG, "Socket created, sending to %s:%d", udp_host, udp_port);
-
-    while (1) {
-        err = sendto(sock, udp_msg, strlen(udp_msg), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-        if (err < 0) {
-            ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-            break;
-        }
-        ESP_LOGI(TAG, "Message sent");
-
-        socklen_t socklen = sizeof(source_addr);
-        len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
-
-        if (len < 0) {
-            ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
-            break;
-        } else {
-            vBackhaulFlash( 10 );
-            rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-            ESP_LOGI(TAG, "Received %d bytes from %s:", len, udp_host);
-            ESP_LOGI(TAG, "%s", rx_buffer);
-            if (strncmp(rx_buffer, "OK: ", 4) == 0) {
-                ESP_LOGI(TAG, "Received expected message, reconnecting");
-                break;
-            }
-        }
-
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-    }
-
-    if (sock != -1) {
-        ESP_LOGE(TAG, "Shutting down socket and restarting...");
-        shutdown(sock, 0);
-        close(sock);
-    }
-    vTaskDelete(NULL);
-
-    while(true){
-        printf("end\n");
-        vTaskDelay(8000 / portTICK_PERIOD_MS);
-    }
-}
 
 static void pkt_fwd_task(void *pvParameters)
 //static void pkt_fwd_task(void)
@@ -3707,7 +3615,6 @@ void test_network_connection(void)
     wifi_init_sta();
 
     // TODO: deal with Wifi broken
-    //xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
     xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
     xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
     printf( "pkt_fwd_task handle: %p\n", pkt_fwd_handle );
@@ -3721,7 +3628,7 @@ static struct {
     struct arg_str *wifi_pswd;
     struct arg_str *udp_host;
     struct arg_int *udp_port;
-    struct arg_str *udp_msg;
+    struct arg_str *gwid;
     struct arg_end *end;
 } net_conf_args;
 
@@ -3782,10 +3689,10 @@ static int do_net_config_cmd(int argc, char **argv)
         udp_port = val;
     }
 
-    // process '-m' for modulation type
-    if (net_conf_args.udp_msg->count > 0) {
-        sval = net_conf_args.udp_msg->sval[0];
-        sprintf(udp_msg, "%s", (char *)sval);
+    // process '--gwid' for modulation type
+    if (net_conf_args.gwid->count > 0) {
+        sval = net_conf_args.gwid->sval[0];
+        sprintf(gwid, "%s", (char *)sval);
     }
 
     test_network_connection();
@@ -3801,7 +3708,7 @@ static void register_config(void)
     net_conf_args.wifi_pswd  = arg_str0("p", NULL, "<wifi password>", "Wifi Password");
     net_conf_args.udp_host   = arg_str0(NULL, "host", "<UDP Host>", "UDP Host");
     net_conf_args.udp_port   = arg_int0(NULL, "port", "<UDP Port>",  "UDP Port");
-    net_conf_args.udp_msg    = arg_str0("m", NULL, "<message>", "UDP message for test");
+    net_conf_args.gwid       = arg_str0(NULL, "gwid", "<gateway id>", "Gateway Id");
     net_conf_args.end = arg_end(2);
 
     const esp_console_cmd_t hal_conf_cmd = {
@@ -3830,11 +3737,6 @@ void app_main(void)
     // initialize console REPL environment
     esp_console_repl_t *repl = NULL;
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-
-#if CONFIG_EXAMPLE_STORE_HISTORY
-    //initialize_filesystem();
-    //repl_config.history_save_path = HISTORY_PATH;
-#endif
 
     // init console REPL environment
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
