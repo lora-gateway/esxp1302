@@ -156,6 +156,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define TIME_REFRESH    5  // display the time on screen every 5s
 
 extern config_s config[CONFIG_NUM];
+bool wifi_ready = false;
 char wifi_ssid[32];
 char wifi_pswd[64];
 char udp_host[32];
@@ -294,6 +295,7 @@ static uint32_t nb_pkt_received_ref[16];
 TaskHandle_t pJit;
 TaskHandle_t pThreadUp;
 TaskHandle_t pLed;
+TaskHandle_t pkt_fwd_handle;
 
 static void usage(void);
 
@@ -1303,10 +1305,6 @@ int pkt_fwd_main(void)
     int x;
     int l, m;
 
-    /* configuration file related */
-    //const char defaut_conf_fname[] = JSON_CONF_DEFAULT;
-    //const char *conf_fname = defaut_conf_fname; /* pointer to a string we won't touch */
-
     const char *conf_array = (char *)global_conf; // pointer to array defined in global_conf.h
 
     /* threads */
@@ -1405,21 +1403,18 @@ int pkt_fwd_main(void)
         MSG("INFO: no debug configuration\n");
     }
 
-#if 1   // TODO
+    // TODO
     /* Start GPS a.s.a.p., to allow it to lock */
-    //if (gps_tty_path[0] != '\0') { /* do not try to open GPS device if no path set */
-        i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); /* HAL only supports atgm336h or u-blox 7 for now */
-        if (i != LGW_GPS_SUCCESS) {
-            printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
-            gps_enabled = false;
-            gps_ref_valid = false;
-        } else {
-            printf("INFO: [main] TTY port %s open for GPS synchronization\n", gps_tty_path);
-            //gps_enabled = true;
-            //gps_ref_valid = false;
-        }
-    //}
-#endif
+    i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); /* HAL only supports atgm336h or u-blox 7 for now */
+    if (i != LGW_GPS_SUCCESS) {
+        printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
+        gps_enabled = false;
+        gps_ref_valid = false;
+    } else {
+        printf("INFO: [main] TTY port %s open for GPS synchronization\n", gps_tty_path);
+        //gps_enabled = true;
+        //gps_ref_valid = false;
+    }
 
     /* get timezone info */
     tzset();
@@ -1450,7 +1445,6 @@ int pkt_fwd_main(void)
     char rx_buffer[128];
     int addr_family = 0;
     int ip_protocol = 0;
-    //int sock;
     int len, err;
 
     addr_family = AF_INET;
@@ -1624,7 +1618,7 @@ int pkt_fwd_main(void)
     }
 #endif
 
-    /* main loop task : statistics collection */
+    /* main loop task: statistics collection */
     //while (!exit_sig && !quit_sig) {
     while ( 1 ) {
         esp_print_tasks();
@@ -1881,7 +1875,6 @@ void thread_up(void)
     struct tref local_ref; /* time reference used for UTC <-> timestamp conversion */
 
     /* data buffers */
-    //uint8_t buff_up[TX_BUFF_SIZE]; /* buffer to compose the upstream packet */
     int buff_index;
     uint8_t buff_ack[32]; /* buffer to receive acknowledges */
 
@@ -1918,7 +1911,7 @@ void thread_up(void)
     buff_up[3] = PKT_PUSH_DATA;
     *(uint32_t *)(buff_up + 4) = net_mac_h;
     *(uint32_t *)(buff_up + 8) = net_mac_l;
-    //esp_print_tasks();
+
     //while (!exit_sig && !quit_sig) {
     while ( 1 ) {
         //esp_print_tasks();
@@ -3552,11 +3545,11 @@ void wifi_init_sta(void)
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 wifi_ssid, wifi_pswd);
+        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", wifi_ssid, wifi_pswd);
+        wifi_ready = true;
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 wifi_ssid, wifi_pswd);
+        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s", wifi_ssid, wifi_pswd);
+        wifi_ready = false;
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
@@ -3617,8 +3610,7 @@ void start_wifi_and_pkt_fwd(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();  // TODO: deal with Wifi broken
 
-    xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, NULL, 0);
-    //pkt_fwd_task();
+    xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
 }
 
 
