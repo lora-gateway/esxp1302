@@ -160,6 +160,7 @@ bool wifi_ready = false;
 char wifi_ssid[32];
 char wifi_pswd[64];
 char udp_host[32];
+char udp_port_str[16];
 char self_ip[16] = "(unknown)";
 char gw_id[32];
 uint32_t udp_port;
@@ -3655,7 +3656,7 @@ static void pkt_fwd_task(void *pvParameters)
     }
 }
 
-void update_config_from_nvs(void)
+void read_config_from_nvs(void)
 {
     // init nvs storage
     init_config_storage();
@@ -3664,46 +3665,23 @@ void update_config_from_nvs(void)
     read_config();
     dump_config();
 
-    // update arguments if not set from command line
-    if(wifi_ssid[0] == '\0' && config[WIFI_SSID].len < 32)
+    if(config[WIFI_SSID].len < 32)
         strncpy(wifi_ssid, config[WIFI_SSID].val, config[WIFI_SSID].len);
 
-    if(wifi_pswd[0] == '\0' && config[WIFI_PASSWORD].len < 64)
+    if(config[WIFI_PASSWORD].len < 64)
         strncpy(wifi_pswd, config[WIFI_PASSWORD].val, config[WIFI_PASSWORD].len);
 
-    if(udp_host[0] == '\0' && config[NS_HOST].len < 32)
+    if(config[NS_HOST].len < 32)
         strncpy(udp_host, config[NS_HOST].val, config[NS_HOST].len);
 
-    if(udp_port == '\0' && config[NS_PORT].len < 32){
+    if(config[NS_PORT].len < 32){
         udp_port = atoi(config[NS_PORT].val);
         if(udp_port == 0)
             ESP_LOGI(TAG, "Convert port(%s) failed", config[NS_PORT].val);
     }
 
-    if(gw_id[0] == '\0' && config[GW_ID].len == 16)
+    if(config[GW_ID].len == 16)
         strncpy(gw_id, config[GW_ID].val, config[GW_ID].len);
-}
-
-#define SOFT_AP
-
-void start_wifi_and_pkt_fwd(void)
-{
-    update_config_from_nvs();
-
-#ifdef SOFT_AP
-    int reboot_delay_s = 60 * 10; // 10 minutes
-    reboot_flag = true;
-    start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
-
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_SOFT_AP");
-    wifi_init_soft_ap();
-
-#else
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();  // TODO: deal with Wifi broken
-
-    xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
-#endif
 }
 
 
@@ -3731,11 +3709,16 @@ void usage(void) {
 // Note: No Error Checking!
 // TODO: Should release the resources with arg_freetable().
 // Please provide right arguments, or take whatever consequences.
+// We don't bother to check and free config[xx].val because we'll reboot esp32 if >= 1 config is updated
 static int do_net_config_cmd(int argc, char **argv)
 {
     uint32_t val;
     const char *sval;
     int nerrors;
+    bool config_updated_config = false;
+
+    // cancel the reboot now that user inputs something on the command line
+    reboot_flag = false;
 
     nerrors = arg_parse(argc, argv, (void **)&net_conf_args);
 
@@ -3754,34 +3737,54 @@ static int do_net_config_cmd(int argc, char **argv)
     if (net_conf_args.wifi_ssid->count > 0) {
         sval = net_conf_args.wifi_ssid->sval[0];
         sprintf((char *)wifi_ssid, "%s", (char *)sval);
+        config[WIFI_SSID].val = wifi_ssid;
+        config[WIFI_SSID].len = strlen(wifi_ssid);
+        config_updated_config = true;
     }
 
     // process '-p' for modulation type
     if (net_conf_args.wifi_pswd->count > 0) {
         sval = net_conf_args.wifi_pswd->sval[0];
         sprintf((char *)wifi_pswd, "%s", (char *)sval);
+        config[WIFI_PASSWORD].val = wifi_pswd;
+        config[WIFI_PASSWORD].len = strlen(wifi_pswd);
+        config_updated_config = true;
     }
 
     // process '--host' for modulation type
     if (net_conf_args.udp_host->count > 0) {
         sval = net_conf_args.udp_host->sval[0];
         sprintf((char *)udp_host, "%s", (char *)sval);
+        config[NS_HOST].val = udp_host;
+        config[NS_HOST].len = strlen(udp_host);
+        config_updated_config = true;
     }
 
     // process '--port' for number of packets to be received before exiting
     if (net_conf_args.udp_port->count > 0) {
         val = (uint32_t)net_conf_args.udp_port->ival[0];
         udp_port = val;
+
+        sprintf((char *)udp_port_str, "%u", val);
+        config[NS_PORT].val = udp_port_str;
+        config[NS_PORT].len = strlen(udp_port_str);
+        config_updated_config = true;
     }
 
     // process '--gwid' for modulation type
     if (net_conf_args.gw_id->count > 0) {
         sval = net_conf_args.gw_id->sval[0];
         sprintf(gw_id, "%s", (char *)sval);
+        config[GW_ID].val = gw_id;
+        config[GW_ID].len = strlen(gw_id);
+        config_updated_config = true;
     }
 
-    // TODO: stop wifi and pkt-fwd if necessary, then restart them
-    //start_wifi_and_pkt_fwd();
+    if(config_updated_config == true){
+        // TODO: set new_wifi_mode = STA
+        save_config();
+        esp_restart();
+    }
 
     return 0;
 }
@@ -3807,18 +3810,44 @@ static void register_config(void)
     ESP_ERROR_CHECK(esp_console_cmd_register(&hal_conf_cmd));
 }
 
+#define SOFT_AP
+
 void app_main(void)
 {
-    start_wifi_and_pkt_fwd();
+    read_config_from_nvs();
+
+// TODO: check config or button pressed to switch to AP mode
+#ifdef SOFT_AP
+    // TODO: set new_wifi_mode = STA
+
+    // set up timer for reboot
+    int reboot_delay_s = 60 * 10; // 10 minutes
+    reboot_flag = true;
+    start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
+
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_SOFT_AP");
+    wifi_init_soft_ap();
+
+    // start http service
     xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
 
-    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    repl_config.task_stack_size = 4096 * 2;
-    repl_config.prompt = "ESXP1302_GW>";
+#else
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    wifi_init_sta();  // TODO: deal with Wifi broken
+
+    // TODO: if wifi connected
+    //xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
+    //xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
+#endif
 
     gpio_pad_select_gpio(BLINK_GPIO);
     gpio_set_direction(BLINK_GPIO,GPIO_MODE_OUTPUT);
     gpio_set_level(BLINK_GPIO, 1);
+
+    // start command line
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+    repl_config.task_stack_size = 4096 * 2;
+    repl_config.prompt = "ESXP1302_GW>";
 
     usage();
     register_config();
@@ -3826,12 +3855,9 @@ void app_main(void)
     // initialize console REPL environment
     esp_console_repl_t *repl = NULL;
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-
-    // init console REPL environment
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
-
-    // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
+
     gpio_set_level(BLINK_GPIO, 0);
 }
 
