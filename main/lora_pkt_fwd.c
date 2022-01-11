@@ -3470,6 +3470,29 @@ void thread_valid(void)
 }
 
 
+#include "esp_timer.h"
+
+static bool reboot_flag = false;
+static void reboot_timer_callback(void)
+{
+    if(reboot_flag){
+        printf("\n!!! reboot timer called\n");
+        esp_restart();
+    }
+}
+
+void start_reboot_timer_ms(int reboot_delay)
+{
+    const esp_timer_create_args_t reboot_timer_args = {
+            .callback = &reboot_timer_callback,
+            .name = "one-shot"
+    };
+    esp_timer_handle_t reboot_timer;
+    ESP_ERROR_CHECK(esp_timer_create(&reboot_timer_args, &reboot_timer));
+    ESP_ERROR_CHECK(esp_timer_start_once(reboot_timer, reboot_delay * 1000));
+}
+
+
 static int s_retry_num = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base,
@@ -3668,6 +3691,10 @@ void start_wifi_and_pkt_fwd(void)
     update_config_from_nvs();
 
 #ifdef SOFT_AP
+    int reboot_delay_s = 60 * 10; // 10 minutes
+    reboot_flag = true;
+    start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
+
     ESP_LOGI(TAG, "ESP_WIFI_MODE_SOFT_AP");
     wifi_init_soft_ap();
 
