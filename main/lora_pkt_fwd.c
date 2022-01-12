@@ -3814,6 +3814,7 @@ static void register_config(void)
 
 void app_main(void)
 {
+    int reboot_delay_s;
     read_config_from_nvs();
 
 // TODO: check config or button pressed to switch to AP mode
@@ -3821,7 +3822,7 @@ void app_main(void)
     // TODO: set new_wifi_mode = STA
 
     // set up timer for reboot
-    int reboot_delay_s = 60 * 10; // 10 minutes
+    reboot_delay_s = 60 * 10; // 10 minutes
     reboot_flag = true;
     start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
 
@@ -3832,12 +3833,27 @@ void app_main(void)
     xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
 
 #else
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();  // TODO: deal with Wifi broken
 
-    // TODO: if wifi connected
-    //xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
-    //xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    wifi_init_sta();
+
+    if(wifi_ready == true){
+        // cancel the reboot now that wifi connected
+        reboot_flag = false;
+
+        // TODO: set new_wifi_mode = STA
+
+        xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
+        xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
+    } else {
+        // TODO: set new_wifi_mode = AP
+
+        // wifi not ready, so set up timer preparing for reboot soon
+        reboot_delay_s = 60 * 5; // 5 minutes
+        reboot_flag = true;
+        start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
+    }
+
 #endif
 
     gpio_pad_select_gpio(BLINK_GPIO);
