@@ -16,7 +16,8 @@ config_s config[CONFIG_NUM] = {
     { WIFI_PASSWORD, "wifi_pswd", NULL, 0 },
     { NS_HOST, "ns_host", NULL, 0 },
     { NS_PORT, "ns_port", NULL, 0 },
-    { GW_ID, "gw_id", NULL, 0 }
+    { GW_ID, "gw_id", NULL, 0 },
+    { WIFI_MODE, "wifi_mode", "soft_ap", 7 }  // set the init mode to soft_ap
 };
 
 tag_e name2tag(char *name)
@@ -125,8 +126,6 @@ esp_err_t read_config(void)
         if(err != ESP_OK){
             printf("Error (%s) reading %s!\n", esp_err_to_name(err), config[i].name);
         }
-        if(config[i].val)  // should not needed
-            free(config[i].val);
         p[len-1] = '\0';
         config[i].val = p;
         config[i].len = len - 1;
