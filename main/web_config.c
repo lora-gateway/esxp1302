@@ -81,6 +81,8 @@ void dump_config(void)
     for(int i = 0; i < CONFIG_NUM; i++) {
         if(config[i].val != NULL)
             printf("%s: %s @ %p\n", config[i].name, config[i].val, config[i].val);
+        else
+            printf("%s: (no value)\n", config[i].name);
     }
 }
 
@@ -109,7 +111,9 @@ esp_err_t read_config(void)
             printf("Error (%s) reading %s!\n", esp_err_to_name(err), config[i].name);
             config[i].val = NULL;
             config[i].len = 0;
+            continue;
         }
+
         p = malloc(len);
         if(!p) {
             printf("Warning: malloc() for %u bytes failed\n", len);
