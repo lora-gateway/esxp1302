@@ -1306,8 +1306,6 @@ int pkt_fwd_main(void)
     int x;
     int l, m;
 
-    const char *conf_array = (char *)global_conf; // pointer to array defined in global_conf.h
-
     /* threads */
     pthread_t thrid_up;
     pthread_t thrid_down;
@@ -1387,6 +1385,11 @@ int pkt_fwd_main(void)
     #else
         MSG("INFO: Host endianness unknown\n");
     #endif
+
+    // pointer to array defined in global_conf.h
+    const char *conf_array = (char *)global_cn_conf;
+    //const char *conf_array = (char *)global_eu_conf;
+    //const char *conf_array = (char *)global_us_conf;
 
     /* load configuration files */
     x = parse_SX130x_configuration(conf_array);

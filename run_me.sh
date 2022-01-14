@@ -19,7 +19,9 @@ web_file=main/webpage.html
 web_hd_name=main/webpage.h
 
 hd_name=main/global_json.h
-json_file=main/conf/global_conf.cn490.json
+json_cn_file=main/conf/global_conf.cn490.json
+json_eu_file=main/conf/global_conf.eu868.json
+json_us_file=main/conf/global_conf.us915.json
 
 if [ "$#" -eq 0 -o "$1" = "-h" -o "$1" = "--help" ]; then
 	echo "Usage: $0 [make|make_all|flash|flash_all|run]\n"
@@ -30,10 +32,24 @@ if [ "$1" = "make" ]; then
 	# prepare the webpage by dumping it to a string
 	scripts/dump_html.py $web_file > $web_hd_name
 
-	# prepare the C array comes from global_conf.json
-	echo 'static uint8_t global_conf[] = {' > $hd_name
-	scripts/json_to_hex_array.py $json_file >> $hd_name
-	echo '};' >> $hd_name
+	# prepare the C array comes from global_conf.cn490.json
+	echo '// dump from global_conf.json as string array\n' > $hd_name
+	echo 'static uint8_t global_cn_conf[] = {' >> $hd_name
+	scripts/json_to_hex_array.py $json_cn_file >> $hd_name
+	echo '};\n' >> $hd_name
+
+	# prepare the C array comes from global_conf.eu868.json
+	echo 'static uint8_t global_eu_conf[] = {' >> $hd_name
+	scripts/json_to_hex_array.py $json_eu_file >> $hd_name
+	echo '};\n' >> $hd_name
+
+	# prepare the C array comes from global_conf.us915.json
+	echo 'static uint8_t global_us_conf[] = {' >> $hd_name
+	scripts/json_to_hex_array.py $json_us_file >> $hd_name
+	echo '};\n' >> $hd_name
+
+	# indent the code by prefix 4 ' '.
+	sed -i 's/^0x/    0x/' $hd_name
 
 	idf.py app
 fi
