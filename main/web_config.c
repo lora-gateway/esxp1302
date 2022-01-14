@@ -199,11 +199,14 @@ static int _config_wifi_mode(wifi_mode_e mode)
     if(mode == WIFI_MODE_STATION)
         strncpy(p, "station", len+1);
     p[len] = '\0';
+    printf("config wifi_mode = %s\n", p);
 
     if(config[WIFI_MODE].val)
         free(config[WIFI_MODE].val);
     config[WIFI_MODE].val = p;
     config[WIFI_MODE].len = len;
+
+    save_config();
     return 0;
 }
 
