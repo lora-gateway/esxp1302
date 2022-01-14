@@ -141,7 +141,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_BEACON_INFODESC     0
 
 
-#define EXAMPLE_ESP_MAXIMUM_RETRY  5
+#define WIFI_MAXIMUM_RETRY  5
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -1568,7 +1568,7 @@ int pkt_fwd_main(void)
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
     oled_init();
     oled_cls();
-    oled_show_str(0, 0, " ESXP32 GATEWAY", 2);
+    oled_show_str(0, 0, " ESXP1302 GATEWAY", 2);
 
     // we prepare info more than a row can display (max=22)
     // generally, the characters go to next line will be overwrote.
@@ -3502,7 +3502,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY) {
+        if (s_retry_num < WIFI_MAXIMUM_RETRY) {
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGI(TAG, "retry to connect to the AP");
@@ -3520,10 +3520,10 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 }
 
 
-#define EXAMPLE_ESP_WIFI_SSID      "esp32"
-#define EXAMPLE_ESP_WIFI_PASS      "esp32wifi"
-#define EXAMPLE_ESP_WIFI_CHANNEL   1
-#define EXAMPLE_MAX_STA_CONN       4
+#define ESP_WIFI_SSID      "esp32"
+#define ESP_WIFI_PASS      "esp32wifi"
+#define ESP_WIFI_CHANNEL   1
+#define MAX_STA_CONN       4
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
         int32_t event_id, void* event_data)
@@ -3557,15 +3557,15 @@ void wifi_init_soft_ap(void)
 
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .ssid_len = strlen(EXAMPLE_ESP_WIFI_SSID),
-            .channel = EXAMPLE_ESP_WIFI_CHANNEL,
-            .password = EXAMPLE_ESP_WIFI_PASS,
-            .max_connection = EXAMPLE_MAX_STA_CONN,
+            .ssid = ESP_WIFI_SSID,
+            .ssid_len = strlen(ESP_WIFI_SSID),
+            .channel = ESP_WIFI_CHANNEL,
+            .password = ESP_WIFI_PASS,
+            .max_connection = MAX_STA_CONN,
             .authmode = WIFI_AUTH_WPA_WPA2_PSK
         },
     };
-    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0) {
+    if (strlen(ESP_WIFI_PASS) == 0) {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
@@ -3574,7 +3574,7 @@ void wifi_init_soft_ap(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_soft_ap finished. SSID:%s password:%s channel:%d",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
+             ESP_WIFI_SSID, ESP_WIFI_PASS, ESP_WIFI_CHANNEL);
 }
 
 void wifi_init_sta(void)
@@ -3814,8 +3814,9 @@ static void register_config(void)
 void app_main(void)
 {
     int reboot_delay_s;
-    read_config_from_nvs();
     bool soft_ap_mode = false;
+
+    read_config_from_nvs();
 
 // TODO: check if button pressed to switch to AP mode
 
@@ -3834,6 +3835,18 @@ void app_main(void)
 
         ESP_LOGI(TAG, "ESP_WIFI_MODE_SOFT_AP");
         wifi_init_soft_ap();
+
+        oled_init();
+        oled_cls();
+        oled_show_str(0, 0, " ESXP1302 GATEWAY", 2);
+        oled_show_str(0, 3, "Soft AP mode", 1);
+        oled_show_str(0, 5, "IP=192.168.4.1", 1);
+
+        char out_info[48];
+        sprintf(out_info, "SSID=%s", ESP_WIFI_SSID);
+        oled_show_str(0, 6, out_info, 1);
+        sprintf(out_info, "PSWD=%s", ESP_WIFI_PASS);
+        oled_show_str(0, 7, out_info, 1);
 
         // start http service
         xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
