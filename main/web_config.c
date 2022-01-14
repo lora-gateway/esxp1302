@@ -17,7 +17,7 @@ config_s config[CONFIG_NUM] = {
     { NS_HOST, "ns_host", NULL, 0 },
     { NS_PORT, "ns_port", NULL, 0 },
     { GW_ID, "gw_id", NULL, 0 },
-    { WIFI_MODE, "wifi_mode", "soft_ap", 7 }  // set the init mode to soft_ap
+    { WIFI_MODE, "wifi_mode", NULL, 0 }
 };
 
 tag_e name2tag(char *name)
@@ -125,6 +125,7 @@ esp_err_t read_config(void)
         err = nvs_get_str(my_handle, config[i].name, p, &len);
         if(err != ESP_OK){
             printf("Error (%s) reading %s!\n", esp_err_to_name(err), config[i].name);
+            continue;
         }
         p[len-1] = '\0';
         config[i].val = p;
@@ -181,6 +182,40 @@ void extract_data_items(char *str)
     }
     update_config(start, str-start);
     printf("\n");
+}
+
+static int _config_wifi_mode(wifi_mode_e mode)
+{
+    int len = 7;
+    char *p;
+
+    p = malloc(len+1);
+    if(!p) {
+        printf("Warning: malloc() for %u bytes failed\n", len);
+        return -1;
+    }
+    if(mode == WIFI_MODE_SOFT_AP)
+        strncpy(p, "soft_ap", len+1);
+    if(mode == WIFI_MODE_STATION)
+        strncpy(p, "station", len+1);
+    p[len] = '\0';
+
+    if(config[WIFI_MODE].val)
+        free(config[WIFI_MODE].val);
+    config[WIFI_MODE].val = p;
+    config[WIFI_MODE].len = len;
+    return 0;
+}
+
+int config_wifi_mode(wifi_mode_e mode)
+{
+    if(mode == WIFI_MODE_SOFT_AP)
+        return _config_wifi_mode(WIFI_MODE_SOFT_AP);
+
+    if(mode == WIFI_MODE_STATION)
+        return _config_wifi_mode(WIFI_MODE_STATION);
+
+    return -1;
 }
 
 /*

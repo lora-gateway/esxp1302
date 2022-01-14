@@ -27,6 +27,11 @@ typedef enum {
     CONFIG_ERR = 255
 } tag_e;
 
+typedef enum {
+    WIFI_MODE_SOFT_AP  = 0,
+    WIFI_MODE_STATION
+} wifi_mode_e;
+
 typedef struct {
     tag_e tag;
     char name[16];
@@ -41,5 +46,6 @@ void dump_config(void);
 esp_err_t read_config(void);
 int save_config(void);
 void extract_data_items(char *str);
+int config_wifi_mode(wifi_mode_e mode);
 
 #endif

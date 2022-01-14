@@ -3781,7 +3781,7 @@ static int do_net_config_cmd(int argc, char **argv)
     }
 
     if(config_updated_config == true){
-        // TODO: set new_wifi_mode = STA
+        config_wifi_mode(WIFI_MODE_STATION);
         save_config();
         esp_restart();
     }
@@ -3810,51 +3810,54 @@ static void register_config(void)
     ESP_ERROR_CHECK(esp_console_cmd_register(&hal_conf_cmd));
 }
 
-#define SOFT_AP
 
 void app_main(void)
 {
     int reboot_delay_s;
     read_config_from_nvs();
+    bool soft_ap_mode = false;
 
-// TODO: check config or button pressed to switch to AP mode
-#ifdef SOFT_AP
-    // TODO: set new_wifi_mode = STA
+// TODO: check if button pressed to switch to AP mode
 
-    // set up timer for reboot
-    reboot_delay_s = 60 * 10; // 10 minutes
-    reboot_flag = true;
-    start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
+    if(config[WIFI_MODE].val == NULL)
+        soft_ap_mode = true;  // if not set yet, go to soft_ap mode as the default
+    else if(strncmp(config[WIFI_MODE].val, "soft_ap", 7) == 0)
+        soft_ap_mode = true;
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_SOFT_AP");
-    wifi_init_soft_ap();
+    if(soft_ap_mode == true){
+        config_wifi_mode(WIFI_MODE_STATION);
 
-    // start http service
-    xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
-
-#else
-
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();
-
-    if(wifi_ready == true){
-        // cancel the reboot now that wifi connected
-        reboot_flag = false;
-
-        // TODO: set new_wifi_mode = STA
-
-        xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
-        xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
-    } else {
-        // TODO: set new_wifi_mode = AP
-
-        // wifi not ready, so set up timer preparing for reboot soon
-        reboot_delay_s = 60 * 5; // 5 minutes
+        // set up timer for reboot
+        reboot_delay_s = 60 * 10; // 10 minutes
         reboot_flag = true;
         start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
-    }
 
-#endif
+        ESP_LOGI(TAG, "ESP_WIFI_MODE_SOFT_AP");
+        wifi_init_soft_ap();
+
+        // start http service
+        xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
+    } else {
+        ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+        wifi_init_sta();
+
+        if(wifi_ready == true){
+            // cancel the reboot now that wifi connected
+            reboot_flag = false;
+
+            config_wifi_mode(WIFI_MODE_STATION);
+
+            xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
+            xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
+        } else {
+            config_wifi_mode(WIFI_MODE_SOFT_AP);
+
+            // wifi not ready, so set up timer preparing for reboot soon
+            reboot_delay_s = 60 * 5; // 5 minutes
+            reboot_flag = true;
+            start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
+        }
+    }
 
     gpio_pad_select_gpio(BLINK_GPIO);
     gpio_set_direction(BLINK_GPIO,GPIO_MODE_OUTPUT);
