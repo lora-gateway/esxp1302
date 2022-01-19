@@ -3473,6 +3473,19 @@ void thread_valid(void)
     MSG("\nINFO: End of validation thread\n");
 }
 
+static void pkt_fwd_task(void *pvParameters)
+{
+    heap_caps_check_integrity_all( true );
+    pkt_fwd_main();
+
+    vTaskDelete(NULL);
+
+    while(true){
+        printf("end\n");
+        vTaskDelay(8000 / portTICK_PERIOD_MS);
+    }
+}
+
 
 #include "esp_timer.h"
 
@@ -3497,38 +3510,13 @@ void start_reboot_timer_ms(int reboot_delay)
 }
 
 
-static int s_retry_num = 0;
-
-static void event_handler(void *arg, esp_event_base_t event_base,
-                                int32_t event_id, void *event_data)
-{
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < WIFI_MAXIMUM_RETRY) {
-            esp_wifi_connect();
-            s_retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
-        } else {
-            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-        }
-        ESP_LOGI(TAG,"connect to the AP fail");
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-        sprintf(self_ip, "%d.%d.%d.%d", IP2STR(&event->ip_info.ip));
-        s_retry_num = 0;
-        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-    }
-}
-
 
 #define ESP_WIFI_SSID      "esp32"
 #define ESP_WIFI_PASS      "esp32wifi"
 #define ESP_WIFI_CHANNEL   1
 #define MAX_STA_CONN       4
 
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+static void wifi_ap_event_handler(void* arg, esp_event_base_t event_base,
         int32_t event_id, void* event_data)
 {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
@@ -3554,7 +3542,7 @@ void wifi_init_soft_ap(void)
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
-                                                        &wifi_event_handler,
+                                                        &wifi_ap_event_handler,
                                                         NULL,
                                                         NULL));
 
@@ -3580,6 +3568,56 @@ void wifi_init_soft_ap(void)
              ESP_WIFI_SSID, ESP_WIFI_PASS, ESP_WIFI_CHANNEL);
 }
 
+
+static int s_retry_num = 0;
+
+static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
+                                int32_t event_id, void *event_data)
+{
+    int reboot_delay_s = 60 * 3;  // reboot in 3 minute if wifi disconnected
+    static bool reboot_timer_started = false;
+    static bool task_started = false;
+
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        if(reboot_timer_started == false){
+            reboot_timer_started = true;
+            start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
+        }
+
+        wifi_ready = false;
+        if (s_retry_num < WIFI_MAXIMUM_RETRY) {
+            ESP_LOGI(TAG, "retry to connect to the AP");
+            esp_wifi_connect();
+            s_retry_num++;
+        } else {
+            ESP_LOGI(TAG, "Failed to connect to the AP; retry again...");
+            esp_wifi_connect();
+            s_retry_num = 0;
+            reboot_flag = true;
+        }
+        ESP_LOGI(TAG,"connect to the AP fail");
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        wifi_ready = true;
+        ESP_LOGI(TAG, "connected to ap (SSID:%s) succeeded", wifi_ssid);
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        sprintf(self_ip, "%d.%d.%d.%d", IP2STR(&event->ip_info.ip));
+        s_retry_num = 0;
+        reboot_flag = false;
+
+        if(task_started == false){
+            task_started = true;  // only run once
+            printf("Wi-Fi ready. Start tasks...\n");
+
+            config_wifi_mode(WIFI_MODE_STATION);
+            xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
+            xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
+        }
+    }
+}
+
 void wifi_init_sta(void)
 {
     s_wifi_event_group = xEventGroupCreate();
@@ -3592,18 +3630,14 @@ void wifi_init_sta(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_any_id));
+                                                        &wifi_sta_event_handler,
+                                                        NULL, NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                         IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));
+                                                        &wifi_sta_event_handler,
+                                                        NULL, NULL));
 
     wifi_config_t wifi_config = {
         .sta = {},
@@ -3623,46 +3657,8 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_start() );
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
-
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-            pdFALSE,
-            pdFALSE,
-            portMAX_DELAY);
-
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
-    if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", wifi_ssid, wifi_pswd);
-        wifi_ready = true;
-    } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s", wifi_ssid, wifi_pswd);
-        wifi_ready = false;
-    } else {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
-    }
-
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_got_ip));
-    vEventGroupDelete(s_wifi_event_group);
 }
 
-
-
-static void pkt_fwd_task(void *pvParameters)
-{
-    heap_caps_check_integrity_all( true );
-    pkt_fwd_main();
-
-    vTaskDelete(NULL);
-
-    while(true){
-        printf("end\n");
-        vTaskDelay(8000 / portTICK_PERIOD_MS);
-    }
-}
 
 void read_config_from_nvs(void)
 {
@@ -3862,22 +3858,11 @@ void app_main(void)
         ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
         wifi_init_sta();
 
-        if(wifi_ready == true){
-            // cancel the reboot now that wifi connected
-            reboot_flag = false;
-
-            config_wifi_mode(WIFI_MODE_STATION);
-
-            xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
-            xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
-        } else {
-            config_wifi_mode(WIFI_MODE_SOFT_AP);
-
-            // wifi not ready, so set up timer preparing for reboot soon
-            reboot_delay_s = 60 * 5; // 5 minutes
-            reboot_flag = true;
-            start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
-        }
+        // assume wifi can't connect; set up timer preparing for reboot soon
+        config_wifi_mode(WIFI_MODE_SOFT_AP);
+        reboot_delay_s = 60 * 5; // 5 minutes
+        reboot_flag = true;
+        start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
     }
 
     gpio_pad_select_gpio(BLINK_GPIO);
