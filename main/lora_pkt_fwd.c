@@ -3610,6 +3610,11 @@ void wifi_init_sta(void)
     };
 
 
+    if(wifi_ssid[0] == '\0'){
+        ESP_LOGE(TAG, "No Wi-Fi ssid provided. Skip Wi-Fi connection");
+        return;
+    }
+
     strncpy((char *)wifi_config.sta.ssid, (char *)wifi_ssid, 32);
     strncpy((char *)wifi_config.sta.password, (char *)wifi_pswd, 64);
 
@@ -3668,22 +3673,22 @@ void read_config_from_nvs(void)
     read_config();
     dump_config();
 
-    if(config[WIFI_SSID].len < 32)
+    if(config[WIFI_SSID].len > 0 && config[WIFI_SSID].len < 32)
         strncpy(wifi_ssid, config[WIFI_SSID].val, config[WIFI_SSID].len);
 
-    if(config[WIFI_PASSWORD].len < 64)
+    if(config[WIFI_PASSWORD].len > 0 && config[WIFI_PASSWORD].len < 64)
         strncpy(wifi_pswd, config[WIFI_PASSWORD].val, config[WIFI_PASSWORD].len);
 
-    if(config[NS_HOST].len < 32)
+    if(config[NS_HOST].len > 0 && config[NS_HOST].len < 32)
         strncpy(udp_host, config[NS_HOST].val, config[NS_HOST].len);
 
-    if(config[NS_PORT].len < 32){
+    if(config[NS_PORT].len > 0 && config[NS_PORT].len < 32){
         udp_port = atoi(config[NS_PORT].val);
         if(udp_port == 0)
             ESP_LOGI(TAG, "Convert port(%s) failed", config[NS_PORT].val);
     }
 
-    if(config[GW_ID].len == 16)
+    if(config[GW_ID].len > 0 && config[GW_ID].len == 16)
         strncpy(gw_id, config[GW_ID].val, config[GW_ID].len);
 }
 
