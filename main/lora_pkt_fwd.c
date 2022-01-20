@@ -3814,20 +3814,32 @@ static void register_config(void)
     ESP_ERROR_CHECK(esp_console_cmd_register(&hal_conf_cmd));
 }
 
+#define USER_BUTTON_1    23
+#define USER_BUTTON_2    25
+#define BUTTON_PRESSED    0
+#define BUTTON_RELEASED   1
 
 void app_main(void)
 {
     int reboot_delay_s;
     bool soft_ap_mode = false;
 
+    gpio_set_direction(USER_BUTTON_1, GPIO_MODE_INPUT);
+    gpio_set_direction(USER_BUTTON_2, GPIO_MODE_INPUT);
+
     read_config_from_nvs();
 
-// TODO: check if button pressed to switch to AP mode
-
-    if(config[WIFI_MODE].val == NULL)
-        soft_ap_mode = true;  // if not set yet, go to soft_ap mode as the default
-    else if(strncmp(config[WIFI_MODE].val, "soft_ap", 7) == 0)
+    if(gpio_get_level(USER_BUTTON_1) == BUTTON_PRESSED){
+        printf("User button 1 is PRESSED, go to soft AP mode\n");
         soft_ap_mode = true;
+    } else if(gpio_get_level(USER_BUTTON_2) == BUTTON_PRESSED){
+        printf("User button 2 is PRESSED, go to station mode\n");
+        soft_ap_mode = false;
+    } else if(config[WIFI_MODE].val == NULL){
+        soft_ap_mode = true;  // if not set yet, go to soft_ap mode as the default
+    } else if(strncmp(config[WIFI_MODE].val, "soft_ap", 7) == 0){
+        soft_ap_mode = true;
+    }
 
     if(soft_ap_mode == true){
         config_wifi_mode(WIFI_MODE_STATION);
