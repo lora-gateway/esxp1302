@@ -43,6 +43,10 @@ esp_err_t i2c_esp32_open(void)
     i2c_config_t conf;
     int i2c_master_port = i2c_num;
     esp_err_t ret;
+    static bool i2c_opened = false;
+
+    if(i2c_opened == true)
+        return ESP_OK;
 
     conf.mode = I2C_MODE_MASTER;
     conf.sda_io_num = I2C_MASTER_SDA_IO;
@@ -57,6 +61,7 @@ esp_err_t i2c_esp32_open(void)
             I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
     if(ret == ESP_OK){
         DEBUG_PRINTF("INFO: I2C port(%d) opened successfully\n", i2c_num);
+        i2c_opened = true;
     } else {
         DEBUG_PRINTF("INFO: I2C port(%d) opened failed\n", i2c_num);
     }

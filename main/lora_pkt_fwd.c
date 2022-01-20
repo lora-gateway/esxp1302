@@ -1569,9 +1569,6 @@ int pkt_fwd_main(void)
     }
 
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
-    oled_init();
-    oled_cls();
-    oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
 
     // we prepare info more than a row can display (max=22)
     // generally, the characters go to next line will be overwrote.
@@ -3855,6 +3852,7 @@ void app_main(void)
         oled_init();
         oled_cls();
         oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
+
         oled_show_str(0, 3, "IP=192.168.4.1", 2);
         oled_show_str(0, 5, "Soft AP mode", 1);
 
@@ -3869,6 +3867,11 @@ void app_main(void)
     } else {
         ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
         wifi_init_sta();
+
+        oled_init();
+        oled_cls();
+        oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
+        oled_show_str(0, 3, "station mode", 1);
 
         // assume wifi can't connect; set up timer preparing for reboot soon
         config_wifi_mode(WIFI_MODE_SOFT_AP);
