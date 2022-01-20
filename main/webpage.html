@@ -4,6 +4,10 @@
 		<meta charset="utf-8">
 		<title>ESXP1302 Gateway Configuration</title>
 		<style>
+			body {
+			  background-color: seashell;
+			}
+
 			form {
 			  /* Center the form on the page */
 			  margin: 0 auto;
@@ -35,15 +39,28 @@
 		</style>
 	</head>
 	<body>
-		<H1>Configure Gateway</H1>
+		<H1 style="color: purple; text-align:center">Configure ESXP1302 Gateway</H1>
 		<form action="/resp" method="post">
-                        <label for="usage" style="width: 480px; text-align: center">
-                            Leave it empty if you want the old value not be changed</label></br></br>
+			<label for="usage" style="width: 480px; text-align: center">
+				<i>Leave it empty if you want the old value not be changed</i>
+			</label></br></br></br>
 
 			<label for="wifi_mode" style="width: 150px">Next time Boot to:</label></br>
 			<input type="radio" id="soft_ap" name="wifi_mode" value="soft_ap" style="width: 20px">Soft AP Mode
 			<input type="radio" id="station" name="wifi_mode" value="station" style="width: 20px" checked>Station Mode
-			</br></br></br>
+			</br></br><hr></br>
+
+			<label for="freq_region" style="width: 150px">Frequency Plan:</label></br>
+			<input type="radio" id="cn470" name="freq_region" value="cn470" style="width: 20px">CN470
+			<input type="radio" id="eu868" name="freq_region" value="eu868" style="width: 20px">EU868
+			<input type="radio" id="us915" name="freq_region" value="us915" style="width: 20px">US915
+			</br></br>
+
+			<label for="radio_1" style="width: 280px; text-align: left">Radio 1 Center Frequency(Hz):</label>
+			<input type="text" id="radio_1" name="radio_1"></br></br>
+			<label for="radio_2" style="width: 280px; text-align: left">Radio 2 Center Frequency(Hz):</label>
+			<input type="text" id="radio_2" name="radio_2">
+			</br></br><hr></br>
 
 			<label for="wifi_ssid">Wi-Fi SSID:</label>
 			<input type="text" id="ssid" name="wifi_ssid"></br>
@@ -58,7 +75,7 @@
 			<input type="text" id="port" name="ns_port"></br></br>
 
 			<label for="gw_id">Gateway ID:</label>
-			<input type="text" id="gw_id" name="gw_id"></br></br>
+			<input type="text" id="gw_id" name="gw_id"></br></br><hr></br>
 
 			<button type="submit" name="apply">Apply</button></br>
 		</form>
