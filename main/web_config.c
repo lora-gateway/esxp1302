@@ -17,7 +17,10 @@ config_s config[CONFIG_NUM] = {
     { NS_HOST, "ns_host", NULL, 0 },
     { NS_PORT, "ns_port", NULL, 0 },
     { GW_ID, "gw_id", NULL, 0 },
-    { WIFI_MODE, "wifi_mode", NULL, 0 }
+    { WIFI_MODE, "wifi_mode", NULL, 0 },
+    { FREQ_REGION, "freq_region", NULL, 0 },
+    { FREQ_RADIO0, "freq_radio0", NULL, 0 },
+    { FREQ_RADIO1, "freq_radio1", NULL, 0 },
 };
 
 tag_e name2tag(char *name)

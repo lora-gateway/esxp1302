@@ -22,6 +22,9 @@ typedef enum {
     NS_PORT,
     GW_ID,
     WIFI_MODE,
+    FREQ_REGION,
+    FREQ_RADIO0,
+    FREQ_RADIO1,
     CONFIG_NUM,
     CONFIG_END = 254,
     CONFIG_ERR = 255

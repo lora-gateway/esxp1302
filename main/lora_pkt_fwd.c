@@ -1387,9 +1387,30 @@ int pkt_fwd_main(void)
     #endif
 
     // pointer to array defined in global_conf.h
-    const char *conf_array = (char *)global_cn_conf;
-    //const char *conf_array = (char *)global_eu_conf;
-    //const char *conf_array = (char *)global_us_conf;
+    const char *conf_array = (char *)global_cn_conf;  // set cn470 as the default
+
+    // change conf_array if set to a different region
+    if(config[FREQ_REGION].val != NULL){
+        if(strncmp(config[FREQ_REGION].val, "eu868", 5) == 0)
+            conf_array = (char *)global_eu_conf;
+        else if(strncmp(config[FREQ_REGION].val, "us915", 5) == 0)
+            conf_array = (char *)global_us_conf;
+    }
+
+    // update radio_0 and radio_1 frequencies
+    int fwd_offset = 8;  // forward '"freq": ' which is 8 characters.
+    int new_freq_len = 9;  // sub-G with unit 'Hz' should have 9 characters
+    char *radio0_index = strstr(conf_array, "\"freq\"");
+    char *radio1_index = strstr(radio0_index + fwd_offset, "\"freq\"");
+
+    if(config[FREQ_RADIO0].val != NULL && radio0_index != NULL){
+        if(config[FREQ_RADIO0].len == new_freq_len)  // need to match the exact length
+            strncpy(radio0_index + fwd_offset, config[FREQ_RADIO0].val, new_freq_len);
+    }
+    if(config[FREQ_RADIO1].val != NULL && radio1_index != NULL){
+        if(config[FREQ_RADIO1].len == new_freq_len)  // need to match the exact length
+            strncpy(radio1_index + fwd_offset, config[FREQ_RADIO1].val, new_freq_len);
+    }
 
     /* load configuration files */
     x = parse_SX130x_configuration(conf_array);
