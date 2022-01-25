@@ -37,10 +37,78 @@
 			  border: 1px solid #999;
 			}
 		</style>
+        <script>
+            function validation(obj)
+            {
+                let freq_region_in_use;
+                let freq_radio0 = obj.freq_radio0.value;
+                let freq_radio1 = obj.freq_radio1.value;
+                let wifi_pswd = obj.wifi_pswd.value;
+                let ns_host = obj.ns_host.value;
+                let ns_port = obj.ns_port.value;
+                let gw_id = obj.gw_id.value;
+                let err_msg = "";
+
+                if(freq_radio0 && /^[4-9]\d{8}$/.test(freq_radio0) == false)
+                    err_msg += "Freq Radio0: value should be between 470000000 and 930000000.\n";
+                if(freq_radio1 && /^[4-9]\d{8}$/.test(freq_radio0) == false)
+                    err_msg += "Freq Radio1: value should be between 470000000 and 930000000.\n";
+                if(wifi_pswd && wifi_pswd.length < 8)
+                    err_msg += "Wi-Fi Password: too short; minimum length is 8 characters\n";
+                if(ns_host && /^[0-9A-Za-z.]+$/.test(ns_host) == false)
+                    err_msg += "NS Host: only ip address or domain name are allowed\n";
+                if(ns_host && ns_host.startsWith('http') == true)
+                    err_msg += "NS Host: protocol(http:// or https:// can't be included\n";
+                if(ns_port && /^\d+$/.test(ns_port) == false)
+                    err_msg += "NS Port: only number value allowed. Or does it contain whitespace?\n";
+                if(gw_id && /^[0-9A-Fa-f]{16}$/.test(gw_id) == false)
+                    err_msg += "Gateway ID: only hex(0-9A-Fa-f) value allowed, and exactly 16 characters.\n";
+
+                for(let i = 0; i <= 2; i++){
+                    if(obj.freq_region[i].checked){
+                        freq_region_in_use = obj.freq_region[i].value;
+                        break;
+                    }
+                }
+
+                // check radio frequency
+                if(freq_region_in_use == null){
+                    console.log("No region selected");
+                } else {
+                    console.log("freq_region_in_use:", freq_region_in_use);
+                    if(freq_region_in_use == "cn470"){
+                        if(freq_radio0 <= 470000000 || freq_radio0 > 510000000
+                                || freq_radio1 <= 470000000 || freq_radio1 > 510000000){
+                            err_msg += "Either Radio0 or Radio1 doesn't match Frequency Plan\n";
+                        }
+                    }
+                    else if(freq_region_in_use == "eu868"){
+                        if(freq_radio0 <= 860000000 || freq_radio0 > 880000000
+                                || freq_radio1 <= 860000000 || freq_radio1 > 880000000){
+                            err_msg += "Either Radio0 or Radio1 doesn't match Frequency Plan\n";
+                        }
+                    }
+                    else if(freq_region_in_use == "us915"){
+                        if(freq_radio0 <= 900000000 || freq_radio0 > 930000000
+                                || freq_radio1 <= 900000000 || freq_radio1 > 930000000){
+                            err_msg += "Either Radio0 or Radio1 doesn't match Frequency Plan\n";
+                        }
+                    }
+                }
+
+                if(err_msg){
+                    console.log(err_msg);
+                    alert(err_msg);
+                    return false;
+                }
+
+                return true;
+            }
+        </script>
 	</head>
 	<body>
 		<H1 style="color: purple; text-align:center">Configure ESXP1302 Gateway</H1>
-		<form action="/resp" method="post">
+		<form name="config_form" action="/resp" method="post" onsubmit="return validation(this);">
 			<label for="usage" style="width: 480px; text-align: center">
 				<i>Leave it empty if you want the old value not be changed</i>
 			</label></br></br></br>
@@ -66,7 +134,7 @@
 			<input type="text" id="ssid" name="wifi_ssid"></br>
 
 			<label for="wifi_pswd">Wi-Fi Password:</label>
-                        <input type="text" id="pswd" name="wifi_pswd"></br></br>
+				<input type="text" id="pswd" name="wifi_pswd"></br></br>
 
 			<label for="ns_host">NS Host:</label>
 			<input type="text" id="ip" name="ns_host"></br>
