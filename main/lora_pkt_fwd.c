@@ -160,13 +160,14 @@ extern config_s config[CONFIG_NUM];
 bool wifi_ready = false;
 char wifi_ssid[32];
 char wifi_pswd[64];
-char udp_host[32];
+char udp_host[64];
 char udp_port_str[16];
 char self_ip[16] = "(unknown)";
 char gw_id[32];
 uint32_t udp_port;
 uint32_t time_count = 0;  // used for display time on screen
 
+static const char *PKT_TAG = "packet-forward";
 static const char *TAG = "wifi station";
 
 
@@ -1449,12 +1450,20 @@ int pkt_fwd_main(void)
     // TODO
 
     // some debug to see if everything goes all right
-    ESP_LOGI(TAG, "serv_addr: %s", serv_addr);
-    ESP_LOGI(TAG, "serv_port_up: %s", serv_port_up);
-    ESP_LOGI(TAG, "serv_port_down: %s", serv_port_down);
-    ESP_LOGI(TAG, "udp_host: %s", udp_host);
-    ESP_LOGI(TAG, "udp_port: %d", udp_port);
-    ESP_LOGI(TAG, "gw_id: %s", gw_id);
+    ESP_LOGI(PKT_TAG, "serv_addr: %s", serv_addr);
+    ESP_LOGI(PKT_TAG, "serv_port_up: %s", serv_port_up);
+    ESP_LOGI(PKT_TAG, "serv_port_down: %s", serv_port_down);
+    ESP_LOGI(PKT_TAG, "udp_host: %s", udp_host);
+    ESP_LOGI(PKT_TAG, "udp_port: %d", udp_port);
+    ESP_LOGI(PKT_TAG, "gw_id: %s", gw_id);
+
+    // use the values from json file if not set in config[]
+    if(udp_host[0] == '\0'){
+        strncpy(udp_host, serv_addr, sizeof udp_host);
+        udp_host[sizeof udp_host - 1] = '\0'; /* ensure string termination */
+    }
+    if(udp_port == 0)
+        udp_port = atoi(serv_port_up);
 
     unsigned long long ull = 0;
     if (gw_id[0] != '\0') {
@@ -1594,16 +1603,19 @@ int pkt_fwd_main(void)
 
     // we prepare info more than a row can display (max=22)
     // generally, the characters go to next line will be overwrote.
-    char out_info[48];
+    char out_info[96];
 
     // display gateway's own IP
-    sprintf(out_info, "IP=%s", (char *)self_ip);
+    snprintf(out_info, sizeof out_info, "IP=%s", (char *)self_ip);
+    out_info[95] = '\0';
     oled_show_str(0, 3, out_info, 1);
 
     // display Wi-Fi SSID and NS IP and port
-    sprintf(out_info, "WiFi=%s", (char *)wifi_ssid);
+    snprintf(out_info, sizeof out_info, "WiFi=%s", (char *)wifi_ssid);
+    out_info[95] = '\0';
     oled_show_str(0, 4, out_info, 1);
-    sprintf(out_info, "NS=%s:%d", (char *)udp_host, udp_port);
+    snprintf(out_info, sizeof out_info, "NS=%s:%d", (char *)udp_host, udp_port);
+    out_info[95] = '\0';
     oled_show_str(0, 5, out_info, 1);
 
 #if 0
@@ -3699,7 +3711,7 @@ void read_config_from_nvs(void)
     if(config[WIFI_PASSWORD].len > 0 && config[WIFI_PASSWORD].len < 64)
         strncpy(wifi_pswd, config[WIFI_PASSWORD].val, config[WIFI_PASSWORD].len);
 
-    if(config[NS_HOST].len > 0 && config[NS_HOST].len < 32)
+    if(config[NS_HOST].len > 0 && config[NS_HOST].len < 64)
         strncpy(udp_host, config[NS_HOST].val, config[NS_HOST].len);
 
     if(config[NS_PORT].len > 0 && config[NS_PORT].len < 32){
