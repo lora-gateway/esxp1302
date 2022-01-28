@@ -57,7 +57,7 @@
                     err_msg += "Wi-Fi Password: too short; minimum length is 8 characters\n";
                 if(ns_host && /^[0-9A-Za-z.]+$/.test(ns_host) == false)
                     err_msg += "NS Host: only ip address or domain name are allowed\n";
-                if(ns_host && ns_host.startsWith('http') == true)
+                if(ns_host && ns_host.startsWith("http") == true)
                     err_msg += "NS Host: protocol(http:// or https:// can't be included\n";
                 if(ns_port && /^\d+$/.test(ns_port) == false)
                     err_msg += "NS Port: only number value allowed. Or does it contain whitespace?\n";
@@ -107,48 +107,48 @@
         </script>
 	</head>
 	<body>
-		<H1 style="color: purple; text-align:center">Configure ESXP1302 Gateway</H1>
-		<form name="config_form" action="/resp" method="post" onsubmit="return validation(this);">
-			<label for="usage" style="width: 480px; text-align: center">
+		<H1 style='color: purple; text-align:center'>Configure ESXP1302 Gateway</H1>
+		<form name='config_form' action='/resp' method='post' onsubmit='return validation(this);'>
+			<label for='usage' style='width: 480px; text-align: center'>
 				<i>Leave it empty if you want the old value not be changed</i>
 			</label></br></br></br>
 
-			<label for="wifi_mode" style="width: 150px">Next time Boot to:</label></br>
-			<input type="radio" id="soft_ap" name="wifi_mode" value="soft_ap" style="width: 20px">Soft AP Mode
-			<input type="radio" id="station" name="wifi_mode" value="station" style="width: 20px" checked>Station Mode
+			<label for='wifi_mode' style='width: 150px'>Next time Boot to:</label></br>
+			<input type='radio' id='soft_ap' name='wifi_mode' value='soft_ap' style='width: 20px'>Soft AP Mode
+			<input type='radio' id='station' name='wifi_mode' value='station' style='width: 20px' checked>Station Mode
 			</br></br><hr></br>
 
-			<label for="freq_region" style="width: 150px">Frequency Plan:</label></br>
-			<input type="radio" id="cn470" name="freq_region" value="cn470" style="width: 20px">CN470
-			<input type="radio" id="eu868" name="freq_region" value="eu868" style="width: 20px">EU868
-			<input type="radio" id="us915" name="freq_region" value="us915" style="width: 20px">US915
+			<label for='freq_region' style='width: 150px'>Frequency Plan:</label></br>
+			<input type='radio' id='cn470' name='freq_region' value='cn470' style='width: 20px'>CN470
+			<input type='radio' id='eu868' name='freq_region' value='eu868' style='width: 20px'>EU868
+			<input type='radio' id='us915' name='freq_region' value='us915' style='width: 20px'>US915
 			</br></br>
 
-			<label for="freq_radio0" style="width: 280px; text-align: left">Radio 1 Center Frequency(Hz):</label>
-			<input type="text" id="freq_radio0" name="freq_radio0"></br></br>
-			<label for="freq_radio1" style="width: 280px; text-align: left">Radio 2 Center Frequency(Hz):</label>
-			<input type="text" id="freq_radio1" name="freq_radio1">
+			<label for='freq_radio0' style='width: 280px; text-align: left'>Radio 1 Center Frequency(Hz):</label>
+			<input type='text' id='freq_radio0' name='freq_radio0'></br></br>
+			<label for='freq_radio1' style='width: 280px; text-align: left'>Radio 2 Center Frequency(Hz):</label>
+			<input type='text' id='freq_radio1' name='freq_radio1'>
 			</br></br><hr></br>
 
-			<label for="wifi_ssid">Wi-Fi SSID:</label>
-			<input type="text" id="ssid" name="wifi_ssid"></br>
+			<label for='wifi_ssid'>Wi-Fi SSID:</label>
+			<input type='text' id='ssid' name='wifi_ssid'></br>
 
-			<label for="wifi_pswd">Wi-Fi Password:</label>
-				<input type="text" id="pswd" name="wifi_pswd"></br></br>
+			<label for='wifi_pswd'>Wi-Fi Password:</label>
+			<input type='text' id='pswd' name='wifi_pswd'></br></br>
 
-			<label for="ns_host">NS Host:</label>
-			<input type="text" id="ip" name="ns_host"></br>
+			<label for='ns_host'>NS Host:</label>
+			<input type='text' id='ip' name='ns_host'></br>
 
-			<label for="ns_port">NS Port:</label>
-			<input type="text" id="port" name="ns_port"></br></br>
+			<label for='ns_port'>NS Port:</label>
+			<input type='text' id='port' name='ns_port'></br></br>
 
-			<label for="gw_id">Gateway ID:</label>
-			<input type="text" id="gw_id" name="gw_id"></br></br><hr></br>
+			<label for='gw_id'>Gateway ID:</label>
+			<input type='text' id='gw_id' name='gw_id'></br></br><hr></br>
 
-			<button type="submit" name="apply">Apply</button></br>
+			<button type='submit' name='apply'>Apply</button></br>
 		</form>
-		<form action="/reboot" method="post" style="text-align: center">
-			<button type="submit" name="reboot">Reboot</button>
+		<form action='/reboot' method='post' style='text-align: center'>
+			<button type='submit' name='reboot'>Reboot</button>
 		</form>
 	</body>
 </html>
