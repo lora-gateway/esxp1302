@@ -26,6 +26,9 @@ basic_auth_info_t web_auth_info;
 char web_username[32] = BASIC_AUTH_USERNAME;
 char web_password[32] = BASIC_AUTH_PASSWORD;
 
+char resp_buf[10240];
+extern config_s config[CONFIG_NUM];
+
 
 static char *http_auth_basic(const char *username, const char *password)
 {
@@ -117,6 +120,155 @@ static esp_err_t handle_basic_auth(httpd_req_t *req)
     return ESP_OK;
 }
 
+char *assemble_webpage(const char *webpage_str)
+{
+    char *last = webpage_str, *fwd, *buf = resp_buf;
+    char config_buf[80];
+
+    if(config[WIFI_MODE].val != NULL){  // TODO: DRY
+        if(strncmp(config[WIFI_MODE].val, "soft_ap", config[WIFI_MODE].len) == 0){
+            fwd = strstr(last, "value='soft_ap'");
+            if(fwd){
+                strncpy(buf, last, fwd - last);
+                buf += fwd - last;
+                last = fwd;
+                strncpy(buf, "checked ", 9);
+                buf += 8;
+            }
+        }
+        else if(strncmp(config[WIFI_MODE].val, "station", config[WIFI_MODE].len) == 0){
+            fwd = strstr(last, "value='station'");
+            if(fwd){
+                strncpy(buf, last, fwd - last);
+                buf += fwd - last;
+                last = fwd;
+                strncpy(buf, "checked ", 9);
+                buf += 8;
+            }
+        }
+    }
+
+    if(config[FREQ_REGION].val != NULL){  // TODO: DRY
+        if(strncmp(config[FREQ_REGION].val, "cn470", config[FREQ_REGION].len) == 0){
+            fwd = strstr(last, ">CN470");
+            if(fwd){
+                strncpy(buf, last, fwd - last);
+                buf += fwd - last;
+                last = fwd;
+                strncpy(buf, "checked ", 9);
+                buf += 8;
+            }
+        }
+        else if(strncmp(config[FREQ_REGION].val, "eu868", config[FREQ_REGION].len) == 0){
+            fwd = strstr(last, ">EU868");
+            if(fwd){
+                strncpy(buf, last, fwd - last);
+                buf += fwd - last;
+                last = fwd;
+                strncpy(buf, "checked ", 9);
+                buf += 8;
+            }
+        }
+        else if(strncmp(config[FREQ_REGION].val, "us915", config[FREQ_REGION].len) == 0){
+            fwd = strstr(last, ">US915");
+            if(fwd){
+                strncpy(buf, last, fwd - last);
+                buf += fwd - last;
+                last = fwd;
+                strncpy(buf, "checked ", 9);
+                buf += 8;
+            }
+        }
+    }
+
+    if(config[FREQ_RADIO0].val != NULL){  // TODO: DRY
+        fwd = strstr(last, "name='freq_radio0'");
+        if(fwd){
+            strncpy(buf, last, fwd - last);
+            buf += fwd - last;
+            last = fwd;
+            sprintf(config_buf, "value='%s' ", config[FREQ_RADIO0].val);
+            strncpy(buf, config_buf, strlen(config_buf));
+            buf += strlen(config_buf);
+        }
+    }
+    if(config[FREQ_RADIO1].val != NULL){  // TODO: DRY
+        fwd = strstr(last, "name='freq_radio1'");
+        if(fwd){
+            strncpy(buf, last, fwd - last);
+            buf += fwd - last;
+            last = fwd;
+            sprintf(config_buf, "value='%s' ", config[FREQ_RADIO1].val);
+            strncpy(buf, config_buf, strlen(config_buf));
+            buf += strlen(config_buf);
+        }
+    }
+
+    if(config[WIFI_SSID].val != NULL){  // TODO: DRY
+        fwd = strstr(last, "name='wifi_ssid'");
+        if(fwd){
+            strncpy(buf, last, fwd - last);
+            buf += fwd - last;
+            last = fwd;
+            sprintf(config_buf, "value='%s' ", config[WIFI_SSID].val);
+            strncpy(buf, config_buf, strlen(config_buf));
+            buf += strlen(config_buf);
+        }
+    }
+
+    if(config[WIFI_PASSWORD].val != NULL){  // TODO: DRY
+        fwd = strstr(last, "name='wifi_pswd'");
+        if(fwd){
+            strncpy(buf, last, fwd - last);
+            buf += fwd - last;
+            last = fwd;
+            sprintf(config_buf, "value='%s' ", config[WIFI_PASSWORD].val);
+            strncpy(buf, config_buf, strlen(config_buf));
+            buf += strlen(config_buf);
+        }
+    }
+
+    if(config[NS_HOST].val != NULL){  // TODO: DRY
+        fwd = strstr(last, "name='ns_host'");
+        if(fwd){
+            strncpy(buf, last, fwd - last);
+            buf += fwd - last;
+            last = fwd;
+            sprintf(config_buf, "value='%s' ", config[NS_HOST].val);
+            strncpy(buf, config_buf, strlen(config_buf));
+            buf += strlen(config_buf);
+        }
+    }
+
+    if(config[NS_PORT].val != NULL){  // TODO: DRY
+        fwd = strstr(last, "name='ns_port'");
+        if(fwd){
+            strncpy(buf, last, fwd - last);
+            buf += fwd - last;
+            last = fwd;
+            sprintf(config_buf, "value='%s' ", config[NS_PORT].val);
+            strncpy(buf, config_buf, strlen(config_buf));
+            buf += strlen(config_buf);
+        }
+    }
+
+    if(config[GW_ID].val != NULL){  // TODO: DRY
+        fwd = strstr(last, "name='gw_id'");
+        if(fwd){
+            strncpy(buf, last, fwd - last);
+            buf += fwd - last;
+            last = fwd;
+            sprintf(config_buf, "value='%s' ", config[GW_ID].val);
+            strncpy(buf, config_buf, strlen(config_buf));
+            buf += strlen(config_buf);
+        }
+    }
+
+    // copy the tail content
+    strcpy(buf, last);
+    return (char *)resp_buf;
+}
+
 static esp_err_t gw_config_handler(httpd_req_t *req)
 {
     char*  buf;
@@ -140,7 +292,7 @@ static esp_err_t gw_config_handler(httpd_req_t *req)
     }
 
     /* Send response with custom headers and body */
-    const char *resp_str = webpage_str;
+    const char *resp_str = assemble_webpage(webpage_str);
     httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
 
     return ESP_OK;
