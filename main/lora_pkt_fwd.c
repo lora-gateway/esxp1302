@@ -74,6 +74,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "lwip/sys.h"
 #include "lwip/sockets.h"
 #include <lwip/netdb.h>
+#include "esp_sntp.h"
 
 #include "global_json.h"
 #include "driver/gpio.h"
@@ -3628,6 +3629,11 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
         if(task_started == false){
             task_started = true;  // only run once
             printf("Wi-Fi ready. Start tasks...\n");
+
+            // update the time by NTP
+            sntp_setoperatingmode(SNTP_OPMODE_POLL);
+            sntp_setservername(0, "cn.pool.ntp.org");
+            sntp_init();
 
             config_wifi_mode(WIFI_MODE_STATION);
             xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
