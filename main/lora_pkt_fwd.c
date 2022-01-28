@@ -167,8 +167,9 @@ char gw_id[32];
 uint32_t udp_port;
 uint32_t time_count = 0;  // used for display time on screen
 
+static const char *BOOT_TAG = "gateway boot";
 static const char *PKT_TAG = "packet-forward";
-static const char *TAG = "wifi station";
+static const char *WIFI_TAG = "wifi station";
 
 
 /* signal handling variables */
@@ -1486,15 +1487,15 @@ int pkt_fwd_main(void)
     ip_protocol = IPPROTO_IP;
     sock_up = socket(addr_family, SOCK_DGRAM, ip_protocol);
     if (sock_up < 0) {
-        ESP_LOGE(TAG, "Unable to create up socket: errno %d", errno);
+        ESP_LOGE(PKT_TAG, "Unable to create up socket: errno %d", errno);
         return -1;
     }
     sock_down = socket(addr_family, SOCK_DGRAM, ip_protocol);
     if (sock_down < 0) {
-        ESP_LOGE(TAG, "Unable to create down socket: errno %d", errno);
+        ESP_LOGE(PKT_TAG, "Unable to create down socket: errno %d", errno);
         return -1;
     }
-    ESP_LOGI(TAG, "Socket created, sending to %s:%d", udp_host, udp_port);
+    ESP_LOGI(PKT_TAG, "Socket created, sending to %s:%d", udp_host, udp_port);
 
     dest_addr.sin_addr.s_addr = inet_addr((char *)udp_host);
     dest_addr.sin_family = AF_INET;
@@ -3552,11 +3553,11 @@ static void wifi_ap_event_handler(void* arg, esp_event_base_t event_base,
 {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" join, AID=%d",
+        ESP_LOGI(WIFI_TAG, "station "MACSTR" join, AID=%d",
                 MAC2STR(event->mac), event->aid);
     } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" leave, AID=%d",
+        ESP_LOGI(WIFI_TAG, "station "MACSTR" leave, AID=%d",
                 MAC2STR(event->mac), event->aid);
     }
 }
@@ -3595,7 +3596,7 @@ void wifi_init_soft_ap(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_soft_ap finished. SSID:%s password:%s channel:%d",
+    ESP_LOGI(WIFI_TAG, "wifi_init_soft_ap finished. SSID:%s password:%s channel:%d",
              ESP_WIFI_SSID, ESP_WIFI_PASS, ESP_WIFI_CHANNEL);
 }
 
@@ -3619,21 +3620,21 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
 
         wifi_ready = false;
         if (s_retry_num < WIFI_MAXIMUM_RETRY) {
-            ESP_LOGI(TAG, "retry to connect to the AP");
+            ESP_LOGI(WIFI_TAG, "retry to connect to the AP");
             esp_wifi_connect();
             s_retry_num++;
         } else {
-            ESP_LOGI(TAG, "Failed to connect to the AP; retry again...");
+            ESP_LOGI(WIFI_TAG, "Failed to connect to the AP; retry again...");
             esp_wifi_connect();
             s_retry_num = 0;
             reboot_flag = true;
         }
-        ESP_LOGI(TAG,"connect to the AP fail");
+        ESP_LOGI(WIFI_TAG,"connect to the AP fail");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         wifi_ready = true;
-        ESP_LOGI(TAG, "connected to ap (SSID:%s) succeeded", wifi_ssid);
+        ESP_LOGI(WIFI_TAG, "connected to ap (SSID:%s) succeeded", wifi_ssid);
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(WIFI_TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         sprintf(self_ip, "%d.%d.%d.%d", IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         reboot_flag = false;
@@ -3681,7 +3682,7 @@ void wifi_init_sta(void)
 
 
     if(wifi_ssid[0] == '\0'){
-        ESP_LOGE(TAG, "No Wi-Fi ssid provided. Skip Wi-Fi connection");
+        ESP_LOGE(WIFI_TAG, "No Wi-Fi ssid provided. Skip Wi-Fi connection");
         return;
     }
 
@@ -3692,7 +3693,7 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK(esp_wifi_start() );
 
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
+    ESP_LOGI(WIFI_TAG, "wifi_init_sta finished.");
 }
 
 
@@ -3717,7 +3718,7 @@ void read_config_from_nvs(void)
     if(config[NS_PORT].len > 0 && config[NS_PORT].len < 32){
         udp_port = atoi(config[NS_PORT].val);
         if(udp_port == 0)
-            ESP_LOGI(TAG, "Convert port(%s) failed", config[NS_PORT].val);
+            ESP_LOGI(BOOT_TAG, "Convert port(%s) failed", config[NS_PORT].val);
     }
 
     if(config[GW_ID].len > 0 && config[GW_ID].len == 16)
@@ -3885,7 +3886,7 @@ void app_main(void)
         reboot_flag = true;
         start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
 
-        ESP_LOGI(TAG, "ESP_WIFI_MODE_SOFT_AP");
+        ESP_LOGI(BOOT_TAG, "ESP_WIFI_MODE_SOFT_AP");
         wifi_init_soft_ap();
 
         oled_init();
@@ -3904,9 +3905,6 @@ void app_main(void)
         // start http service
         xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
     } else {
-        ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-        wifi_init_sta();
-
         oled_init();
         oled_cls();
         oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
@@ -3917,6 +3915,9 @@ void app_main(void)
         reboot_delay_s = 60 * 5; // 5 minutes
         reboot_flag = true;
         start_reboot_timer_ms(reboot_delay_s * 1000); // change to ms
+
+        ESP_LOGI(BOOT_TAG, "ESP_WIFI_MODE_STA");
+        wifi_init_sta();
     }
 
     gpio_pad_select_gpio(BLINK_GPIO);
