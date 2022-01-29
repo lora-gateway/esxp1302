@@ -155,7 +155,7 @@ char *assemble_webpage(const char *webpage_str)
                 strncpy(buf, last, fwd - last);
                 buf += fwd - last;
                 last = fwd;
-                strncpy(buf, "checked ", 9);
+                strncpy(buf, " checked", 9);
                 buf += 8;
             }
         }
@@ -165,7 +165,7 @@ char *assemble_webpage(const char *webpage_str)
                 strncpy(buf, last, fwd - last);
                 buf += fwd - last;
                 last = fwd;
-                strncpy(buf, "checked ", 9);
+                strncpy(buf, " checked", 9);
                 buf += 8;
             }
         }
@@ -175,7 +175,7 @@ char *assemble_webpage(const char *webpage_str)
                 strncpy(buf, last, fwd - last);
                 buf += fwd - last;
                 last = fwd;
-                strncpy(buf, "checked ", 9);
+                strncpy(buf, " checked", 9);
                 buf += 8;
             }
         }
