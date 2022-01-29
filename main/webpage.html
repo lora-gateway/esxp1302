@@ -5,7 +5,7 @@
 		<title>ESXP1302 Gateway Configuration</title>
 		<style>
 			body {
-			  background-color: seashell;
+			  background-color: black;
 			}
 
 			form {
@@ -107,28 +107,32 @@
         </script>
 	</head>
 	<body>
-		<H1 style='color: purple; text-align:center'>Configure ESXP1302 Gateway</H1>
-		<form name='config_form' action='/resp' method='post' onsubmit='return validation(this);'>
+		<H1 style='color: green; font-family: Arial; text-align:center'>Configure ESXP1302 Gateway</H1>
+		<form name='config_form' action='/resp' method='post' onsubmit='return validation(this);' style='color: white; font-family: Arial; font-size:15px'>
 			<label for='usage' style='width: 480px; text-align: center'>
 				<i>Leave it empty if you want the old value not be changed</i>
 			</label><br><br><br>
 
-			<label for='wifi_mode' style='width: 150px'>Next time Boot to:</label><br>
+			<label for='wifi_mode' style='width: 150px; font-size:18px'>Next time Boot to:</label><br><br>
 			<input type='radio' id='soft_ap' name='wifi_mode' value='soft_ap' style='width: 20px'>Soft AP Mode
 			<input type='radio' id='station' name='wifi_mode' value='station' style='width: 20px'>Station Mode
-			<br><br><hr><br>
+			<br><br><hr color="white" size="1"><br>
 
-			<label for='freq_region' style='width: 150px'>Frequency Plan:</label><br>
+			<label for='freq_region' style='width: 150px; font-size:18px'>Frequency Plan:</label><br><br>
 			<input type='radio' id='cn470' name='freq_region' value='cn470' style='width: 20px'>CN470
 			<input type='radio' id='eu868' name='freq_region' value='eu868' style='width: 20px'>EU868
 			<input type='radio' id='us915' name='freq_region' value='us915' style='width: 20px'>US915
 			<br><br>
 
-			<label for='freq_radio0' style='width: 280px; text-align: left'>Radio 1 Center Frequency(Hz):</label>
-			<input type='text' id='freq_radio0' name='freq_radio0'><br><br>
-			<label for='freq_radio1' style='width: 280px; text-align: left'>Radio 2 Center Frequency(Hz):</label>
+			<label for='freq_radio0' style='width: 280px; text-align: left'>Radio 1 Center Frequency:</label>
+			<input type='text' id='freq_radio0' name='freq_radio0'>
+			<label style='width: 0px'>Hz</label><br><br>
+
+			<label for='freq_radio1' style='width: 280px; text-align: left'>Radio 2 Center Frequency:</label>
 			<input type='text' id='freq_radio1' name='freq_radio1'>
-			<br><br><hr><br>
+			<label style='width: 0px'>Hz</label><br><br><hr color="white" size="1"><br>
+
+            <label style='width: 110px; font-family: Arial; color: white; font-size:18px '>Connectivity:</label><br><br>
 
 			<label for='wifi_ssid'>Wi-Fi SSID:</label>
 			<input type='text' id='ssid' name='wifi_ssid'><br>
@@ -143,7 +147,8 @@
 			<input type='text' id='port' name='ns_port'><br><br>
 
 			<label for='gw_id'>Gateway ID:</label>
-			<input type='text' id='gw_id' name='gw_id'><br><br><hr><br>
+			<input type='text' id='gw_id' name='gw_id'>
+			<br><br><hr color="white" size="1"><br>
 
 			<button type='submit' name='apply'>Apply</button><br>
 		</form>
