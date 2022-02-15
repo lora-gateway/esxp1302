@@ -1608,15 +1608,14 @@ int pkt_fwd_main(void)
 
     // display gateway's own IP
     snprintf(out_info, sizeof out_info, "IP=%s", (char *)self_ip);
-    out_info[95] = '\0';
     oled_show_str(0, 3, out_info, 1);
 
     // display Wi-Fi SSID and NS IP and port
     snprintf(out_info, sizeof out_info, "WiFi=%s", (char *)wifi_ssid);
-    out_info[95] = '\0';
     oled_show_str(0, 4, out_info, 1);
     snprintf(out_info, sizeof out_info, "NS=%s:%d", (char *)udp_host, udp_port);
-    out_info[95] = '\0';
+    if(strlen(udp_host) > 16)  // too long to put in a single line with ":port"
+        snprintf(out_info + 13, 9, "...:%d", udp_port);
     oled_show_str(0, 5, out_info, 1);
 
 #if 0
