@@ -13,6 +13,7 @@
 #include "http_server.h"
 #include "webpage.h"
 #include "web_config.h"
+#include "global_json.h"
 
 
 static const char *TAG = "esp32 web server";
@@ -344,6 +345,25 @@ static esp_err_t gw_reboot_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t gw_json_conf_handler(httpd_req_t *req)
+{
+    const char *resp_str = NULL;
+
+    esp_err_t err = handle_basic_auth(req);
+    if(err == ESP_FAIL)
+        return err;
+
+    if(strncmp((const char *) req->user_ctx, "cn470", 5) == 0)
+        resp_str = (char *)global_cn_conf + 2;  // ignore the first 2 bytes which is the length
+    else if(strncmp((const char *) req->user_ctx, "eu868", 5) == 0)
+        resp_str = (char *)global_eu_conf + 2;  // ignore the first 2 bytes which is the length
+    else if(strncmp((const char *) req->user_ctx, "us915", 5) == 0)
+        resp_str = (char *)global_us_conf + 2;  // ignore the first 2 bytes which is the length
+
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
 static const httpd_uri_t gw_config = {
     .uri       = "/",
     .method    = HTTP_GET,
@@ -367,6 +387,30 @@ static const httpd_uri_t reboot_config = {
     .user_ctx  = "ESP32 is rebooting"
 };
 
+// return cn470 json config
+static const httpd_uri_t cn470_json_conf = {
+    .uri       = "/cn470",
+    .method    = HTTP_GET,
+    .handler   = gw_json_conf_handler,
+    .user_ctx  = "cn470"
+};
+
+// return eu868 json config
+static const httpd_uri_t eu868_json_conf = {
+    .uri       = "/eu868",
+    .method    = HTTP_GET,
+    .handler   = gw_json_conf_handler,
+    .user_ctx  = "eu868"
+};
+
+// return us915 json config
+static const httpd_uri_t us915_json_conf = {
+    .uri       = "/us915",
+    .method    = HTTP_GET,
+    .handler   = gw_json_conf_handler,
+    .user_ctx  = "us915"
+};
+
 static httpd_handle_t start_web_server(void)
 {
     httpd_handle_t server = NULL;
@@ -384,6 +428,10 @@ static httpd_handle_t start_web_server(void)
         httpd_register_uri_handler(server, &gw_config);
         httpd_register_uri_handler(server, &resp_config);
         httpd_register_uri_handler(server, &reboot_config);
+        httpd_register_uri_handler(server, &cn470_json_conf);
+        httpd_register_uri_handler(server, &eu868_json_conf);
+        httpd_register_uri_handler(server, &us915_json_conf);
+
         return server;
     }
 
