@@ -155,6 +155,7 @@ static EventGroupHandle_t s_wifi_event_group;
 
 #define BLINK_GPIO      2
 #define TIME_REFRESH    5  // display the time on screen every 5s
+#define N_CHAR_A_ROW    21  // max chars in a row is 21 in oled display mode=1
 
 extern config_s config[CONFIG_NUM];
 bool wifi_ready = false;
@@ -167,7 +168,7 @@ char gw_id[32];
 uint32_t udp_port;
 uint32_t time_count = 0;  // used for display time on screen
 
-// buffer for display output (max chars in a row =21)
+// buffer for display output
 char out_info[96];
 
 static const char *BOOT_TAG = "gateway boot";
@@ -353,6 +354,19 @@ void Init_Led( void )
     gpio_set_level( LED_BLUE_GPIO, 1 );   // Default state
     gpio_set_level( LED_GREEN_GPIO, 1 );   // Default state
     gpio_set_level( LED_RED_GPIO, 1 );   // Default state
+}
+
+static void oled_show_one_line(uint8_t x, uint8_t y, char *str, uint8_t text_size)
+{
+    char *p = str;
+    int len = strlen(str);
+    char buf[N_CHAR_A_ROW + 1] = "                     ";  // 21 ' 's
+
+    if(len < N_CHAR_A_ROW){
+        strncpy(buf, str, len);
+        p = buf;
+    }
+    oled_show_str(x, y, p, text_size);
 }
 
 
@@ -1607,19 +1621,19 @@ int pkt_fwd_main(void)
 
     // display gateway's own IP
     snprintf(out_info, sizeof out_info, "IP=%s", (char *)self_ip);
-    oled_show_str(0, 3, out_info, 1);
+    oled_show_one_line(0, 3, out_info, 1);
 
     // display Wi-Fi SSID and NS IP and port
-    snprintf(out_info, sizeof out_info, "WiFi=%s                ", (char *)wifi_ssid);
+    snprintf(out_info, sizeof out_info, "WiFi=%s", (char *)wifi_ssid);
     out_info[22] = '\0';
-    oled_show_str(0, 4, out_info, 1);
-    snprintf(out_info, sizeof out_info, "NS=%s:%d        ", (char *)udp_host, udp_port);
-    out_info[22] = '\0';
+    oled_show_one_line(0, 4, out_info, 1);
+    snprintf(out_info, sizeof out_info, "NS=%s:%d", (char *)udp_host, udp_port);
     if(strlen(udp_host) > 16)  // too long to put in a single line with ":port"
         snprintf(out_info + 13, 9, "...:%d", udp_port);
-    oled_show_str(0, 5, out_info, 1);
-    oled_show_str(0, 6, "                     ", 1);  // clean old content
-    oled_show_str(0, 7, "                     ", 1);  // clean old content
+    out_info[22] = '\0';
+    oled_show_one_line(0, 5, out_info, 1);
+    oled_show_one_line(0, 6, "", 1);  // clean old content
+    oled_show_one_line(0, 7, "", 1);  // clean old content
 
 #if 0
     /* spawn threads to manage upstream and downstream */
@@ -1672,7 +1686,7 @@ int pkt_fwd_main(void)
             t = time(NULL);
             // we use "Z" to replace the "GMT" to shorten the display
             strftime(stat_timestamp, sizeof stat_timestamp, "%F %T Z", gmtime(&t));
-            oled_show_str(0, 6, stat_timestamp, 1);
+            oled_show_one_line(0, 6, stat_timestamp, 1);
 
             // Read data from GPS UART.
             uint8_t data[1024];
@@ -1837,7 +1851,7 @@ int pkt_fwd_main(void)
             printf("### Concentrator temperature: %.0f C ###\n", temperature);
 
             snprintf(out_info, 22, "Temp=%.1fC  GPS=(N/A)", temperature);
-            oled_show_str(0, 7, out_info, 1);
+            oled_show_one_line(0, 7, out_info, 1);
         }
         printf("##### END #####\n");
 
@@ -3628,8 +3642,8 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
             s_retry_num++;
         } else {
             // extra ' 's at the end are used to overwrite any old content on screen
-            oled_show_str(0, 3, "Wifi Failed!         ", 1);
-            oled_show_str(0, 4, "Reboot soon!         ", 1);
+            oled_show_one_line(0, 3, "Wifi Failed!", 1);
+            oled_show_one_line(0, 4, "Reboot soon!", 1);
             oled_show_str(0, 5, "You can re-config wifi at command line or under Soft-AP mode.  ", 1);
 
             ESP_LOGI(WIFI_TAG, "Failed to connect to the AP; retry again...");
@@ -3648,13 +3662,13 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
         reboot_flag = false;
 
         // restore or clean screen
-        snprintf(out_info, sizeof out_info, "NS=%s:%d        ", (char *)udp_host, udp_port);
-        out_info[22] = '\0';
+        snprintf(out_info, sizeof out_info, "NS=%s:%d", (char *)udp_host, udp_port);
+        //out_info[22] = '\0';
         if(strlen(udp_host) > 16)  // too long to put in a single line with ":port"
             snprintf(out_info + 13, 9, "...:%d", udp_port);
-        oled_show_str(0, 5, out_info, 1);
-        oled_show_str(0, 6, "Update Time..        ", 1);
-        oled_show_str(0, 7, "Update Temp and GPS..", 1);
+        oled_show_one_line(0, 5, out_info, 1);
+        oled_show_one_line(0, 6, "Update Time..", 1);
+        oled_show_one_line(0, 7, "Update Temp and GPS..", 1);
 
         if(task_started == false){
             task_started = true;  // only run once
@@ -3910,13 +3924,13 @@ void app_main(void)
         oled_cls();
         oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
 
-        oled_show_str(0, 3, "IP=192.168.4.1", 2);
-        oled_show_str(0, 5, "Soft AP mode", 1);
+        oled_show_one_line(0, 3, "IP=192.168.4.1", 2);
+        oled_show_one_line(0, 5, "Soft AP mode", 1);
 
         sprintf(out_info, "SSID=%s", ESP_WIFI_SSID);
-        oled_show_str(0, 6, out_info, 1);
+        oled_show_one_line(0, 6, out_info, 1);
         sprintf(out_info, "PSWD=%s", ESP_WIFI_PASS);
-        oled_show_str(0, 7, out_info, 1);
+        oled_show_one_line(0, 7, out_info, 1);
 
         // start http service
         xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
@@ -3924,7 +3938,7 @@ void app_main(void)
         oled_init();
         oled_cls();
         oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
-        oled_show_str(0, 3, "station mode", 1);
+        oled_show_one_line(0, 3, "station mode", 1);
 
         // assume wifi can't connect; set up timer preparing for reboot soon
         config_wifi_mode(WIFI_MODE_SOFT_AP);
