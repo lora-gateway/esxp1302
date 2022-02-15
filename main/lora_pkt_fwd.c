@@ -1619,21 +1619,12 @@ int pkt_fwd_main(void)
 
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
 
-    // display gateway's own IP
-    snprintf(out_info, sizeof out_info, "IP=%s", (char *)self_ip);
-    oled_show_one_line(0, 3, out_info, 1);
-
-    // display Wi-Fi SSID and NS IP and port
-    snprintf(out_info, sizeof out_info, "WiFi=%s", (char *)wifi_ssid);
-    out_info[22] = '\0';
-    oled_show_one_line(0, 4, out_info, 1);
+    // update NS info on screen
     snprintf(out_info, sizeof out_info, "NS=%s:%d", (char *)udp_host, udp_port);
     if(strlen(udp_host) > 16)  // too long to put in a single line with ":port"
         snprintf(out_info + 13, 9, "...:%d", udp_port);
     out_info[22] = '\0';
     oled_show_one_line(0, 5, out_info, 1);
-    oled_show_one_line(0, 6, "", 1);  // clean old content
-    oled_show_one_line(0, 7, "", 1);  // clean old content
 
 #if 0
     /* spawn threads to manage upstream and downstream */
@@ -1686,7 +1677,8 @@ int pkt_fwd_main(void)
             t = time(NULL);
             // we use "Z" to replace the "GMT" to shorten the display
             strftime(stat_timestamp, sizeof stat_timestamp, "%F %T Z", gmtime(&t));
-            oled_show_one_line(0, 6, stat_timestamp, 1);
+            if(wifi_ready == true)  // only update time if wifi is ready
+                oled_show_one_line(0, 6, stat_timestamp, 1);
 
             // Read data from GPS UART.
             uint8_t data[1024];
@@ -1851,7 +1843,8 @@ int pkt_fwd_main(void)
             printf("### Concentrator temperature: %.0f C ###\n", temperature);
 
             snprintf(out_info, 22, "Temp=%.1fC  GPS=(N/A)", temperature);
-            oled_show_one_line(0, 7, out_info, 1);
+            if(wifi_ready == true)  // only update time if wifi is ready
+                oled_show_one_line(0, 7, out_info, 1);
         }
         printf("##### END #####\n");
 
@@ -3660,6 +3653,15 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
         sprintf(self_ip, "%d.%d.%d.%d", IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         reboot_flag = false;
+
+        // display gateway's own IP
+        snprintf(out_info, sizeof out_info, "IP=%s", (char *)self_ip);
+        oled_show_one_line(0, 3, out_info, 1);
+
+        // display Wi-Fi SSID and NS IP and port
+        snprintf(out_info, sizeof out_info, "WiFi=%s", (char *)wifi_ssid);
+        out_info[22] = '\0';
+        oled_show_one_line(0, 4, out_info, 1);
 
         // restore or clean screen
         snprintf(out_info, sizeof out_info, "NS=%s:%d", (char *)udp_host, udp_port);
