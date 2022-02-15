@@ -167,6 +167,9 @@ char gw_id[32];
 uint32_t udp_port;
 uint32_t time_count = 0;  // used for display time on screen
 
+// buffer for display output (max chars in a row =21)
+char out_info[96];
+
 static const char *BOOT_TAG = "gateway boot";
 static const char *PKT_TAG = "packet-forward";
 static const char *WIFI_TAG = "wifi station";
@@ -1602,21 +1605,21 @@ int pkt_fwd_main(void)
 
     //printf( "Free bytes: %d\n", xPortGetFreeHeapSize());
 
-    // we prepare info more than a row can display (max=22)
-    // generally, the characters go to next line will be overwrote.
-    char out_info[96];
-
     // display gateway's own IP
     snprintf(out_info, sizeof out_info, "IP=%s", (char *)self_ip);
     oled_show_str(0, 3, out_info, 1);
 
     // display Wi-Fi SSID and NS IP and port
-    snprintf(out_info, sizeof out_info, "WiFi=%s", (char *)wifi_ssid);
+    snprintf(out_info, sizeof out_info, "WiFi=%s                ", (char *)wifi_ssid);
+    out_info[22] = '\0';
     oled_show_str(0, 4, out_info, 1);
-    snprintf(out_info, sizeof out_info, "NS=%s:%d", (char *)udp_host, udp_port);
+    snprintf(out_info, sizeof out_info, "NS=%s:%d        ", (char *)udp_host, udp_port);
+    out_info[22] = '\0';
     if(strlen(udp_host) > 16)  // too long to put in a single line with ":port"
         snprintf(out_info + 13, 9, "...:%d", udp_port);
     oled_show_str(0, 5, out_info, 1);
+    oled_show_str(0, 6, "                     ", 1);  // clean old content
+    oled_show_str(0, 7, "                     ", 1);  // clean old content
 
 #if 0
     /* spawn threads to manage upstream and downstream */
@@ -1833,7 +1836,7 @@ int pkt_fwd_main(void)
         } else {
             printf("### Concentrator temperature: %.0f C ###\n", temperature);
 
-            sprintf(out_info, "Temp=%.1fC  GPS=(N/A)", temperature);
+            snprintf(out_info, 22, "Temp=%.1fC  GPS=(N/A)", temperature);
             oled_show_str(0, 7, out_info, 1);
         }
         printf("##### END #####\n");
@@ -3619,14 +3622,14 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
 
         wifi_ready = false;
         if (s_retry_num < WIFI_MAXIMUM_RETRY) {
+            oled_show_str(0, 5, "You can re-config wifi at command line or under Soft-AP mode.  ", 1);
             ESP_LOGI(WIFI_TAG, "retry to connect to the AP");
             esp_wifi_connect();
             s_retry_num++;
         } else {
-            oled_show_str(0, 3, "Wifi Failed!", 1);
-            oled_show_str(0, 4, "Reboot soon!", 1);
-
-            // ' ' at the end is used to overwrite any old content on screen
+            // extra ' 's at the end are used to overwrite any old content on screen
+            oled_show_str(0, 3, "Wifi Failed!         ", 1);
+            oled_show_str(0, 4, "Reboot soon!         ", 1);
             oled_show_str(0, 5, "You can re-config wifi at command line or under Soft-AP mode.  ", 1);
 
             ESP_LOGI(WIFI_TAG, "Failed to connect to the AP; retry again...");
@@ -3643,6 +3646,15 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
         sprintf(self_ip, "%d.%d.%d.%d", IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         reboot_flag = false;
+
+        // restore or clean screen
+        snprintf(out_info, sizeof out_info, "NS=%s:%d        ", (char *)udp_host, udp_port);
+        out_info[22] = '\0';
+        if(strlen(udp_host) > 16)  // too long to put in a single line with ":port"
+            snprintf(out_info + 13, 9, "...:%d", udp_port);
+        oled_show_str(0, 5, out_info, 1);
+        oled_show_str(0, 6, "Update Time..        ", 1);
+        oled_show_str(0, 7, "Update Temp and GPS..", 1);
 
         if(task_started == false){
             task_started = true;  // only run once
@@ -3901,7 +3913,6 @@ void app_main(void)
         oled_show_str(0, 3, "IP=192.168.4.1", 2);
         oled_show_str(0, 5, "Soft AP mode", 1);
 
-        char out_info[48];
         sprintf(out_info, "SSID=%s", ESP_WIFI_SSID);
         oled_show_str(0, 6, out_info, 1);
         sprintf(out_info, "PSWD=%s", ESP_WIFI_PASS);
