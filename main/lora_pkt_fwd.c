@@ -3624,6 +3624,12 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
             esp_wifi_connect();
             s_retry_num++;
         } else {
+            oled_show_str(0, 3, "Wifi Failed!", 1);
+            oled_show_str(0, 4, "Reboot soon!", 1);
+
+            // ' ' at the end is used to overwrite any old content on screen
+            oled_show_str(0, 5, "You can re-config wifi at command line or under Soft-AP mode.  ", 1);
+
             ESP_LOGI(WIFI_TAG, "Failed to connect to the AP; retry again...");
             esp_wifi_connect();
             s_retry_num = 0;
