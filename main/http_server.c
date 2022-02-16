@@ -125,6 +125,7 @@ char *assemble_webpage(const char *webpage_str)
 {
     char *last = webpage_str, *fwd, *buf = resp_buf;
     char config_buf[80];
+    int href_len = 16;  // 16 is the length of '<a href="cn470">'
 
     if(config[WIFI_MODE].val != NULL){  // TODO: DRY
         if(strncmp(config[WIFI_MODE].val, "soft_ap", config[WIFI_MODE].len) == 0){
@@ -153,6 +154,7 @@ char *assemble_webpage(const char *webpage_str)
         if(strncmp(config[FREQ_REGION].val, "cn470", config[FREQ_REGION].len) == 0){
             fwd = strstr(last, ">CN470");
             if(fwd){
+                fwd -= href_len;
                 strncpy(buf, last, fwd - last);
                 buf += fwd - last;
                 last = fwd;
@@ -163,6 +165,7 @@ char *assemble_webpage(const char *webpage_str)
         else if(strncmp(config[FREQ_REGION].val, "eu868", config[FREQ_REGION].len) == 0){
             fwd = strstr(last, ">EU868");
             if(fwd){
+                fwd -= href_len;
                 strncpy(buf, last, fwd - last);
                 buf += fwd - last;
                 last = fwd;
@@ -173,6 +176,7 @@ char *assemble_webpage(const char *webpage_str)
         else if(strncmp(config[FREQ_REGION].val, "us915", config[FREQ_REGION].len) == 0){
             fwd = strstr(last, ">US915");
             if(fwd){
+                fwd -= href_len;
                 strncpy(buf, last, fwd - last);
                 buf += fwd - last;
                 last = fwd;
@@ -345,22 +349,31 @@ static esp_err_t gw_reboot_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+char json_conf_buf[1024*5];  // 5K should be enough
+static void assemble_json_str(char *str)
+{
+    int len = strlen(str);
+
+    strcpy(json_conf_buf, "<pre>");
+    strcpy(json_conf_buf+5, str);
+    strcpy(json_conf_buf+5+len, "</pre>");
+    json_conf_buf[5+len+6] = '\0';
+}
+
 static esp_err_t gw_json_conf_handler(httpd_req_t *req)
 {
-    const char *resp_str = NULL;
-
     esp_err_t err = handle_basic_auth(req);
     if(err == ESP_FAIL)
         return err;
 
     if(strncmp((const char *) req->user_ctx, "cn470", 5) == 0)
-        resp_str = (char *)global_cn_conf + 2;  // ignore the first 2 bytes which is the length
+        assemble_json_str((char *)global_cn_conf + 2);  // ignore the first 2 bytes which is the length
     else if(strncmp((const char *) req->user_ctx, "eu868", 5) == 0)
-        resp_str = (char *)global_eu_conf + 2;  // ignore the first 2 bytes which is the length
+        assemble_json_str((char *)global_eu_conf + 2);  // ignore the first 2 bytes which is the length
     else if(strncmp((const char *) req->user_ctx, "us915", 5) == 0)
-        resp_str = (char *)global_us_conf + 2;  // ignore the first 2 bytes which is the length
+        assemble_json_str((char *)global_us_conf + 2);  // ignore the first 2 bytes which is the length
 
-    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send(req, (const char *)json_conf_buf, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
