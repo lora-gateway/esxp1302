@@ -3942,6 +3942,9 @@ void app_main(void)
         oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
         oled_show_one_line(0, 3, "station mode", 1);
 
+        oled_show_one_line(0, 4, "Wifi not connected.", 1);
+        oled_show_str(0, 5, "You can re-config wifi at command line or under Soft-AP mode.  ", 1);
+
         // assume wifi can't connect; set up timer preparing for reboot soon
         config_wifi_mode(WIFI_MODE_SOFT_AP);
         reboot_delay_s = 60 * 5; // 5 minutes
