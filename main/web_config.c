@@ -54,6 +54,41 @@ esp_err_t init_config_storage(void)
     return err;
 }
 
+// transfer encoded str such as 'abc%2Bde' to 'abc+de'.
+int decode_ascii(char *str, char *p)
+{
+    char val;
+    char buf[3] = { 0, 0, 0};
+
+    while(*str){
+        if(*str != '%'){
+            if(*str == '+'){
+                *p++ = ' ';  // space is encoded to '+' instead of '%20'
+            } else {
+                *p++ = *str;
+            }
+            str++;
+        } else {
+            if(*(str+1) && *(str+2)){
+                buf[0] = *(str+1);
+                if((unsigned char)buf[0] >= '8'){
+                    printf("Error: not a valid encoded ascii char. Maybe an UTF-8 char?\n");
+                    break;
+                }
+                buf[1] = *(str+2);
+                val = (char)strtol(buf, NULL, 16);
+                *p++ = val;
+            } else {
+                printf("Error: not a valid encoded ascii string\n");
+                break;
+            }
+            str += 3;
+        }
+    }
+    *p = '\0';
+
+    return 0;
+}
 
 int update_config(char *str, int len)
 {
@@ -70,10 +105,14 @@ int update_config(char *str, int len)
         if(!p)
             return -1;
 
-        strncpy(p, str + name_len + 1, n - 1);
         if(config[tag].val)
             free(config[tag].val);
+        strncpy(p, str + name_len + 1, n - 1);
         p[n-1] = '\0';
+        if(tag == WIFI_SSID || tag == WIFI_PASSWORD){
+            decode_ascii(p, p);
+            n = strlen(p) + 1;
+        }
         config[tag].val = p;
         config[tag].len = n - 1;
     }
