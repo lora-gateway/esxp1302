@@ -1,8 +1,14 @@
 # About ESXP1302 Packet Forwarder
 
 This is the ESP32 platform porting of SX1302\_HAL project (https://github.com/Lora-net/sx1302\_hal), based on the Version 1.0.5.
-I try to stick to the original code as much as possible, but also removed some line-seperating comments I think not necessary.
-And when involving ESP32 unique features, I have to invent my own way, which also imported some difference.
+I try to stick to and not change the original code, but removed some line-seperating comments I think not necessary.
+As for ESP32 part, I do it the way whatever I think the best, which also imports some differences.
+
+
+## Upgrade and Usage guide
+
+The documents about how to upgrade the released binaries, and how to use this gateway are both located under the `doc` folder.
+Below is mainly for development and other utilities.
 
 
 ## How to Compile
