@@ -10,7 +10,7 @@ with open(sys.argv[1]) as f:
 
 print("// dump from file: %s" %os.path.basename(sys.argv[1]))
 
-print("static const char webpage_str[] = {\n   "),
+print("static const char %s[] = {\n   " %sys.argv[2]),
 for (i, x) in enumerate(chars, 1):
     print("0x%02X," %ord(x)),
     if i % 16 == 0:

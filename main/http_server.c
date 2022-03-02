@@ -18,6 +18,7 @@
 
 
 static const char *TAG = "esp32 web server";
+static bool black_theme_flag = true;
 
 typedef struct {
     char    *username;
@@ -298,10 +299,28 @@ static esp_err_t gw_config_handler(httpd_req_t *req)
     }
 
     /* Send response with custom headers and body */
-    const char *resp_str = assemble_webpage(webpage_str);
-    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+    const char *resp_str = NULL;
+    if(black_theme_flag == true)
+        resp_str = assemble_webpage(webpage_str);
+    else
+        resp_str = assemble_webpage(webpage_light_theme_str);
 
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
+}
+
+// for 'black' background theme
+static esp_err_t b_gw_config_handler(httpd_req_t *req)
+{
+    black_theme_flag = true;
+    return gw_config_handler(req);
+}
+
+// for 'white' background theme
+static esp_err_t w_gw_config_handler(httpd_req_t *req)
+{
+    black_theme_flag = false;
+    return gw_config_handler(req);
 }
 
 static esp_err_t gw_response_handler(httpd_req_t *req)
@@ -326,15 +345,22 @@ static esp_err_t gw_response_handler(httpd_req_t *req)
     extract_data_items(buf);
     save_config();
 
-    /* Send response with custom headers and body */
-    //const char *resp_str = (const char *) req->user_ctx;
-    const char *resp_str = (const char *) "<html><head><meta http-equiv='refresh' content=\"4; URL=/\" /></head>"
+    const char *resp_str = NULL;
+    if(black_theme_flag == true){
+        resp_str = (const char *) "<html><head><meta http-equiv='refresh' content=\"4; URL=/\" /></head>"
                                 "<body><center>Config applied.</center><br><br><center>Back in seconds...</center><br><br>"
                                 "<form action='/' method='get' style='text-align: center'>"
                                     "<button type='submit' name='back'>Back</button>"
                                 "</form></body></html>";
-    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+    } else {
+        resp_str = (const char *) "<html><head><meta http-equiv='refresh' content=\"4; URL=/w\" /></head>"
+                                "<body><center>Config applied.</center><br><br><center>Back in seconds...</center><br><br>"
+                                "<form action='/w' method='get' style='text-align: center'>"
+                                    "<button type='submit' name='back'>Back</button>"
+                                "</form></body></html>";
+    }
 
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
@@ -346,12 +372,16 @@ static esp_err_t gw_reboot_handler(httpd_req_t *req)
 
     ESP_LOGW(TAG, "Reboot required");
 
-    /* Send response with custom headers and body */
-    //const char *resp_str = (const char *) req->user_ctx;
-    const char *resp_str = (const char *) "<html><head><meta http-equiv='refresh' content=\"6; URL=/\" /></head>"
+    const char *resp_str = NULL;
+    if(black_theme_flag == true){
+        resp_str = (const char *) "<html><head><meta http-equiv='refresh' content=\"6; URL=/\" /></head>"
                                 "<body><center>Gateway is reboot...</center><br><br><center>Waiting for 6 seconds...</center></body></html>";
-    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+    } else {
+        resp_str = (const char *) "<html><head><meta http-equiv='refresh' content=\"6; URL=/w\" /></head>"
+                                "<body><center>Gateway is reboot...</center><br><br><center>Waiting for 6 seconds...</center></body></html>";
+    }
 
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
     wait_ms(500);
     esp_restart();
 
@@ -386,10 +416,19 @@ static esp_err_t gw_json_conf_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+// Default: black theme. 'b' means 'black' background.
 static const httpd_uri_t gw_config = {
     .uri       = "/",
     .method    = HTTP_GET,
-    .handler   = gw_config_handler,
+    .handler   = b_gw_config_handler,
+    .user_ctx  = "Hello ESXP1302 Gateway!"
+};
+
+// light theme. 'w' means 'white' background
+static const httpd_uri_t w_gw_config = {
+    .uri       = "/w",
+    .method    = HTTP_GET,
+    .handler   = w_gw_config_handler,
     .user_ctx  = "Hello ESXP1302 Gateway!"
 };
 
@@ -448,6 +487,7 @@ static httpd_handle_t start_web_server(void)
         web_auth_info.password = web_password;
 
         httpd_register_uri_handler(server, &gw_config);
+        httpd_register_uri_handler(server, &w_gw_config);
         httpd_register_uri_handler(server, &resp_config);
         httpd_register_uri_handler(server, &reboot_config);
         httpd_register_uri_handler(server, &cn470_json_conf);

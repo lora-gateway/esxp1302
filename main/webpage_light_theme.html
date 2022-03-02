@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>ESXP1302 Gateway Configuration</title>
+		<style>
+			body {
+			  background-color: seashell;
+			}
+
+			form {
+			  /* Center the form on the page */
+			  margin: 0 auto;
+			  width: 480px;
+			  /* Form outline */
+			  padding: 1em;
+			  border: 1px solid #CCC;
+			  border-radius: 1em;
+			  text-align: center;
+			}
+
+			label {
+			  /* Uniform size & alignment */
+			  display: inline-block;
+			  width: 140px;
+			  text-align: right;
+			}
+
+			input {
+			  font: 1em sans-serif;
+
+			  /* Uniform text field size */
+			  width: 300px;
+			  box-sizing: border-box;
+
+			  /* Match form field borders */
+			  border: 1px solid #999;
+			}
+		</style>
+        <script>
+            function validation(obj)
+            {
+                let freq_region_in_use;
+                let freq_radio0 = obj.freq_radio0.value;
+                let freq_radio1 = obj.freq_radio1.value;
+                let wifi_pswd = obj.wifi_pswd.value;
+                let ns_host = obj.ns_host.value;
+                let ns_port = obj.ns_port.value;
+                let gw_id = obj.gw_id.value;
+                let err_msg = "";
+
+                if(freq_radio0 && /^[4-9]\d{8}$/.test(freq_radio0) == false)
+                    err_msg += "Freq Radio0: value should be between 470000000 and 930000000.\n";
+                if(freq_radio1 && /^[4-9]\d{8}$/.test(freq_radio0) == false)
+                    err_msg += "Freq Radio1: value should be between 470000000 and 930000000.\n";
+                if(wifi_pswd && wifi_pswd.length < 8)
+                    err_msg += "Wi-Fi Password: too short; minimum length is 8 characters\n";
+                if(ns_host && /^[0-9A-Za-z.]+$/.test(ns_host) == false)
+                    err_msg += "NS Host: only ip address or domain name are allowed\n";
+                if(ns_host && ns_host.startsWith("http") == true)
+                    err_msg += "NS Host: protocol(http:// or https:// can't be included\n";
+                if(ns_port && /^\d+$/.test(ns_port) == false)
+                    err_msg += "NS Port: only number value allowed. Or does it contain whitespace?\n";
+                if(gw_id && /^[0-9A-Fa-f]{16}$/.test(gw_id) == false)
+                    err_msg += "Gateway ID: only hex(0-9A-Fa-f) value allowed, and exactly 16 characters.\n";
+
+                for(let i = 0; i <= 2; i++){
+                    if(obj.freq_region[i].checked){
+                        freq_region_in_use = obj.freq_region[i].value;
+                        break;
+                    }
+                }
+
+                // check radio frequency
+                if(freq_region_in_use == null){
+                    console.log("No region selected");
+                } else {
+                    console.log("freq_region_in_use:", freq_region_in_use);
+                    if(freq_region_in_use == "cn470"){
+                        if(freq_radio0 <= 470000000 || freq_radio0 > 510000000
+                                || freq_radio1 <= 470000000 || freq_radio1 > 510000000){
+                            err_msg += "Either Radio0 or Radio1 doesn't match Frequency Plan\n";
+                        }
+                    }
+                    else if(freq_region_in_use == "eu868"){
+                        if(freq_radio0 <= 863000000 || freq_radio0 > 870000000
+                                || freq_radio1 <= 863000000 || freq_radio1 > 870000000){
+                            err_msg += "Either Radio0 or Radio1 doesn't match Frequency Plan\n";
+                        }
+                    }
+                    else if(freq_region_in_use == "us915"){
+                        if(freq_radio0 <= 900000000 || freq_radio0 > 930000000
+                                || freq_radio1 <= 900000000 || freq_radio1 > 930000000){
+                            err_msg += "Either Radio0 or Radio1 doesn't match Frequency Plan\n";
+                        }
+                    }
+                }
+
+                if(err_msg){
+                    console.log(err_msg);
+                    alert(err_msg);
+                    return false;
+                }
+
+                return true;
+            }
+        </script>
+	</head>
+	<body>
+		<H1 style='color: purple; text-align:center'>Configure ESXP1302 Gateway</H1>
+		<form name='config_form' action='/resp' method='post' onsubmit='return validation(this);'>
+			<label for='usage' style='width: 480px; text-align: center'>
+				<i>Leave it empty if you want the old value not be changed</i>
+			</label><br><br><br>
+
+			<label for='wifi_mode' style='width: 180px; text-align: center'><b>Next time Boot to:</b></label><br><br>
+			<input type='radio' id='soft_ap' name='wifi_mode' value='soft_ap' style='width: 20px'>Soft AP Mode
+			<input type='radio' id='station' name='wifi_mode' value='station' style='width: 20px'>Station Mode
+			<br><br><hr size="1"><br>
+
+			<label for='freq_region' style='width: 150px'><b>Frequency Plan:</b></label><br><br>
+			<input type='radio' id='cn470' name='freq_region' value='cn470' style='width: 20px'><a href="cn470">CN470</a>
+			<input type='radio' id='eu868' name='freq_region' value='eu868' style='width: 20px'><a href="eu868">EU868</a>
+			<input type='radio' id='us915' name='freq_region' value='us915' style='width: 20px'><a href="us915">US915</a>
+			<br><br>
+
+			<label for='freq_radio0' style='width: 280px; text-align: left'>Radio 1 Center Frequency:</label>
+			<input type='text' id='freq_radio0' name='freq_radio0'><label style='width: 0px'>Hz</label><br><br>
+			<label for='freq_radio1' style='width: 280px; text-align: left'>Radio 2 Center Frequency:</label>
+			<input type='text' id='freq_radio1' name='freq_radio1'><label style='width: 0px'>Hz</label>
+			<br><br><hr size="1"><br>
+
+			<label style='width: 180px; text-align: center'><b>Connectivity:</b></label><br><br>
+
+			<label for='wifi_ssid'>Wi-Fi SSID:</label>
+			<input type='text' id='ssid' name='wifi_ssid'><br>
+
+			<label for='wifi_pswd'>Wi-Fi Password:</label>
+			<input type='text' id='pswd' name='wifi_pswd'><br><br>
+
+			<label for='ns_host'>NS Host:</label>
+			<input type='text' id='ip' name='ns_host'><br>
+
+			<label for='ns_port'>NS Port:</label>
+			<input type='text' id='port' name='ns_port'><br><br>
+
+			<label for='gw_id'>Gateway ID:</label>
+			<input type='text' id='gw_id' name='gw_id'>
+			<br><br><hr size="1"><br>
+
+			<button type='submit' name='apply'>Apply</button><br>
+		</form>
+		<form action='/reboot' method='post' style='text-align: center'>
+			<button type='submit' name='reboot'>Reboot</button>
+		</form>
+	</body>
+</html>

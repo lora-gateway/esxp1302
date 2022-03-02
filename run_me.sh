@@ -16,6 +16,7 @@ app="0x10000 $pth/build/ESXP1302-Pkt-Fwd.bin"
 part="0x8000 $pth/build/partition_table/partition-table.bin"
 
 web_file=main/webpage.html
+web_light_theme_file=main/webpage_light_theme.html
 web_hd_name=main/webpage.h
 
 hd_name=main/global_json.h
@@ -30,7 +31,9 @@ fi
 
 if [ "$1" = "make" ]; then
 	# prepare the webpage by dumping it to a string
-	scripts/dump_html.py $web_file > $web_hd_name
+	scripts/dump_html.py $web_file webpage_str > $web_hd_name
+	echo "" >> $web_hd_name  # add a new blank line
+	scripts/dump_html.py $web_light_theme_file webpage_light_theme_str >> $web_hd_name
 
 	# prepare the C array comes from global_conf.cn490.json
 	echo '// dump from global_conf.json as string array\n' > $hd_name
