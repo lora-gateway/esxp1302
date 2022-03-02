@@ -3,8 +3,9 @@
 
 ## firmware upgrade preparation
 
-You'll need `esptool` to upgrade firmware for ESXP1302.
-Install it with:
+First, make sure you have `Python 3` installed in your PC. it provides the tool `pip` to install other tools.
+
+Then you'll need `esptool` to upgrade firmware for ESXP1302. Install it with:
 ```shell
 pip install esptool
 ```
