@@ -3775,8 +3775,8 @@ void usage(void) {
     printf(" -h                   print this help\n");
     printf(" -u <wifi ssid>       Wifi SSID\n");
     printf(" -p <wifi password>   Wifi Password\n");
-    printf(" --host <UDP Host>    UDP Host\n");
-    printf(" --port <UDP Port>    UDP Port\n");
+    printf(" --host <NS Host>     NS Host\n");
+    printf(" --port <NS Port>     NS Port\n");
     printf(" --gwid <gateway id>  Gateway ID\n");
 }
 
