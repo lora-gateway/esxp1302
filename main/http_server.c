@@ -229,7 +229,7 @@ char *assemble_webpage(const char *webpage_str)
             strncpy(buf, last, fwd - last);
             buf += fwd - last;
             last = fwd;
-            sprintf(config_buf, "value='%s' ", config[WIFI_PASSWORD].val);
+            sprintf(config_buf, "placeholder='(password has been set)' ");  // don't show password
             strncpy(buf, config_buf, strlen(config_buf));
             buf += strlen(config_buf);
         }
