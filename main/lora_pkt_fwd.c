@@ -83,6 +83,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "led_indication.h"
 #include "ioe.h"
 #include "web_config.h"
+#include "loragw_version.h"
 
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
@@ -3893,6 +3894,8 @@ void app_main(void)
 {
     int reboot_delay_s;
     bool soft_ap_mode = false;
+
+    printf("\n\n*** ESXP1302 Gateway. Version: %s ***\n\n\n", EXSP1302_VERSION);
 
     gpio_set_direction(USER_BUTTON_1, GPIO_MODE_INPUT);
     gpio_set_direction(USER_BUTTON_2, GPIO_MODE_INPUT);
