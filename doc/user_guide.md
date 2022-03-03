@@ -5,7 +5,7 @@
 
 **ESXP1302 Gateway** project is based on `SX1302_HAL` project, but uses ESP32 instead of Raspberry Pi. *ESXP1302* = *ESP32* + *SX1302*.
 
-This document is a very simple guide about how to configure and use ESXP1302 gateway.
+This document is a very simple guide about how to configure and use ESXP1302 gateway based on the **version 0.6.1**.
 
 First, please be noted that ESXP1302 gateway has 2 types of Wi-Fi working modes, and 2 ways to configure it.
 
@@ -48,6 +48,8 @@ From web UI, user can configure below items:
 If you think the original value is correct for any of above field, then you can just leave it empty. Any value you provided would be used to replace the original one from the JSON template file.
 
 You can save your configurations whenever you like by clicking the **Apply** button. Such changes are saved in the gateway but won't apply to the current *packet-forward* process yet. It only happens after you click the **Reboot** button to reboot the gateway, or by user reboot the gateway by power off and on.
+
+If you don't like the default dark theme, you can try the light theme by accessing `http://<gateway_ip>/w` instead.
 
 
 ## Configuration by command line
