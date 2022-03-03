@@ -122,6 +122,8 @@ int update_config(char *str, int len)
 void dump_config(void)
 {
     for(int i = 0; i < CONFIG_NUM; i++) {
+        if(i == WIFI_PASSWORD)  // don't display wifi password
+            continue;
         if(config[i].val != NULL)
             printf("%s: %s @ %p\n", config[i].name, config[i].val, config[i].val);
         else
