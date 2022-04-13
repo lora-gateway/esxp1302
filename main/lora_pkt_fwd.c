@@ -1689,7 +1689,7 @@ int pkt_fwd_main(void)
             min = (length < 1024) ? length : 1024;
             length = uart_read_bytes(gps_tty_fd, data, min, 100);
             data[min] = '\0';
-            printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
+            //printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
         }
         strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
 

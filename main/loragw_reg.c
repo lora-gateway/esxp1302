@@ -1222,7 +1222,7 @@ int lgw_connect(void) {
         DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
         return LGW_REG_ERROR;
     }
-    if (u != loregs[SX1302_REG_COMMON_VERSION_VERSION].dflt) {
+    if (u != loregs[SX1302_REG_COMMON_VERSION_VERSION].dflt && u != 18) {  // compatibility workaround here: 18 for SX1303
         DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
         return LGW_REG_ERROR;
     }
