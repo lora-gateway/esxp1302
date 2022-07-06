@@ -3953,6 +3953,8 @@ void app_main(void)
         oled_cls();
         oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
 
+        sprintf(out_info,   "            (v%s)", EXSP1302_VERSION);
+        oled_show_one_line(0, 2, out_info, 1);
         oled_show_one_line(0, 3, "IP=192.168.4.1", 2);
         oled_show_one_line(0, 5, "Soft AP mode", 1);
 
@@ -3967,6 +3969,8 @@ void app_main(void)
         oled_init();
         oled_cls();
         oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
+        sprintf(out_info,   "            (v%s)", EXSP1302_VERSION);
+        oled_show_one_line(0, 2, out_info, 1);
         oled_show_one_line(0, 3, "station mode", 1);
 
         oled_show_one_line(0, 4, "Wifi not connected.", 1);
