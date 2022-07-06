@@ -19,7 +19,7 @@
             "rssi_offset": -207.0,
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": true,
-            "tx_freq_min": 500000000,
+            "tx_freq_min": 470000000,
             "tx_freq_max": 510000000,
             "tx_gain_lut":[
                 {"rf_power": -6, "pa_gain": 0, "pwr_idx":  0},
