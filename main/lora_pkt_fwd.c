@@ -158,6 +158,8 @@ static EventGroupHandle_t s_wifi_event_group;
 #define TIME_REFRESH    5  // display the time on screen every 5s
 #define N_CHAR_A_ROW    21  // max chars in a row is 21 in oled display mode=1
 
+#define IP_LEN  32  // a right ip address should be no more than 16 bytes. some extra space for failed solving
+
 extern config_s config[CONFIG_NUM];
 bool wifi_ready = false;
 char wifi_ssid[32];
@@ -1320,6 +1322,25 @@ void esp_print_stacktop( TaskHandle_t const pThread )
     esp_print_tasks();
 }
 
+static int dns_loopup(char *hostname, char *ip)
+{
+    struct hostent *he;
+    struct in_addr **addrlist;
+
+    if((he = gethostbyname(hostname)) == NULL){
+        return -1;
+    }
+
+    addrlist = (struct in_addr **) he->h_addr_list;
+    for(int i=0; addrlist[i] != NULL; i++){
+        strncpy(ip, inet_ntoa(*addrlist[i]), IP_LEN);
+        ip[IP_LEN-1] = '\0'; // just to be safe
+        return 0;
+    }
+
+    return -1;
+}
+
 //int pkt_fwd_main(int argc, char ** argv)
 int pkt_fwd_main(void)
 {
@@ -1500,6 +1521,7 @@ int pkt_fwd_main(void)
     int addr_family = 0;
     int ip_protocol = 0;
     int len, err;
+    char ip[IP_LEN] = { 0 };
 
     addr_family = AF_INET;
     ip_protocol = IPPROTO_IP;
@@ -1515,7 +1537,8 @@ int pkt_fwd_main(void)
     }
     ESP_LOGI(PKT_TAG, "Socket created, sending to %s:%d", udp_host, udp_port);
 
-    dest_addr.sin_addr.s_addr = inet_addr((char *)udp_host);
+    dns_loopup(udp_host, ip);
+    dest_addr.sin_addr.s_addr = inet_addr(ip);
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(udp_port);
 
@@ -3515,40 +3538,10 @@ void thread_valid(void)
     MSG("\nINFO: End of validation thread\n");
 }
 
-int dns_loopup(char *hostname, char *ip)
-{
-    struct hostent *he;
-    struct in_addr **addrlist;
-
-    if((he = gethostbyname(hostname)) == NULL){
-        return -1;
-    }
-
-    addrlist = (struct in_addr **) he->h_addr_list;
-    for(int i=0; addrlist[i] != NULL; i++){
-        strcpy(ip, inet_ntoa(*addrlist[i]));
-        return 0;
-    }
-
-    return -1;
-}
-
-void test_name2ip(void)
-{
-    char *host = "loragw.things.qcloud.com";
-    char *host2 = "eu1.cloud.thethings.network";
-    char ip[100];
-
-    dns_loopup(host, ip);
-    printf("tencent ns = %s\n", ip);
-    dns_loopup(host2, ip);
-    printf("ttn ns = %s\n", ip);
-}
 
 static void pkt_fwd_task(void *pvParameters)
 {
     heap_caps_check_integrity_all( true );
-    test_name2ip();
     pkt_fwd_main();
 
     vTaskDelete(NULL);
