@@ -3515,9 +3515,40 @@ void thread_valid(void)
     MSG("\nINFO: End of validation thread\n");
 }
 
+int dns_loopup(char *hostname, char *ip)
+{
+    struct hostent *he;
+    struct in_addr **addrlist;
+
+    if((he = gethostbyname(hostname)) == NULL){
+        return -1;
+    }
+
+    addrlist = (struct in_addr **) he->h_addr_list;
+    for(int i=0; addrlist[i] != NULL; i++){
+        strcpy(ip, inet_ntoa(*addrlist[i]));
+        return 0;
+    }
+
+    return -1;
+}
+
+void test_name2ip(void)
+{
+    char *host = "loragw.things.qcloud.com";
+    char *host2 = "eu1.cloud.thethings.network";
+    char ip[100];
+
+    dns_loopup(host, ip);
+    printf("tencent ns = %s\n", ip);
+    dns_loopup(host2, ip);
+    printf("ttn ns = %s\n", ip);
+}
+
 static void pkt_fwd_task(void *pvParameters)
 {
     heap_caps_check_integrity_all( true );
+    test_name2ip();
     pkt_fwd_main();
 
     vTaskDelete(NULL);
