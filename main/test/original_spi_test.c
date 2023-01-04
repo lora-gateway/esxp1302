@@ -1,8 +1,15 @@
-/* SPI Testing for ESXP1302 Pkt-Fwd
+/*
+ / _____)             _              | |
+( (____  _____ ____ _| |_ _____  ____| |__
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
+(______/|_____)_|_|_| \__)_____)\____)_| |_|
+  (C)2023 Semtech
 
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+Description:
+    The (older) SPI function test
+
+License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 #include <stdio.h>

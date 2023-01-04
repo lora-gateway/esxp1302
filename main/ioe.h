@@ -1,7 +1,16 @@
-// Copyright (C) 2016-2019 Semtech (International) AG. All rights reserved.
-//
-// This file is subject to the terms and conditions defined in file 'LICENSE',
-// which is part of this source code package.
+/*
+ / _____)             _              | |
+( (____  _____ ____ _| |_ _____  ____| |__
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
+(______/|_____)_|_|_| \__)_____)\____)_| |_|
+  (C)2023 Semtech
+
+Description:
+    Display head file
+
+License: Revised BSD License, see LICENSE.TXT file include in the project
+*/
 
 #ifndef _ioe_h_
 #define _ioe_h_

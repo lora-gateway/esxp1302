@@ -1,3 +1,17 @@
+/*
+ / _____)             _              | |
+( (____  _____ ____ _| |_ _____  ____| |__
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
+(______/|_____)_|_|_| \__)_____)\____)_| |_|
+  (C)2023 Semtech
+
+Description:
+    LED implementation for controlling the led to indicate packets RX/TX and backhaul status
+
+License: Revised BSD License, see LICENSE.TXT file include in the project
+*/
+
 #include "led_indication.h"
 
 static SemaphoreHandle_t mx_led_up;         /* control access to the counter of LED indicator of upstream */

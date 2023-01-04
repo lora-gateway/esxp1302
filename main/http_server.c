@@ -1,3 +1,17 @@
+/*
+ / _____)             _              | |
+( (____  _____ ____ _| |_ _____  ____| |__
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
+(______/|_____)_|_|_| \__)_____)\____)_| |_|
+  (C)2023 Semtech
+
+Description:
+    Http service implementation for configure from browser
+
+License: Revised BSD License, see LICENSE.TXT file include in the project
+*/
+
 #include <esp_wifi.h>
 #include <esp_event.h>
 #include <esp_log.h>
