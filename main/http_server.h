@@ -16,8 +16,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define _HTTP_SERVER_H
 
 
-#define BASIC_AUTH_USERNAME "hello"
-#define BASIC_AUTH_PASSWORD "world"
+#define BASIC_AUTH_USERNAME "iot"
+#define BASIC_AUTH_PASSWORD "lora"
 
 #define HTTPD_401      "401 UNAUTHORIZED"           /*!< HTTP Response 401 */
 
