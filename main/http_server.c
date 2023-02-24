@@ -139,7 +139,7 @@ static esp_err_t handle_basic_auth(httpd_req_t *req)
 
 char *assemble_webpage(const char *webpage_str)
 {
-    char *last = webpage_str, *fwd, *buf = resp_buf;
+    char *last = (char *)webpage_str, *fwd, *buf = resp_buf;
     char config_buf[80];
     int href_len = 16;  // 16 is the length of '<a href="cn470">'
 

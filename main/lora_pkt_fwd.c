@@ -1362,18 +1362,6 @@ int pkt_fwd_main(void)
     int x;
     int l, m;
 
-    /* threads */
-    pthread_t thrid_up;
-    pthread_t thrid_down;
-    pthread_t thrid_gps;
-    pthread_t thrid_valid;
-    pthread_t thrid_jit;
-
-    /* network socket creation */
-    struct addrinfo hints;
-    struct addrinfo *result; /* store result of getaddrinfo */
-    struct addrinfo *q; /* pointer to move into *result data */
-
     /* variables to get local copies of measurements */
     uint32_t cp_nb_rx_rcv;
     uint32_t cp_nb_rx_ok;
@@ -1531,10 +1519,8 @@ int pkt_fwd_main(void)
     net_mac_l = htonl((uint32_t)(0xFFFFFFFF &  lgwm  ));
 
     // -------------------------------
-    char rx_buffer[128];
     int addr_family = 0;
     int ip_protocol = 0;
-    int len, err;
     char ip[IP_LEN] = { 0 };
 
     addr_family = AF_INET;
@@ -1559,6 +1545,10 @@ int pkt_fwd_main(void)
     Init_Led(); // Initialize LED
 
 #if 0
+    /* network socket creation */
+    struct addrinfo *result; /* store result of getaddrinfo */
+    struct addrinfo *q; /* pointer to move into *result data */
+
     /* connect so we can send/receive packet with the server only */
     i = connect(sock_up, q->ai_addr, q->ai_addrlen);
     if (i != 0) {
@@ -1665,6 +1655,10 @@ int pkt_fwd_main(void)
     oled_show_one_line(0, 5, out_info, 1);
 
 #if 0
+    /* threads */
+    pthread_t thrid_gps;
+    pthread_t thrid_valid;
+
     /* spawn thread to manage GPS */
     if (gps_enabled == true) {
         i = pthread_create( &thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
