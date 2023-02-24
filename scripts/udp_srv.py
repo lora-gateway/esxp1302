@@ -1,6 +1,10 @@
 #!/usr/bin/python2
 # -*- coding: utf-8 -*-
 
+#
+# License: Revised BSD License, see LICENSE.TXT file including in the project
+#
+
 import socket
 import sys
 

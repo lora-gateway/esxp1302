@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
 # Convert (Json) file to hex values, similar as 'hexdump' without lines.
+#
+# License: Revised BSD License, see LICENSE.TXT file including in the project
+#
 
 import sys
 

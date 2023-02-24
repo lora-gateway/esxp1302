@@ -3,6 +3,8 @@
 # Upgrader for upgrading released ESXP32 images
 # Run 'pyinstaller --onefile upgrader.py' to produce frozen binary
 #
+# License: Revised BSD License, see LICENSE.TXT file including in the project
+#
 # Dennis Deng (ddeng@semtech.com)
 # 2022.07.15
 #

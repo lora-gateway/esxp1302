@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+#
+# License: Revised BSD License, see LICENSE.TXT file including in the project
+#
+
 import sys
 import socket
 
