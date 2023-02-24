@@ -1676,7 +1676,7 @@ int pkt_fwd_main(void)
 
     /* main loop task: statistics collection */
     while ( 1 ) {
-        esp_print_tasks();
+        //esp_print_tasks();
 
         time_count = 0;
         while(time_count < stat_interval) {
