@@ -341,6 +341,4 @@ out:
         printf("hello\n");
         vTaskDelay(8000 / portTICK_PERIOD_MS);
     }
-
-    return;
 }

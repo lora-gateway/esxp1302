@@ -15,7 +15,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -85,7 +84,6 @@ void app_main(void)
             }
             printf("\n");
             break;
-            //return EXIT_FAILURE;
         } else {
             printf("did a %i-byte R/W on a data buffer with no error\n", size);
             ++cycle_number;
@@ -99,6 +97,4 @@ void app_main(void)
         printf("end\n");
         vTaskDelay(8000 / portTICK_PERIOD_MS);
     }
-
-    return;
 }

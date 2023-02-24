@@ -596,6 +596,4 @@ void app_main(void)
         printf("hello\n");
         vTaskDelay(8000 / portTICK_PERIOD_MS);
     }
-
-    return;
 }

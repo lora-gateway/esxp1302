@@ -143,7 +143,7 @@ char *assemble_webpage(const char *webpage_str)
     char config_buf[80];
     int href_len = 16;  // 16 is the length of '<a href="cn470">'
 
-    if(config[WIFI_MODE].val != NULL){  // TODO: DRY
+    if(config[WIFI_MODE].val != NULL){
         if(strncmp(config[WIFI_MODE].val, "soft_ap", config[WIFI_MODE].len) == 0){
             fwd = strstr(last, "value='soft_ap'");
             if(fwd){
@@ -166,7 +166,7 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
-    if(config[FREQ_REGION].val != NULL){  // TODO: DRY
+    if(config[FREQ_REGION].val != NULL){
         if(strncmp(config[FREQ_REGION].val, "cn470", config[FREQ_REGION].len) == 0){
             fwd = strstr(last, ">CN470");
             if(fwd){
@@ -202,7 +202,7 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
-    if(config[FREQ_RADIO0].val != NULL){  // TODO: DRY
+    if(config[FREQ_RADIO0].val != NULL){
         fwd = strstr(last, "name='freq_radio0'");
         if(fwd){
             strncpy(buf, last, fwd - last);
@@ -213,7 +213,7 @@ char *assemble_webpage(const char *webpage_str)
             buf += strlen(config_buf);
         }
     }
-    if(config[FREQ_RADIO1].val != NULL){  // TODO: DRY
+    if(config[FREQ_RADIO1].val != NULL){
         fwd = strstr(last, "name='freq_radio1'");
         if(fwd){
             strncpy(buf, last, fwd - last);
@@ -225,7 +225,7 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
-    if(config[WIFI_SSID].val != NULL){  // TODO: DRY
+    if(config[WIFI_SSID].val != NULL){
         fwd = strstr(last, "name='wifi_ssid'");
         if(fwd){
             strncpy(buf, last, fwd - last);
@@ -237,7 +237,7 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
-    if(config[WIFI_PASSWORD].val != NULL){  // TODO: DRY
+    if(config[WIFI_PASSWORD].val != NULL){
         fwd = strstr(last, "name='wifi_pswd'");
         if(fwd){
             strncpy(buf, last, fwd - last);
@@ -249,7 +249,7 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
-    if(config[NS_HOST].val != NULL){  // TODO: DRY
+    if(config[NS_HOST].val != NULL){
         fwd = strstr(last, "name='ns_host'");
         if(fwd){
             strncpy(buf, last, fwd - last);
@@ -261,7 +261,7 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
-    if(config[NS_PORT].val != NULL){  // TODO: DRY
+    if(config[NS_PORT].val != NULL){
         fwd = strstr(last, "name='ns_port'");
         if(fwd){
             strncpy(buf, last, fwd - last);
@@ -273,7 +273,7 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
-    if(config[GW_ID].val != NULL){  // TODO: DRY
+    if(config[GW_ID].val != NULL){
         fwd = strstr(last, "name='gw_id'");
         if(fwd){
             strncpy(buf, last, fwd - last);
@@ -422,9 +422,9 @@ static esp_err_t gw_json_conf_handler(httpd_req_t *req)
     if(strncmp((const char *) req->user_ctx, "cn470", 5) == 0)
         assemble_json_str((char *)global_cn_conf + 2);  // ignore the first 2 bytes which is the length
     else if(strncmp((const char *) req->user_ctx, "eu868", 5) == 0)
-        assemble_json_str((char *)global_eu_conf + 2);  // ignore the first 2 bytes which is the length
+        assemble_json_str((char *)global_eu_conf + 2);
     else if(strncmp((const char *) req->user_ctx, "us915", 5) == 0)
-        assemble_json_str((char *)global_us_conf + 2);  // ignore the first 2 bytes which is the length
+        assemble_json_str((char *)global_us_conf + 2);
 
     httpd_resp_send(req, (const char *)json_conf_buf, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;

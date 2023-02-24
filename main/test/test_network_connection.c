@@ -29,7 +29,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "lwip/sys.h"
 #include "lwip/sockets.h"
 #include <lwip/netdb.h>
-//#include <sys/param.h>
 
 
 #define EXAMPLE_ESP_MAXIMUM_RETRY  5

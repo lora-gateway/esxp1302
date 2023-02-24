@@ -55,7 +55,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_aux.h"
 
 /// For ESP32
-#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -69,6 +68,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "esp_console.h"
 #include "argtable3/argtable3.h"
 #include "esp_netif.h"
+#include "esp_timer.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -143,10 +143,19 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_BEACON_INFODESC     0
 
 
-#define WIFI_MAXIMUM_RETRY  5
+/* for buttons on the bottom board */
+#define USER_BUTTON_1    23
+#define USER_BUTTON_2    25
+#define BUTTON_PRESSED    0
+#define BUTTON_RELEASED   1
 
-/* FreeRTOS event group to signal when we are connected*/
-static EventGroupHandle_t s_wifi_event_group;
+/* for wifi configures */
+#define ESP_WIFI_SSID      "esp32"
+#define ESP_WIFI_PASS      "esp32wifi"
+#define ESP_WIFI_CHANNEL   1
+#define MAX_STA_CONN       4
+
+#define WIFI_MAXIMUM_RETRY  5
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
@@ -154,11 +163,16 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
+/* for display info on screen */
 #define BLINK_GPIO      2
 #define TIME_REFRESH    5  // display the time on screen every 5s
 #define N_CHAR_A_ROW    21  // max chars in a row is 21 in oled display mode=1
 
 #define IP_LEN  32  // a right ip address should be no more than 16 bytes. some extra space for failed solving
+
+
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
 
 extern config_s config[CONFIG_NUM];
 bool wifi_ready = false;
@@ -1651,25 +1665,6 @@ int pkt_fwd_main(void)
     oled_show_one_line(0, 5, out_info, 1);
 
 #if 0
-    /* spawn threads to manage upstream and downstream */
-    i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create upstream thread\n");
-        exit(EXIT_FAILURE);
-    }
-    i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create downstream thread\n");
-        exit(EXIT_FAILURE);
-    }
-    i = pthread_create( &thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create JIT thread\n");
-        exit(EXIT_FAILURE);
-    }
-#endif
-
-#if 0
     /* spawn thread to manage GPS */
     if (gps_enabled == true) {
         i = pthread_create( &thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
@@ -1686,7 +1681,6 @@ int pkt_fwd_main(void)
 #endif
 
     /* main loop task: statistics collection */
-    //while (!exit_sig && !quit_sig) {
     while ( 1 ) {
         esp_print_tasks();
 
@@ -1883,44 +1877,10 @@ int pkt_fwd_main(void)
         xSemaphoreGive(mx_stat_rep);
     }
 
-#if 0
-    /* wait for upstream thread to finish (1 fetch cycle max) */
-    pthread_join(thrid_up, NULL);
-    pthread_cancel(thrid_down); /* don't wait for downstream thread */
-    pthread_cancel(thrid_jit); /* don't wait for jit thread */
-
-    if (gps_enabled == true) {
-        pthread_cancel(thrid_gps); /* don't wait for GPS thread */
-        pthread_cancel(thrid_valid); /* don't wait for validation thread */
-
-        i = lgw_gps_disable(gps_tty_fd);
-        if (i == LGW_HAL_SUCCESS) {
-            MSG("INFO: GPS closed successfully\n");
-        } else {
-            MSG("WARNING: failed to close GPS successfully\n");
-        }
-    }
-
-    /* if an exit signal was received, try to quit properly */
-    if (exit_sig) {
-        /* shut down network sockets */
-        shutdown(sock_up, SHUT_RDWR);
-        shutdown(sock_down, SHUT_RDWR);
-        /* stop the hardware */
-        i = lgw_stop();
-        if (i == LGW_HAL_SUCCESS) {
-            MSG("INFO: concentrator stopped successfully\n");
-        } else {
-            MSG("WARNING: failed to stop concentrator successfully\n");
-        }
-    }
-#endif
-
     /* Board reset */
     lgw_reset();
 
     MSG("INFO: Exiting packet forwarder program\n");
-    //exit(EXIT_SUCCESS);
     return 0;
 }
 
@@ -3553,8 +3513,6 @@ static void pkt_fwd_task(void *pvParameters)
 }
 
 
-#include "esp_timer.h"
-
 static bool reboot_flag = false;
 static void reboot_timer_callback(void)
 {
@@ -3575,12 +3533,6 @@ void start_reboot_timer_ms(int reboot_delay)
     ESP_ERROR_CHECK(esp_timer_start_once(reboot_timer, reboot_delay * 1000));
 }
 
-
-
-#define ESP_WIFI_SSID      "esp32"
-#define ESP_WIFI_PASS      "esp32wifi"
-#define ESP_WIFI_CHANNEL   1
-#define MAX_STA_CONN       4
 
 static void wifi_ap_event_handler(void* arg, esp_event_base_t event_base,
         int32_t event_id, void* event_data)
@@ -3908,11 +3860,6 @@ static void register_config(void)
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&hal_conf_cmd));
 }
-
-#define USER_BUTTON_1    23
-#define USER_BUTTON_2    25
-#define BUTTON_PRESSED    0
-#define BUTTON_RELEASED   1
 
 void app_main(void)
 {
