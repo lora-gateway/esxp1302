@@ -5,6 +5,7 @@ v0.7.0:
   - show version info in the screen
   - change CN470 tx_freq_min from 500MHz to 470MHz for supporting RP2
   - fix the bug that ns host can't be domain name
+  - change web username/password as 'iot/lora'
   - add upgrader.py to simplify upgrade the firmware
   - add license info
 

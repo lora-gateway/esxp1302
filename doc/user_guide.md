@@ -24,7 +24,7 @@ By default, the gateway boots to the Soft AP mode for the first time. It switche
 
 In the Soft AP mode, user can connect the gateway by Wi-Fi. All the useful information can be seen from the screen, which is: `IP = "192.168.4.1"`; `username = esp32`; `password = esp32wifi`.
 
-Now user can access the web UI by browser with address: `http://192.168.4.1`. Please be noted that the protocol is **http**, not **https**. The default login information are: `username = hello`; `password = world`.
+Now user can access the web UI by browser with address: `http://192.168.4.1`. Please be noted that the protocol is **http**, not **https**. The default login information are: `username = iot`; `password = lora`.
 
 If the gateway boots to Station mode, then both the gateway and user needs to connect to the same wireless router. Then the only difference is user needs to get the right IP address showing on the screen or provided by the router, and access the web UI with that IP address. It **won't** be the "192.168.4.1" any more.
 
