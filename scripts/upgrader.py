@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-# Upgrader for upgrading released ESXP32 images
+# Upgrader for upgrading released ESXP1302 images
 # Run 'pyinstaller --onefile upgrader.py' to produce frozen binary
 #
 # License: Revised BSD License, see LICENSE.TXT file including in the project
