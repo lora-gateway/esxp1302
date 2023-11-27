@@ -6,10 +6,12 @@
 
 ESXP1302 = ESP32 + SX1302.
 
-This is the ESP32 platform porting of [SX1302\_HAL](https://github.com/Lora-net/sx1302_hal), based on Version 1.0.5.
-I try to stick to and not change the original code, but removed some line-seperating comments I think not necessary.
-As for ESP32 part, I do it the way whatever I think the best, which also imports some differences.
+**ESXP1302** is a low cost 8 channel LoRa gateway design, based on ESP32 platform and porting of
+[SX1302\_HAL](https://github.com/Lora-net/sx1302_hal), based on Version 1.0.5 (update to the latest v2.1.0 is ongoing).
 
+<p align="center">
+  <img src="https://github.com/lora-gateway/esxp1302/raw/main/doc/esxp1302.jpg" alt="ESXP1302 pic"/>
+</p>
 
 ## Upgrade and Usage guide
 
