@@ -1252,6 +1252,7 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
     return sendto(sock_down, (void *)buff_ack, buff_index, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
 }
 
+#if !defined(CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS)
 // This example demonstrates how a human readable table of run time stats
 // information is generated from raw data provided by uxTaskGetSystemState().
 // The human readable table is written to pcWriteBuffer
@@ -1305,6 +1306,7 @@ void vTaskGetRunTimeStats( char *pcWriteBuffer )
         vPortFree( pxTaskStatusArray );
     }
 }
+#endif
 
 void esp_print_tasks( void )
 {
