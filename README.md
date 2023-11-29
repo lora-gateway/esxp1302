@@ -1,4 +1,4 @@
-# About ESXP1302 Packet Forwarder
+# About ESXP1302 LoRa Gateway
 
 <p align="center">
   <img src="https://github.com/lora-gateway/esxp1302/raw/main/doc/esxp1302-logo.png" alt="ESXP1302 Logo"/>
@@ -30,8 +30,8 @@ mkdir ~/esp
 cd ~/esp
 git clone --recursive https://github.com/espressif/esp-idf.git
 cd esp-idf
-# git checkout v4.0  # optional; this is the status I used for early development
-# git checkout 4a011f31  # optional; this is the status after I upgraded the esp-idf with commit '8b9050a' at 2021-12-03.
+# git checkout v4.4.5  # optional; this branch surely works
+# git submodule update --init --recursive  # optional; run this if use v4.4.5
 ./install.sh  # install the compilers etc.
 . export.sh   # export and set up the environment
 ```
