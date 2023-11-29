@@ -3867,6 +3867,14 @@ void app_main(void)
     gpio_set_direction(USER_BUTTON_1, GPIO_MODE_INPUT);
     gpio_set_direction(USER_BUTTON_2, GPIO_MODE_INPUT);
 
+    if(BUTTON_PRESSED == 0){
+        gpio_pullup_en(USER_BUTTON_1);
+        gpio_pullup_en(USER_BUTTON_2);
+    } else {
+        gpio_pulldown_en(USER_BUTTON_1);
+        gpio_pulldown_en(USER_BUTTON_2);
+    }
+
     read_config_from_nvs();
 
     if(gpio_get_level(USER_BUTTON_1) == BUTTON_PRESSED){
