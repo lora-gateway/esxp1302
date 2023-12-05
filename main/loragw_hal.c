@@ -729,8 +729,7 @@ int lgw_start(void) {
         ts_addr = I2C_PORT_TEMP_SENSOR_1;
         err = stts751_configure(ts_addr);
         if (err != LGW_I2C_SUCCESS) {
-            printf("ERROR: failed to configure the temperature sensor\n");
-            return LGW_HAL_ERROR;
+            printf("WARNING: failed to configure the temperature sensor\n");
         }
     }
 
@@ -804,8 +803,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     /* Apply RSSI temperature compensation */
     res = stts751_get_temperature(ts_addr, &current_temperature);
     if (res != LGW_I2C_SUCCESS) {
-        printf("ERROR: failed to get current temperature\n");
-        return LGW_HAL_ERROR;
+        printf("WARNING: failed to get current temperature\n");
     }
     CHECK_HEAP_INTEGRITY;
 
