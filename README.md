@@ -21,26 +21,51 @@ Below is mainly for development and other utilities.
 
 ## How to Compile
 
-First, you need ESP32 development environment "esp-idf". You can get it from https://github.com/espressif/esp-idf.
-Please follow the guide to install the SDK as well as the tools.
+There are two ways to compile this project.
 
-Below are the simplified steps for Linux platform:
+### By PlatformIO IDE
+
+[PlatformIO](https://platformio.org/) is a development environment that enables easy multi-platform development and centralized tooling. PlatformIO IDE bases on [Visual Studio Code](https://code.visualstudio.com/).
+
+Follow these steps to compile ESXP1302 and flash the produced firmware.
+
+- Clone this project with: `git clone https://github.com/lora-gateway/esxp1302`.
+- Open the newly cloned folder in VS Code. If you do this for the first time, this can take quite some while as PlatformIO will download all the necessary tooling and libraries. Also if platformio is not installed, VS Code will ask you to install it.
+- Open your [command palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) with below shortcuts:
+    - Windows/Linux: `Ctrl + Shift + P`
+    - Mac: `Command + Shift + P`
+- To build the firmware, simply run `PlatformIO: Build` from your command palette.
+- To flash the firmware to your device, just run `PlatformIO: Upload` from your command palette.
+
+### By Command line
+
+You need ESP32 development environment [esp-idf](https://github.com/espressif/esp-idf).
+
+Please follow the guide to install the SDK and the tools, or just follow below simplified steps:
 ```shell
-mkdir ~/esp
-cd ~/esp
 git clone --recursive https://github.com/espressif/esp-idf.git
 cd esp-idf
-# git checkout v4.4.5  # optional; this branch surely works
-# git submodule update --init --recursive  # optional; run this if use v4.4.5
+git checkout v4.4.5  # this branch surely works; the latest v5.x branches not yet
+git submodule update --init --recursive
+
+# below 2 steps are for Linux. For windows, use `install.bat` and `export.bat` instead.
 ./install.sh  # install the compilers etc.
 . export.sh   # export and set up the environment
 ```
 
-Then you can compile this project by first change to the project folder, and use `./run_me.sh` to build and flash it.
-Run `./run_me.sh -h` for its usage.
+Then compile this project follow below steps:
+```shell
+git clone https://github.com/lora-gateway/esxp1302`
+cd esxp1302
+./run_me.sh make  # compile
+./run_me.sh flash_all  # flash 3 images: bootloader, partition_table and esxp1302
+# ./run_me.sh flash  # use this to only flash esxp1302 firmware
+```
 
-This script can compile the code, flash the ESP32 board, and open **minicom** to monitor the output, so make sure your ESP32 board is connected.
+Script `run_me.sh` can compile the code, flash the ESP32 board, and open **minicom** to monitor the output, so make sure your ESP32 board is connected.
 If you are not under Linux, you need to change `run_me.sh` to use other terminal tool instead or just run your terminal tool manually.
+
+Run `./run_me.sh -h` for its whole usage.
 
 
 ## Configurations
