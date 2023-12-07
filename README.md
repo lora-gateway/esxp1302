@@ -55,7 +55,7 @@ git submodule update --init --recursive
 
 Then compile this project follow below steps:
 ```shell
-git clone https://github.com/lora-gateway/esxp1302`
+git clone https://github.com/lora-gateway/esxp1302
 cd esxp1302
 ./run_me.sh make  # compile
 ./run_me.sh flash_all  # flash 3 images: bootloader, partition_table and esxp1302
