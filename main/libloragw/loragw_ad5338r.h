@@ -37,7 +37,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
 
-int ad5338r_configure(int i2c_fd, uint8_t i2c_addr);
-int ad5338r_write(int i2c_fd, uint8_t i2c_addr, uint8_t buf[static AD5338R_CMD_SIZE]);
+int ad5338r_configure(uint8_t i2c_addr);
+int ad5338r_write(uint8_t i2c_addr, uint8_t *buf, uint8_t size);
 
 #endif
