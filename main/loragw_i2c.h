@@ -16,15 +16,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define _LORAGW_I2C_H
 
 #include <stdint.h>        /* C99 types*/
-#include "config.h"
 
+#include "config.h"
 #include "driver/i2c.h"
 
 
 #define LGW_I2C_SUCCESS      0
 #define LGW_I2C_ERROR       -1
 
-#define ACK_CHECK_EN       0x1      /* I2C master will check ack from slave*/
+#define ACK_CHECK_EN       0x1      /* I2C master will check ack from slave */
 #define ACK_CHECK_DIS      0x0      /* I2C master will not check ack from slave */
 #define ACK_VAL            0x0      /* I2C ack value */
 #define NACK_VAL           0x1      /* I2C nack value */
@@ -68,5 +68,14 @@ esp_err_t i2c_esp32_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data);
 @return 0 if I2C data write is successful, -1 else
 */
 esp_err_t i2c_esp32_write(uint8_t device_addr, uint8_t reg_addr, uint8_t data);
+
+/**
+@brief Write a raw buffer to an I2C port
+@param device_addr  I2C device address
+@param data         byte to write in the register
+@param size         Size of the buffer to be written
+@return 0 if I2C data write is successful, -1 else
+*/
+esp_err_t i2c_esp32_write_buf(uint8_t device_addr, uint8_t *data, size_t size);
 
 #endif

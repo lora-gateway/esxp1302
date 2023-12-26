@@ -37,13 +37,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 
 static i2c_port_t i2c_num = I2C_MASTER_NUM;
+static bool i2c_opened = false;
 
 esp_err_t i2c_esp32_open(void)
 {
     i2c_config_t conf;
     int i2c_master_port = i2c_num;
     esp_err_t ret;
-    static bool i2c_opened = false;
 
     if(i2c_opened == true)
         return ESP_OK;
@@ -77,7 +77,7 @@ esp_err_t i2c_esp32_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data)
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, (device_addr << 1) | I2C_MASTER_WRITE, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, reg_addr, ACK_VAL);
+    i2c_master_write_byte(cmd, reg_addr, ACK_CHECK_EN);
 
     // now change to read, and save one byte to 'data'
     i2c_master_start(cmd);
@@ -98,8 +98,24 @@ esp_err_t i2c_esp32_write(uint8_t device_addr, uint8_t reg_addr, uint8_t data)
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, (device_addr << 1) | I2C_MASTER_WRITE, ACK_CHECK_EN);
-    i2c_master_write_byte(cmd, reg_addr, ACK_VAL);
-    i2c_master_write_byte(cmd, data, NACK_VAL);
+    i2c_master_write_byte(cmd, reg_addr, ACK_CHECK_EN);
+    i2c_master_write_byte(cmd, data, ACK_CHECK_EN);
+    i2c_master_stop(cmd);
+
+    ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
+    i2c_cmd_link_delete(cmd);
+
+    return ret;
+}
+
+esp_err_t i2c_esp32_write_buf(uint8_t device_addr, uint8_t *data, size_t size)
+{
+    esp_err_t ret;
+
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (device_addr << 1) | I2C_MASTER_WRITE, ACK_CHECK_EN);
+    i2c_master_write(cmd, data, size, ACK_CHECK_EN);
     i2c_master_stop(cmd);
 
     ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
@@ -110,5 +126,8 @@ esp_err_t i2c_esp32_write(uint8_t device_addr, uint8_t reg_addr, uint8_t data)
 
 esp_err_t i2c_esp32_close(void)
 {
-    return i2c_driver_delete(i2c_num);
+    if(i2c_opened == true)
+        return i2c_driver_delete(i2c_num);
+    else
+        return ESP_OK;
 }
