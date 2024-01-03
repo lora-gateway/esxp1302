@@ -36,23 +36,25 @@ if [ "$1" = "make" ]; then
 	scripts/dump_html.py $web_light_theme_file webpage_light_theme_str >> $web_hd_name
 
 	# prepare the C array comes from global_conf.cn490.json
-	echo '// dump from global_conf.json as string array\n' > $hd_name
+	echo '// dump from global_conf.cn490.json as string array' > $hd_name
 	echo 'static uint8_t global_cn_conf[] = {' >> $hd_name
 	scripts/json_to_hex_array.py $json_cn_file >> $hd_name
 	echo '};\n' >> $hd_name
 
 	# prepare the C array comes from global_conf.eu868.json
+	echo '// dump from global_conf.eu868.json as string array' >> $hd_name
 	echo 'static uint8_t global_eu_conf[] = {' >> $hd_name
 	scripts/json_to_hex_array.py $json_eu_file >> $hd_name
 	echo '};\n' >> $hd_name
 
 	# prepare the C array comes from global_conf.us915.json
+	echo '// dump from global_conf.us915.json as string array' >> $hd_name
 	echo 'static uint8_t global_us_conf[] = {' >> $hd_name
 	scripts/json_to_hex_array.py $json_us_file >> $hd_name
 	echo '};\n' >> $hd_name
 
 	# indent the code by prefix 4 ' '.
-	sed -i 's/^0x/    0x/' $hd_name
+	sed -i 's/^0x/    0x/; s/ *$//' $hd_name
 
 	idf.py app
 fi
