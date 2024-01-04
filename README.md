@@ -70,9 +70,15 @@ Run `./run_me.sh -h` for its whole usage.
 
 ## Configurations
 
-There are some compile targets indeed, just as under the original `sx1302_hal` project under `libloragw/tst/test_*`.
-But you have to choose only one for compilation by change the file **main/main.c**, which is a symbol link to one of `test/test_*` files.
-The default is `test/lora_pkt_fwd.c`, but you can change to others such as `test/test_loragw_hal_rx.c` before you run `run_me.sh`.
+File **main/main.c** is a hard link currently pointing to `test/lora_pkt_fwd.c`, so the default output would be `pkt_fwd`.
+
+However, there are some other compile targets available, just as under the original `sx1302_hal` project under `libloragw/tst/test_*`. So you just need to update the **main/main.c** before compiling.
+
+For example:
+```shell
+cp main/test/test_loragw_hal_rx.c main/main.c
+./run_me.sh make
+```
 
 
 ## Usage
