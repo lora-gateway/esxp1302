@@ -144,8 +144,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 
 /* for buttons on the bottom board */
+#ifndef USER_BUTTON_1
 #define USER_BUTTON_1    23
+#endif
+
+#ifndef USER_BUTTON_2
 #define USER_BUTTON_2    25
+#endif
+
 #define BUTTON_PRESSED    0
 #define BUTTON_RELEASED   1
 
@@ -164,7 +170,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define WIFI_FAIL_BIT      BIT1
 
 /* for display info on screen */
+#ifndef BLINK_GPIO
 #define BLINK_GPIO      2
+#endif
+
 #define TIME_REFRESH    5  // display the time on screen every 5s
 #define N_CHAR_A_ROW    21  // max chars in a row is 21 in oled display mode=1
 
@@ -1411,12 +1420,19 @@ int pkt_fwd_main(void)
 
     // init all mutexes
     mx_concent = xSemaphoreCreateMutex();
+    assert(mx_concent);
     mx_xcorr = xSemaphoreCreateMutex();
+    assert(mx_xcorr);
     mx_timeref = xSemaphoreCreateMutex();
+    assert(mx_timeref);
     mx_meas_up = xSemaphoreCreateMutex();
+    assert(mx_meas_up);
     mx_meas_dw = xSemaphoreCreateMutex();
+    assert(mx_meas_dw);
     mx_meas_gps = xSemaphoreCreateMutex();
+    assert(mx_meas_gps);
     mx_stat_rep = xSemaphoreCreateMutex();
+    assert(mx_stat_rep);
 
 
     /* display version informations */
@@ -1486,7 +1502,10 @@ int pkt_fwd_main(void)
 
     // TODO
     /* Start GPS a.s.a.p., to allow it to lock */
-    i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); /* HAL only supports atgm336h or u-blox 7 for now */
+    gps_enabled = false;
+    gps_ref_valid = false;
+#ifndef GPS_DISABLE
+    i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); // HAL only supports atgm336h or u-blox 7 for now
     if (i != LGW_GPS_SUCCESS) {
         printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
         gps_enabled = false;
@@ -1496,6 +1515,7 @@ int pkt_fwd_main(void)
         //gps_enabled = true;
         //gps_ref_valid = false;
     }
+#endif
 
     /* get timezone info */
     tzset();
@@ -1704,15 +1724,17 @@ int pkt_fwd_main(void)
             if(wifi_ready == true)  // only update time if wifi is ready
                 oled_show_one_line(0, 6, stat_timestamp, 1);
 
-            // Read data from GPS UART.
-            uint8_t data[1024];
-            int length, min;
+            if (gps_enabled){
+                // Read data from GPS UART.
+                uint8_t data[1024];
+                int length, min;
 
-            ESP_ERROR_CHECK(uart_get_buffered_data_len(gps_tty_fd, (size_t *)&length));
-            min = (length < 1024) ? length : 1024;
-            length = uart_read_bytes(gps_tty_fd, data, min, 100);
-            data[min] = '\0';
-            //printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
+                ESP_ERROR_CHECK(uart_get_buffered_data_len(gps_tty_fd, (size_t *)&length));
+                min = (length < 1024) ? length : 1024;
+                length = uart_read_bytes(gps_tty_fd, data, min, 100);
+                data[min] = '\0';
+                //printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
+            }
         }
         strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
 

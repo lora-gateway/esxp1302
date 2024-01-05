@@ -73,6 +73,7 @@ void jit_queue_init(struct jit_queue_s *queue) {
     int i;
 
     mx_jit_queue = xSemaphoreCreateMutex();
+    assert(mx_jit_queue);
     xSemaphoreTake(mx_jit_queue, portMAX_DELAY);
 
     memset(queue, 0, sizeof(*queue));
