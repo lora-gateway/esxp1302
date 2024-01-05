@@ -30,7 +30,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "loragw_com.h"
 #include "loragw_usb.h"
-#include "loragw_mcu.h"
+//#include "loragw_mcu.h"
 #include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
@@ -62,6 +62,7 @@ static uint8_t _lgw_spi_req_nb = 0;
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
+#if 0 // esxp1302 doesn't support USB interface
 int set_interface_attribs_linux(int fd, int speed) {
     struct termios tty;
 
@@ -128,11 +129,15 @@ int set_blocking_linux(int fd, bool blocking) {
 
     return LGW_USB_SUCCESS;
 }
+#endif // esxp1302 doesn't support USB interface
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int lgw_usb_open(const char * com_path, void **com_target_ptr) {
+
+#if 0 // esxp1302 doesn't support USB interface
+
     int *usb_device = NULL;
     char portname[50];
     int x;
@@ -225,12 +230,18 @@ int lgw_usb_open(const char * com_path, void **com_target_ptr) {
 
     free(usb_device);
     return LGW_USB_ERROR;
+#endif
+
+    return LGW_USB_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* SPI release */
 int lgw_usb_close(void *com_target) {
+
+#if 0 // esxp1302 doesn't support USB interface
+
     int usb_device;
     int x, err = LGW_USB_SUCCESS;
 
@@ -267,6 +278,9 @@ int lgw_usb_close(void *com_target) {
         DEBUG_MSG("Note: USB port closed\n");
         return LGW_USB_SUCCESS;
     }
+#endif
+
+    return LGW_USB_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -286,7 +300,9 @@ int lgw_usb_r(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Single Byte Read-Modify-Write */
-int lgw_usb_rmw(void *com_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data) {
+int lgw_usb_rmw(void *com_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data)
+{
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     uint8_t command_size = 6;
     uint8_t in_out_buf[command_size];
@@ -322,12 +338,17 @@ int lgw_usb_rmw(void *com_target, uint16_t address, uint8_t offs, uint8_t leng, 
         DEBUG_MSG("Note: USB write success\n");
         return 0;
     }
+#endif
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) write */
-int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size) {
+int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const uint8_t *data, uint16_t size)
+{
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     uint16_t command_size = size + 8; /* 5 bytes: REQ metadata (MCU), 3 bytes: SPI header (SX1302) */
     uint8_t in_out_buf[command_size];
@@ -370,12 +391,17 @@ int lgw_usb_wb(void *com_target, uint8_t spi_mux_target, uint16_t address, const
         DEBUG_MSG("Note: USB write burst success\n");
         return 0;
     }
+#endif
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) read */
-int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size) {
+int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size)
+{
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     uint16_t command_size = size + 9;  /* 5 bytes: REQ metadata (MCU), 3 bytes: SPI header (SX1302), 1 byte: dummy*/
     uint8_t in_out_buf[command_size];
@@ -421,11 +447,15 @@ int lgw_usb_rb(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8
         memcpy(data, in_out_buf + 9, size); /* remove the first bytes, keep only the payload */
         return 0;
     }
+#endif
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_usb_set_write_mode(lgw_com_write_mode_t write_mode) {
+#if 0 // esxp1302 doesn't support USB interface
     if (write_mode >= LGW_COM_WRITE_MODE_UNKNOWN) {
         printf("ERROR: wrong write mode\n");
         return -1;
@@ -434,16 +464,19 @@ int lgw_usb_set_write_mode(lgw_com_write_mode_t write_mode) {
     DEBUG_PRINTF("INFO: setting USB write mode to %s\n", (write_mode == LGW_COM_WRITE_MODE_SINGLE) ? "SINGLE" : "BULK");
 
     _lgw_write_mode = write_mode;
+#endif
 
     return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_usb_flush(void *com_target) {
+int lgw_usb_flush(void *com_target)
+{
     int usb_device;
     int a = 0;
 
+#if 0 // esxp1302 doesn't support USB interface
     /* Check input parameters */
     CHECK_NULL(com_target);
     if (_lgw_write_mode != LGW_COM_WRITE_MODE_BULK) {
@@ -469,6 +502,7 @@ int lgw_usb_flush(void *com_target) {
 
     /* reset the pending request number */
     _lgw_spi_req_nb = 0;
+#endif
 
     return a;
 }
@@ -481,7 +515,9 @@ uint16_t lgw_usb_chunk_size(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_usb_get_temperature(void *com_target, float * temperature) {
+int lgw_usb_get_temperature(void *com_target, float * temperature)
+{
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     s_status mcu_status;
 
@@ -498,6 +534,7 @@ int lgw_usb_get_temperature(void *com_target, float * temperature) {
     DEBUG_PRINTF("INFO: temperature:%.1foC\n", mcu_status.temperature);
 
     *temperature = mcu_status.temperature;
+#endif
 
     return 0;
 }

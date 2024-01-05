@@ -21,7 +21,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>
 
 #include "loragw_aux.h"
-#include "loragw_mcu.h"
+//#include "loragw_mcu.h"
 #include "sx1261_usb.h"
 
 /* -------------------------------------------------------------------------- */
@@ -50,7 +50,9 @@ static uint8_t _sx1261_spi_req_nb = 0;
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1261_usb_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
+int sx1261_usb_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size)
+{
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     uint8_t command_size = size + 6; /* 5 bytes: REQ metadata, 1 byte: op_code */
     uint8_t in_out_buf[command_size];
@@ -91,11 +93,16 @@ int sx1261_usb_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint
         DEBUG_MSG("Note: USB SX1261 write success\n");
         return 0;
     }
+#endif
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1261_usb_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
+int sx1261_usb_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size)
+{
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     uint8_t command_size = size + 6; /* 5 bytes: REQ metadata, 1 byte: op_code */
     uint8_t in_out_buf[command_size];
@@ -137,6 +144,9 @@ int sx1261_usb_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint
         memcpy(data, in_out_buf + 6, size); /* remove the first bytes, keep only the payload */
         return 0;
     }
+#endif
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -160,6 +170,7 @@ int sx1261_usb_flush(void *com_target) {
     int usb_device;
     int a = 0;
 
+#if 0 // esxp1302 doesn't support USB interface
     /* Check input parameters */
     CHECK_NULL(com_target);
     if (_sx1261_write_mode != LGW_COM_WRITE_MODE_BULK) {
@@ -185,6 +196,7 @@ int sx1261_usb_flush(void *com_target) {
 
     /* reset the pending request number */
     _sx1261_spi_req_nb = 0;
+#endif
 
     return a;
 }

@@ -21,7 +21,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>     /* memcmp */
 
 #include "loragw_aux.h"
-#include "loragw_mcu.h"
+//#include "loragw_mcu.h"
 #include "sx1250_usb.h"
 
 /* -------------------------------------------------------------------------- */
@@ -46,7 +46,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
+int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size)
+{
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     uint8_t command_size = size + 7; /* 5 bytes: REQ metadata, 2 bytes: RAW SPI frame */
     uint8_t in_out_buf[command_size];
@@ -85,11 +87,16 @@ int sx1250_usb_w(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_c
         DEBUG_MSG("Note: USB SX1250 write success\n");
         return 0;
     }
+#endif
+
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size) {
+int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_code, uint8_t *data, uint16_t size)
+{
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     uint8_t command_size = size + 7; /* 5 bytes: REQ metadata, 2 bytes: RAW SPI frame */
     uint8_t in_out_buf[command_size];
@@ -129,6 +136,9 @@ int sx1250_usb_r(void *com_target, uint8_t spi_mux_target, sx1250_op_code_t op_c
         memcpy(data, in_out_buf + 7, size); /* remove the first bytes, keep only the payload */
         return 0;
     }
+#endif
+
+    return 0;
 }
 
 /* --- EOF ------------------------------------------------------------------ */
