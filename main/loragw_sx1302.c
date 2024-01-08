@@ -145,7 +145,6 @@ void lora_crc16(const char data, int *crc);
 
 /* Log file */
 extern FILE * log_file;
-uint8_t fw_check[MCU_FW_SIZE];
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -949,6 +948,24 @@ int sx1302_gps_enable(bool enable) {
     return LGW_HAL_SUCCESS;
 }
 
+int sx1302_mem_compare(uint16_t mem_addr, const uint8_t *source, size_t size){
+    int MEM_CHUNK = 256;
+    uint8_t mem_check[MEM_CHUNK];
+
+    for (int i = 0; i < size - 1; i += MEM_CHUNK){
+        lgw_mem_rb(mem_addr + i, mem_check, MEM_CHUNK, false);
+
+        if (memcmp(source + i, mem_check, MEM_CHUNK) != 0) {
+            return -1;
+        }
+
+        if (i + MEM_CHUNK + 1 > size){
+            MEM_CHUNK = size - i - 1;
+        }
+    }
+    return 0;
+}
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_agc_load_firmware(const uint8_t *firmware) {
@@ -975,8 +992,7 @@ int sx1302_agc_load_firmware(const uint8_t *firmware) {
     lgw_mem_wb(AGC_MEM_ADDR, firmware, MCU_FW_SIZE);
 
     /* Read back and check */
-    lgw_mem_rb(AGC_MEM_ADDR, fw_check, MCU_FW_SIZE, false);
-    if (memcmp(firmware, fw_check, sizeof fw_check) != 0) {
+    if (sx1302_mem_compare(AGC_MEM_ADDR, firmware, MCU_FW_SIZE)){
         printf ("ERROR: Failed to load fw\n");
         return -1;
     }
@@ -1383,11 +1399,7 @@ int sx1302_arb_load_firmware(void) {
         lgw_mem_wb(ARB_MEM_ADDR + i, firmware + i, 256);
 
     /* Read back and check */
-    //lgw_mem_rb(ARB_MEM_ADDR, fw_check, MCU_FW_SIZE, false);
-    for(int i = 0; i<MCU_FW_SIZE; i+=256)
-        lgw_mem_rb(ARB_MEM_ADDR + i, fw_check + i, 256, false);
-
-    if (memcmp(firmware, fw_check, sizeof fw_check) != 0) {
+    if (sx1302_mem_compare(ARB_MEM_ADDR, firmware, MCU_FW_SIZE)){
         printf ("ERROR: Failed to load fw\n");
         return -1;
     }

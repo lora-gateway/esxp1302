@@ -1433,15 +1433,23 @@ int pkt_fwd_main(void)
     #endif
 
     // pointer to array defined in global_conf.h
-    const char *conf_array = (char *)global_cn_conf;  // set cn470 as the default
+    char *conf_array = NULL;
 
-    // change conf_array if set to a different region
+    // change conf_selected if set to a different region
     if(config[FREQ_REGION].val != NULL){
-        if(strncmp(config[FREQ_REGION].val, "eu868", 5) == 0)
-            conf_array = (char *)global_eu_conf;
-        else if(strncmp(config[FREQ_REGION].val, "us915", 5) == 0)
-            conf_array = (char *)global_us_conf;
+        if(strncmp(config[FREQ_REGION].val, "eu868", 5) == 0){
+            conf_array = malloc(sizeof(global_eu_conf));
+            memcpy(conf_array, global_eu_conf, sizeof(global_eu_conf));
+        } else if(strncmp(config[FREQ_REGION].val, "us915", 5) == 0){
+            conf_array = malloc(sizeof(global_us_conf));
+            memcpy(conf_array, global_us_conf, sizeof(global_us_conf));
+        }
+    } else {
+            conf_array = malloc(sizeof(global_cn_conf));
+            memcpy(conf_array, global_cn_conf, sizeof(global_cn_conf));
     }
+
+    MSG("Config loaded into memory\n");
 
     // update radio_0 and radio_1 frequencies
     int fwd_offset = 8;  // forward '"freq": ' which is 8 characters.
@@ -1473,6 +1481,8 @@ int pkt_fwd_main(void)
     if (x != 0) {
         MSG("INFO: no debug configuration\n");
     }
+
+    free(conf_array);
 
     // TODO
     /* Start GPS a.s.a.p., to allow it to lock */
