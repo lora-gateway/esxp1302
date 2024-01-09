@@ -13,10 +13,6 @@ Description:
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
-
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* strncmp */
@@ -55,11 +51,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define SX1261_PRAM_VERSION_FULL_SIZE 16 /* 15 bytes + terminating char */
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 int sx1261_pram_get_version(char * version_str) {
     uint8_t buff[3 + SX1261_PRAM_VERSION_FULL_SIZE] = { 0 };
@@ -683,5 +674,3 @@ int sx1261_spectral_scan_abort(void) {
 
     return LGW_REG_SUCCESS;
 }
-
-/* --- EOF ------------------------------------------------------------------ */

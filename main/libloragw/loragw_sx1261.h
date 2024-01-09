@@ -13,12 +13,9 @@ Description:
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
-
 #ifndef _LORAGW_SX1261_H
 #define _LORAGW_SX1261_H
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types*/
 #include <stdbool.h>    /* bool type */
@@ -28,19 +25,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "config.h"     /* library configuration options (dynamically generated) */
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC MACROS -------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
 static const char sx1261_pram_version_string[] = "2D06";
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC TYPES --------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 int sx1261_connect(lgw_com_type_t com_type, const char *com_path);
 int sx1261_disconnect(void);
@@ -62,5 +49,3 @@ int sx1261_spectral_scan_get_results(int8_t rssi_offset, int16_t * levels_dbm, u
 int sx1261_spectral_scan_abort(void);
 
 #endif
-
-/* --- EOF ------------------------------------------------------------------ */
