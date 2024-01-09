@@ -37,19 +37,19 @@ if [ "$1" = "make" ]; then
 
 	# prepare the C array comes from global_conf.cn490.json
 	echo '// dump from global_conf.cn490.json as string array' > $hd_name
-	echo 'static uint8_t global_cn_conf[] = {' >> $hd_name
+	echo 'const static uint8_t global_cn_conf[] = {' >> $hd_name
 	scripts/json_to_hex_array.py $json_cn_file >> $hd_name
 	echo '};\n' >> $hd_name
 
 	# prepare the C array comes from global_conf.eu868.json
 	echo '// dump from global_conf.eu868.json as string array' >> $hd_name
-	echo 'static uint8_t global_eu_conf[] = {' >> $hd_name
+	echo 'const static uint8_t global_eu_conf[] = {' >> $hd_name
 	scripts/json_to_hex_array.py $json_eu_file >> $hd_name
 	echo '};\n' >> $hd_name
 
 	# prepare the C array comes from global_conf.us915.json
 	echo '// dump from global_conf.us915.json as string array' >> $hd_name
-	echo 'static uint8_t global_us_conf[] = {' >> $hd_name
+	echo 'const static uint8_t global_us_conf[] = {' >> $hd_name
 	scripts/json_to_hex_array.py $json_us_file >> $hd_name
 	echo '};\n' >> $hd_name
 
@@ -61,7 +61,7 @@ fi
 
 if [ "$1" = "make_all" ]; then
 	# prepare the C array comes from global_conf.json
-	echo 'static uint8_t global_conf[] = {' > $hd_name
+	echo 'const static uint8_t global_conf[] = {' > $hd_name
 	scripts/json_to_hex_array.py $json_file >> $hd_name
 	echo '};' >> $hd_name
 
