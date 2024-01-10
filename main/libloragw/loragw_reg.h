@@ -1432,15 +1432,13 @@ struct lgw_reg_s {
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
-@brief Connect LoRa concentrator by opening COM link
-@param com_type type of COM interface to be used (SPI or USB)
-@param com_path path to the COM device to be used to connect to the SX1302
+@brief Connect LoRa concentrator by opening SPI link
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
-int lgw_connect(const lgw_com_type_t com_type, const char * com_path);
+int lgw_connect(void);
 
 /**
-@brief Disconnect LoRa concentrator by closing COM link
+@brief Disconnect LoRa concentrator by closing SPI link
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_disconnect(void);
