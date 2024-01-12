@@ -27,7 +27,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PIN_NUM_CLK  14
 #define PIN_NUM_CS   15
 
+#ifndef SX1302_SPI_HOST
 #define SX1302_SPI_HOST    HSPI_HOST
+#endif
+
 #define DMA_CHAN    2
 
 // get sx1302 version

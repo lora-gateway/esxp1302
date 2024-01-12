@@ -18,9 +18,17 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>
 #include "driver/gpio.h"
 
+#ifndef LED_BLUE_GPIO
 #define LED_BLUE_GPIO   33
+#endif
+
+#ifndef LED_GREEN_GPIO
 #define LED_GREEN_GPIO  26
+#endif
+
+#ifndef LED_RED_GPIO
 #define LED_RED_GPIO    27
+#endif
 
 void vDaemonLedIndication( void );
 

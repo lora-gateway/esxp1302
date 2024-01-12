@@ -29,8 +29,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define ACK_VAL            0x0      /* I2C ack value */
 #define NACK_VAL           0x1      /* I2C nack value */
 
+#ifndef I2C_MASTER_SCL_IO
 #define I2C_MASTER_SCL_IO   22      /* gpio number for I2C master clock */
+#endif
+
+#ifndef I2C_MASTER_SDA_IO
 #define I2C_MASTER_SDA_IO   21      /* gpio number for I2C master data  */
+#endif
+
 #define I2C_MASTER_NUM       0      /* I2C port number for master dev */
 
 

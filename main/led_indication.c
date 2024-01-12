@@ -22,6 +22,12 @@ static int16_t sUplinkCounter = 0;
 static int16_t sDownlinkCounter = 0;
 static int16_t sBackhaulCounter = 0;
 
+void led_set_level(gpio_num_t gpio_num, uint32_t level){
+    if (gpio_num != GPIO_NUM_NC){
+        gpio_set_level( gpio_num, level );
+    }
+}
+
 void vDaemonLedIndication( void )
 {
     // init all mutexes
@@ -37,11 +43,11 @@ void vDaemonLedIndication( void )
             sUplinkCounter --;
             xSemaphoreGive(mx_led_up);
 
-            gpio_set_level( LED_GREEN_GPIO, 0 );
+            led_set_level( LED_GREEN_GPIO, 0 );
 
         } else if ( sUplinkCounter == 0 ) {
             // reset green led
-            gpio_set_level( LED_GREEN_GPIO, 1 );
+            led_set_level( LED_GREEN_GPIO, 1 );
 
         } else {
             xSemaphoreTake(mx_led_up, portMAX_DELAY);
@@ -49,7 +55,7 @@ void vDaemonLedIndication( void )
             xSemaphoreGive(mx_led_up);
 
             // reset green led
-            gpio_set_level( LED_GREEN_GPIO, 1 );
+            led_set_level( LED_GREEN_GPIO, 1 );
         }
 
         if ( sDownlinkCounter > 0 ) {
@@ -57,11 +63,11 @@ void vDaemonLedIndication( void )
             sDownlinkCounter --;
             xSemaphoreGive(mx_led_down);
 
-            gpio_set_level( LED_RED_GPIO, 0 );
+            led_set_level( LED_RED_GPIO, 0 );
 
         } else if ( sDownlinkCounter == 0 ) {
             // reset green led
-            gpio_set_level( LED_RED_GPIO, 1 );
+            led_set_level( LED_RED_GPIO, 1 );
 
         } else {
             xSemaphoreTake(mx_led_down, portMAX_DELAY);
@@ -69,7 +75,7 @@ void vDaemonLedIndication( void )
             xSemaphoreGive(mx_led_down);
 
             // reset green led
-            gpio_set_level( LED_RED_GPIO, 1 );
+            led_set_level( LED_RED_GPIO, 1 );
         }
 
         if ( sBackhaulCounter > 0 ) {
@@ -77,11 +83,11 @@ void vDaemonLedIndication( void )
             sBackhaulCounter --;
             xSemaphoreGive(mx_led_backhaul);
 
-            gpio_set_level( LED_BLUE_GPIO, 0 );
+            led_set_level( LED_BLUE_GPIO, 0 );
 
         } else if ( sBackhaulCounter == 0 ) {
             // reset green led
-            gpio_set_level( LED_BLUE_GPIO, 1 );
+            led_set_level( LED_BLUE_GPIO, 1 );
 
         } else {
             xSemaphoreTake(mx_led_backhaul, portMAX_DELAY);
@@ -89,7 +95,7 @@ void vDaemonLedIndication( void )
             xSemaphoreGive(mx_led_backhaul);
 
             // reset green led
-            gpio_set_level( LED_BLUE_GPIO, 1 );
+            led_set_level( LED_BLUE_GPIO, 1 );
         }
     }
 }

@@ -35,8 +35,15 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define UART_NUM       UART_NUM_1
 #define UART_BUF_SIZE  (1024)
+
+#ifndef GPS_UART_TXD
 #define GPS_UART_TXD  (GPIO_NUM_17)
+#endif
+
+#ifndef GPS_UART_RXD
 #define GPS_UART_RXD  (GPIO_NUM_16)
+#endif
+
 #define GPS_UART_RTS  (UART_PIN_NO_CHANGE)
 #define GPS_UART_CTS  (UART_PIN_NO_CHANGE)
 
