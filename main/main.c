@@ -1448,6 +1448,10 @@ int pkt_fwd_main(void)
         MSG("INFO: Host endianness unknown\n");
     #endif
 
+    // printf("total free heap size: %d\n", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
+    // printf("biggest heap free block size: %d\n",
+    //    heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT));
+
     // pointer to array defined in global_conf.h
     char *conf_array = NULL;
 
@@ -1459,6 +1463,9 @@ int pkt_fwd_main(void)
         } else if(strncmp(config[FREQ_REGION].val, "us915", 5) == 0){
             conf_array = malloc(sizeof(global_us_conf));
             memcpy(conf_array, global_us_conf, sizeof(global_us_conf));
+        } else {
+            conf_array = malloc(sizeof(global_cn_conf));
+            memcpy(conf_array, global_cn_conf, sizeof(global_cn_conf));
         }
     } else {
             conf_array = malloc(sizeof(global_cn_conf));
