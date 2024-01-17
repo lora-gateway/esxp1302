@@ -15,29 +15,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #ifndef _SX125X_SPI_H
 #define _SX125X_SPI_H
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 
-/* -------------------------------------------------------------------------- */
-/* --- INTERNAL SHARED TYPES ------------------------------------------------ */
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC MACROS -------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC CONSTANTS ----------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC CONSTANTS ----------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
-
-int sx125x_spi_r(void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
-int sx125x_spi_w(void *com_target, uint8_t spi_mux_target, uint8_t address, uint8_t data);
+int sx125x_spi_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
+int sx125x_spi_w(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t address, uint8_t data);
 
 #endif
-/* --- EOF ------------------------------------------------------------------ */

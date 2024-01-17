@@ -12,25 +12,16 @@ Description:
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
-
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* printf fprintf */
 #include <unistd.h>     /* lseek, close */
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
 
-#include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
-
 #include "loragw_spi.h"
 #include "loragw_aux.h"
 #include "sx1261_spi.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_LBT == 1
@@ -43,13 +34,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
     #define CHECK_NULL(a)                if(a==NULL){return LGW_SPI_ERROR;}
 #endif
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-
 #define WAIT_BUSY_SX1250_MS  1
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int sx1261_spi_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size) {
     int com_device;
@@ -140,5 +126,3 @@ int sx1261_spi_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint
         return LGW_SPI_SUCCESS;
     }
 }
-
-/* --- EOF ------------------------------------------------------------------ */

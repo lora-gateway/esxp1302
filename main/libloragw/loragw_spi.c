@@ -350,7 +350,7 @@ int radio_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_co
 
     memset(&et, 0, sizeof(et));
     et.command_bits = 8;
-    et.address_bits = 8 * 3;  // TODO: could be wrong here
+    et.address_bits = 8 * 2;
     et.base.cmd = spi_mux_target;
     et.base.addr = ((READ_ACCESS | (op_code & ADDR_MASK)) << 8) | 0x00;
     et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
