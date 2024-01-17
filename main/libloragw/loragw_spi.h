@@ -92,4 +92,15 @@ int lgw_spi_wb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
 */
 int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t *data, uint16_t size);
 
+/**
+@brief LoRa concentrator SPI burst (multiple-byte) write for radio
+*/
+int radio_spi_wb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_code, const uint8_t *data, uint16_t size);
+
+/**
+@brief LoRa concentrator SPI burst (multiple-byte) read for radio
+*/
+int radio_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_code, uint8_t *data, uint16_t size);
+
+
 #endif

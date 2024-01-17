@@ -217,7 +217,6 @@ int lgw_spi_wb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
     et.address_bits = 16;
     et.base.cmd = spi_mux_target;
     et.base.addr = WRITE_ACCESS | (address & ADDR_MASK);
-    //et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_RXDATA;
     et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
     et.base.rx_buffer = rbuf;
 
@@ -260,16 +259,6 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
     int size_to_do, chunk_size, offset;
     int byte_transfered = 0;
     uint8_t tbuf[LGW_BURST_CHUNK] = {0x00};
-    if( heap_caps_check_integrity_all( true ) == false )    // False if at least one heap is corrupt
-    {
-        while (1)
-        {
-            printf( "Heap errors in lgw_spi_rb4\n" );
-            heap_caps_dump( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
-            heap_caps_print_heap_info( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT );
-            wait_ms( 1000 );
-        }
-    }
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
     if(err != ESP_OK)
@@ -280,7 +269,6 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
     et.address_bits = 8 * 3;
     et.base.cmd = spi_mux_target;
     et.base.addr = ((READ_ACCESS | (address & ADDR_MASK)) << 8) | 0x00;
-    //et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR | SPI_TRANS_USE_TXDATA;
     et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
     //et.base.tx_data[0] = 0x00;
     et.base.tx_buffer = tbuf;
@@ -312,6 +300,68 @@ int lgw_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t addres
         return LGW_SPI_SUCCESS;
     }
     */
+
+    spi_device_release_bus(*spi);
+    return err;
+}
+
+/* Burst (multiple-byte) write for radio */
+int radio_spi_wb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_code, const uint8_t *data, uint16_t size)
+{
+    esp_err_t err;
+    spi_transaction_ext_t et;
+    int cmd_size = 2; /* header + op_code */
+    uint8_t rbuf[cmd_size + size] = {0x00};
+
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if(err != ESP_OK)
+        return err;
+
+    memset(&et, 0, sizeof(et));
+    et.command_bits = 8;
+    et.address_bits = 8;
+    et.base.cmd = spi_mux_target;
+    et.base.addr = WRITE_ACCESS | (op_code & ADDR_MASK);
+    et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
+    et.base.rx_buffer = rbuf;
+
+    et.base.tx_buffer = (unsigned long *)data;
+    et.base.length = size * 8;
+    et.base.rxlength = size * 8;
+    err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
+    if(err != ESP_OK)
+        return err;
+
+    spi_device_release_bus(*spi);
+    return err;
+}
+
+/* Burst (multiple-byte) read for radio */
+int radio_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_code, uint8_t *data, uint16_t size)
+{
+    esp_err_t err;
+    spi_transaction_ext_t et;
+    int cmd_size = 2; /* header + op_code */
+    uint8_t tbuf[cmd_size + size] = {0x00};
+
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if(err != ESP_OK)
+        return err;
+
+    memset(&et, 0, sizeof(et));
+    et.command_bits = 8;
+    et.address_bits = 8 * 3;  // TODO: could be wrong here
+    et.base.cmd = spi_mux_target;
+    et.base.addr = ((READ_ACCESS | (op_code & ADDR_MASK)) << 8) | 0x00;
+    et.base.flags = SPI_TRANS_VARIABLE_CMD | SPI_TRANS_VARIABLE_ADDR;
+    et.base.tx_buffer = tbuf;
+
+    et.base.rx_buffer = (unsigned long *)data;
+    et.base.length = size * 8;
+    et.base.rxlength = size * 8;
+    err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
+    if(err != ESP_OK)
+        return err;
 
     spi_device_release_bus(*spi);
     return err;
