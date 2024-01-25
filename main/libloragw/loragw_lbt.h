@@ -16,27 +16,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #ifndef _LORAGW_LBT_H
 #define _LORAGW_LBT_H
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 
 #include "loragw_hal.h"
-
 #include "config.h"     /* library configuration options (dynamically generated) */
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC MACROS -------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC CONSTANTS ----------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC TYPES --------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
 @brief Configure the SX1261 and start LBT channel scanning
@@ -61,5 +47,3 @@ int lgw_lbt_stop(void);
 int lgw_lbt_tx_status(uint8_t rf_chain, bool * tx_ok);
 
 #endif
-
-/* --- EOF ------------------------------------------------------------------ */

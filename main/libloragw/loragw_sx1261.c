@@ -133,10 +133,6 @@ const char * get_scan_status_str(const lgw_spectral_scan_status_t status) {
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int sx1261_connect(lgw_com_type_t com_type, const char *com_path) {
-    if (com_type == LGW_COM_SPI && com_path == NULL) {
-        printf("ERROR: %s: unspecified COM path to connect to sx1261 radio\n", __FUNCTION__);
-        return LGW_REG_ERROR;
-    }
     return sx1261_com_open(com_type, com_path);
 }
 
