@@ -22,4 +22,5 @@ idf_component_register(SRCS "main.c"
                     "parson.c"
                     "tinymt32.c"
                     "web_config.c"
-                    INCLUDE_DIRS "")
+		    "libloragw-test/test_loragw_toa.c"
+                    INCLUDE_DIRS "." "libloragw-test")

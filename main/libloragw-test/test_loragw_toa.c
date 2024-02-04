@@ -28,24 +28,16 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 #include <stdlib.h>     /* EXIT_FAILURE */
 #include <getopt.h>     /* getopt_long */
-#include <string.h>     /* strcmp */
+#include <string.h>
+
+#include "esp_system.h"
+#include "esp_event.h"
+#include "esp_console.h"
+#include "argtable3/argtable3.h"
 
 #include "loragw_hal.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 /* describe command line options */
 void usage(void) {
@@ -64,7 +56,7 @@ void usage(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv) {
+int main_test_loragw_toa(int argc, char **argv) {
     int i;
     unsigned int arg_u;
 
@@ -87,6 +79,8 @@ int main(int argc, char **argv) {
     memset(&pkt, 0, sizeof pkt);
     pkt.no_crc = true;
     pkt.modulation = MOD_LORA;
+
+    optind = 0;
 
     /* parse command line options */
     while ((i = getopt_long (argc, argv, "hirs:b:z:l:c:", long_options, &option_index)) != -1) {
@@ -203,4 +197,16 @@ int main(int argc, char **argv) {
     printf("=> %u ms\n", toa_u);
 
     return 0;
+}
+
+void register_test_loragw_toa(void)
+{
+    const esp_console_cmd_t hal_conf_cmd = {
+        .command = "test_toa",
+        .help = "Test TOA",
+        .hint = NULL,
+        .func = &main_test_loragw_toa,
+        .argtable = NULL,
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&hal_conf_cmd));
 }
