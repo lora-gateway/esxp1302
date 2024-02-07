@@ -51,7 +51,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define USE_SPI_TRANSACTION_EXT
 //#define DEBUG_SPI
-#define LGW_BURST_CHUNK     512; // 1024
 
 
 /* SPI initialization and configuration */
@@ -311,7 +310,12 @@ int radio_spi_wb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_co
     esp_err_t err;
     spi_transaction_ext_t et;
     int cmd_size = 2; /* header + op_code */
-    uint8_t rbuf[cmd_size + size] = {0x00};
+    uint8_t rbuf[LGW_BURST_CHUNK] = {0x00};
+
+    if(cmd_size + size > LGW_BURST_CHUNK) {
+        DEBUG_PRINTF("size (%d) > LGW_BURST_CHUNK - %d, which is too big!\n", size, cmd_size);
+        return LGW_SPI_ERROR;
+    }
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
     if(err != ESP_OK)
@@ -342,7 +346,12 @@ int radio_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_co
     esp_err_t err;
     spi_transaction_ext_t et;
     int cmd_size = 2; /* header + op_code */
-    uint8_t tbuf[cmd_size + size] = {0x00};
+    uint8_t tbuf[LGW_BURST_CHUNK] = {0x00};
+
+    if(cmd_size + size > LGW_BURST_CHUNK) {
+        DEBUG_PRINTF("size (%d) > LGW_BURST_CHUNK - %d, which is too big!\n", size, cmd_size);
+        return LGW_SPI_ERROR;
+    }
 
     err = spi_device_acquire_bus(*spi, portMAX_DELAY);
     if(err != ESP_OK)

@@ -1435,7 +1435,7 @@ struct lgw_reg_s {
 @brief Connect LoRa concentrator by opening SPI link
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
-int lgw_connect(void);
+int lgw_connect(const lgw_com_type_t com_type, const char * com_path);
 
 /**
 @brief Disconnect LoRa concentrator by closing SPI link

@@ -23,6 +23,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 
+#include "loragw_spi.h"
 #include "loragw_reg.h"
 
 /* -------------------------------------------------------------------------- */
@@ -1120,7 +1121,6 @@ spi_device_handle_t *lgw_spi_target = NULL; /*! generic ptr to the SPI device */
 
 int reg_w(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value) {
     int spi_stat = LGW_REG_SUCCESS;
-    int i, size_byte;
     uint8_t buf[4] = "\x00\x00\x00\x00";
 
     if ((r.leng == 8) && (r.offs == 0)) {
@@ -1137,6 +1137,7 @@ int reg_w(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t 
         spi_stat += lgw_spi_w(spi_target, spi_mux_target, r.addr, buf[3]);
 #if 0  // TODO: below code is removed in v2.1.0; keep it here in case one day need checking
     } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
+        int i, size_byte;
         /* multi-byte direct write routine */
         size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
         for (i=0; i<size_byte; ++i) {
@@ -1153,12 +1154,12 @@ int reg_w(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t 
         return LGW_REG_ERROR;
     }
 
-    return com_stat;
+    return spi_stat;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int reg_r(uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
+int reg_r(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
     int com_stat = LGW_REG_SUCCESS;
     uint8_t bufu[4] = "\x00\x00\x00\x00";
     int8_t *bufs = (int8_t *)bufu;
@@ -1202,7 +1203,8 @@ int reg_r(uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
-int lgw_connect(void) {
+int lgw_connect(const lgw_com_type_t com_type, const char * com_path)
+{
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
 
