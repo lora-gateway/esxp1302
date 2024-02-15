@@ -33,6 +33,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_USB_SUCCESS     0
 #define LGW_USB_ERROR       -1
 
+#define LGW_USB_BURST_CHUNK  (4096)
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
@@ -40,7 +42,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
  *
 */
 
-int lgw_usb_open(const char * com_path, void **com_target_ptr);
+int lgw_usb_open(void **com_target_ptr);
 
 /**
  *

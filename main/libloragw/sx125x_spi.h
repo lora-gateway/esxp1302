@@ -18,6 +18,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 
+#include "loragw_spi.h"
+
 
 int sx125x_spi_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
 int sx125x_spi_w(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t address, uint8_t data);

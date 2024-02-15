@@ -50,5 +50,5 @@ int sx125x_spi_w(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t addre
     /* check input variables */
     CHECK_NULL(spi);
 
-    return radio_spi_wb(spi, spi_mux_target, address, data, 1);
+    return radio_spi_wb(spi, spi_mux_target, address, &data, 1);
 }

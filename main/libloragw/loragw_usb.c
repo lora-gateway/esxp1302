@@ -134,8 +134,8 @@ int set_blocking_linux(int fd, bool blocking) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_usb_open(const char * com_path, void **com_target_ptr) {
-
+int lgw_usb_open(void **com_target_ptr)
+{
 #if 0 // esxp1302 doesn't support USB interface
 
     int *usb_device = NULL;
@@ -473,7 +473,6 @@ int lgw_usb_set_write_mode(lgw_com_write_mode_t write_mode) {
 
 int lgw_usb_flush(void *com_target)
 {
-    int usb_device;
     int a = 0;
 
 #if 0 // esxp1302 doesn't support USB interface
@@ -492,7 +491,7 @@ int lgw_usb_flush(void *com_target)
         return 0;
     }
 
-    usb_device = *(int *)com_target;
+    int usb_device = *(int *)com_target;
 
     DEBUG_MSG("INFO: flushing USB write buffer\n");
     a = mcu_spi_flush(usb_device);

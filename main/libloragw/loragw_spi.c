@@ -345,7 +345,7 @@ int radio_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_co
 {
     esp_err_t err;
     spi_transaction_ext_t et;
-    int cmd_size = 2; /* header + op_code */
+    int cmd_size = 3; /* header + op_code + 1 */
     uint8_t tbuf[LGW_BURST_CHUNK] = {0x00};
 
     if(cmd_size + size > LGW_BURST_CHUNK) {
@@ -376,6 +376,73 @@ int radio_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_co
     return err;
 }
 
+/* Burst (multiple-byte) write for sx1261 */
+int sx1261_spi_wb(spi_device_handle_t *spi, uint8_t op_code, const uint8_t *data, uint16_t size)
+{
+    esp_err_t err;
+    spi_transaction_ext_t et;
+    int cmd_size = 1; /* op_code */
+    uint8_t rbuf[LGW_BURST_CHUNK] = {0x00};
+
+    if(cmd_size + size > LGW_BURST_CHUNK) {
+        DEBUG_PRINTF("size (%d) > LGW_BURST_CHUNK - %d, which is too big!\n", size, cmd_size);
+        return LGW_SPI_ERROR;
+    }
+
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if(err != ESP_OK)
+        return err;
+
+    memset(&et, 0, sizeof(et));
+    et.address_bits = 8 * cmd_size;
+    et.base.addr = WRITE_ACCESS | (op_code & ADDR_MASK);
+    et.base.flags = SPI_TRANS_VARIABLE_ADDR;
+    et.base.rx_buffer = rbuf;
+
+    et.base.tx_buffer = (unsigned long *)data;
+    et.base.length = size * 8;
+    et.base.rxlength = size * 8;
+    err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
+    if(err != ESP_OK)
+        return err;
+
+    spi_device_release_bus(*spi);
+    return err;
+}
+
+/* Burst (multiple-byte) read for sx1261 */
+int sx1261_spi_rb(spi_device_handle_t *spi, uint8_t op_code, uint8_t *data, uint16_t size)
+{
+    esp_err_t err;
+    spi_transaction_ext_t et;
+    int cmd_size = 2; /* op_code + 1 */
+    uint8_t tbuf[LGW_BURST_CHUNK] = {0x00};
+
+    if(cmd_size + size > LGW_BURST_CHUNK) {
+        DEBUG_PRINTF("size (%d) > LGW_BURST_CHUNK - %d, which is too big!\n", size, cmd_size);
+        return LGW_SPI_ERROR;
+    }
+
+    err = spi_device_acquire_bus(*spi, portMAX_DELAY);
+    if(err != ESP_OK)
+        return err;
+
+    memset(&et, 0, sizeof(et));
+    et.address_bits = 8 * cmd_size;
+    et.base.addr = ((READ_ACCESS | (op_code & ADDR_MASK)) << 8) | 0x00;
+    et.base.flags = SPI_TRANS_VARIABLE_ADDR;
+    et.base.tx_buffer = tbuf;
+
+    et.base.rx_buffer = (unsigned long *)data;
+    et.base.length = size * 8;
+    et.base.rxlength = size * 8;
+    err = spi_device_polling_transmit(*spi, (spi_transaction_t *)&et);
+    if(err != ESP_OK)
+        return err;
+
+    spi_device_release_bus(*spi);
+    return err;
+}
 
 uint16_t lgw_spi_chunk_size(void) {
     return (uint16_t)LGW_BURST_CHUNK;

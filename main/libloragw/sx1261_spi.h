@@ -19,11 +19,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types*/
 
+#include "loragw_spi.h"
 #include "sx1261_defs.h"
 #include "config.h"     /* library configuration options (dynamically generated) */
 
 
-int sx1261_spi_w(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
-int sx1261_spi_r(void *com_target, sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1261_spi_w(spi_device_handle_t *spi, sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
+int sx1261_spi_r(spi_device_handle_t *spi, sx1261_op_code_t op_code, uint8_t *data, uint16_t size);
 
 #endif

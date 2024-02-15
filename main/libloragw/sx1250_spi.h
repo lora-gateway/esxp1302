@@ -17,6 +17,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include <stdint.h>     /* C99 types*/
 
+#include "loragw_spi.h"
 #include "sx1250_defs.h"
 #include "config.h"     /* library configuration options (dynamically generated) */
 

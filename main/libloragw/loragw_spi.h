@@ -103,4 +103,17 @@ int radio_spi_wb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_co
 int radio_spi_rb(spi_device_handle_t *spi, uint8_t spi_mux_target, uint8_t op_code, uint8_t *data, uint16_t size);
 
 
+/**
+@brief LoRa concentrator SPI burst (multiple-byte) write for sx1261
+*/
+int sx1261_spi_wb(spi_device_handle_t *spi, uint8_t op_code, const uint8_t *data, uint16_t size);
+
+/**
+@brief LoRa concentrator SPI burst (multiple-byte) read for sx1261
+*/
+int sx1261_spi_rb(spi_device_handle_t *spi, uint8_t op_code, uint8_t *data, uint16_t size);
+
+
+uint16_t lgw_spi_chunk_size(void);
+
 #endif
