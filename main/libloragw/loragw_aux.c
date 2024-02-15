@@ -13,9 +13,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-/* -------------------------------------------------------------------------- */
-/* --- DEPENDANCIES --------------------------------------------------------- */
-
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
     #define _XOPEN_SOURCE 600
@@ -24,14 +21,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #endif
 
 #include <stdio.h>  /* printf fprintf */
-#include <time.h>   /* clock_nanosleep */
-#include <math.h>   /* pow, ceil */
-
+#include <math.h>  /* printf fprintf */
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "loragw_aux.h"
 #include "loragw_hal.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #if DEBUG_AUX == 1
     #define DEBUG_MSG(str)                fprintf(stdout, str)
@@ -41,52 +36,17 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
     #define DEBUG_PRINTF(fmt, args...)
 #endif
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
+// TODO: need to have a better implementation for this function
 void wait_us(unsigned long delay_us) {
-    struct timespec dly;
-    struct timespec rem;
-
-    dly.tv_sec = delay_us / 1000000;
-    dly.tv_nsec = (delay_us % 1000000) * 1000;
-
-    DEBUG_PRINTF("NOTE dly: %ld sec %ld ns\n", dly.tv_sec, dly.tv_nsec);
-
-    while ((dly.tv_sec > 0) || (dly.tv_nsec > 1000)) {
-        /*
-        rem is set ONLY if clock_nanosleep is interrupted (eg. by a signal).
-        Must be zeroed each time or will get into an infinite loop after an IT.
-        */
-        rem.tv_sec = 0;
-        rem.tv_nsec = 0;
-        clock_nanosleep(CLOCK_MONOTONIC, 0, &dly, &rem);
-        DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
-        dly = rem;
-    }
-
-    return;
+    vTaskDelay(delay_us / portTICK_PERIOD_MS / 1000 );
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void wait_ms(unsigned long delay_ms) {
-    struct timespec dly;
-    struct timespec rem;
-
-    dly.tv_sec = delay_ms / 1000;
-    dly.tv_nsec = ((long)delay_ms % 1000) * 1000000;
-
-    DEBUG_PRINTF("NOTE dly: %ld sec %ld ns\n", dly.tv_sec, dly.tv_nsec);
-
-    if((dly.tv_sec > 0) || ((dly.tv_sec == 0) && (dly.tv_nsec > 100000))) {
-        clock_nanosleep(CLOCK_MONOTONIC, 0, &dly, &rem);
-        DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
-    }
-    return;
+    vTaskDelay(delay_ms / portTICK_PERIOD_MS);
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 uint32_t lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, const uint8_t cr, const uint16_t n_symbol_preamble,
                                  const bool no_header, const bool no_crc, const uint8_t size,
@@ -162,7 +122,6 @@ uint32_t lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, const uint8
     return toa_us;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -190,13 +149,11 @@ void _meas_time_stop(int debug_level, struct timeval start_time, const char *str
 }
 #pragma GCC diagnostic pop
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void timeout_start(struct timeval * start) {
     gettimeofday(start, NULL);
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int timeout_check(struct timeval start, uint32_t timeout_ms) {
     struct timeval tm;
@@ -214,5 +171,3 @@ int timeout_check(struct timeval start, uint32_t timeout_ms) {
         return 0;
     }
 }
-
-/* --- EOF ------------------------------------------------------------------ */
