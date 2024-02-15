@@ -24,6 +24,7 @@ void app_main(void)
     repl_config.prompt = "ESXP1302_GW>";
 
     register_test_loragw_toa();
+    register_test_loragw_hal_tx();
 
     // initialize console REPL environment
     esp_console_repl_t *repl = NULL;

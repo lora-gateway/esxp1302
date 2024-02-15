@@ -29,8 +29,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
-#include <signal.h>     /* sigaction */
 #include <getopt.h>     /* getopt_long */
+
+#include "esp_console.h"
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
@@ -61,7 +62,7 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 /* describe command line options */
-void usage(void) {
+static void usage(void) {
     //printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
@@ -114,7 +115,7 @@ static void sig_handler(int sigio)
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
+int main_test_loragw_hal_tx(int argc, char **argv)
 {
     int i, x;
     uint32_t ft = DEFAULT_FREQ_HZ;
@@ -156,8 +157,6 @@ int main(int argc, char **argv)
     const char * com_path = com_path_default;
     lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
-    static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-
     /* Initialize TX gain LUT */
     txlut.size = 0;
     memset(txlut.lut, 0, sizeof txlut.lut);
@@ -177,6 +176,8 @@ int main(int argc, char **argv)
         {"fdd",  no_argument, 0, 0},
         {0, 0, 0, 0}
     };
+
+    optind = 0;
 
     /* parse command line options */
     while ((i = getopt_long (argc, argv, "hjif:s:b:n:z:p:k:r:c:l:t:m:o:ud:", long_options, &option_index)) != -1) {
@@ -427,14 +428,6 @@ int main(int argc, char **argv)
         printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble, %s header, %s polarity) at %i dBm\n", nb_pkt, ft, bw_khz, sf, 1, size, preamble, (no_header == false) ? "explicit" : "implicit", (invert_pol == false) ? "non-inverted" : "inverted", rf_power);
     }
 
-    /* Configure signal handling */
-    sigemptyset( &sigact.sa_mask );
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction( SIGQUIT, &sigact, NULL );
-    sigaction( SIGINT, &sigact, NULL );
-    sigaction( SIGTERM, &sigact, NULL );
-
     /* Configure the gateway */
     memset( &boardconf, 0, sizeof boardconf);
     boardconf.lorawan_public = true;
@@ -478,14 +471,6 @@ int main(int argc, char **argv)
     }
 
     for (cnt_loop = 0; cnt_loop < nb_loop; cnt_loop++) {
-        if (com_type == LGW_COM_SPI) {
-        /* Board reset */
-            if (system("./reset_lgw.sh start") != 0) {
-                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-
         /* connect, configure and start the LoRa concentrator */
         x = lgw_start();
         if (x != 0) {
@@ -612,4 +597,14 @@ int main(int argc, char **argv)
     return 0;
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+void register_test_loragw_hal_tx(void)
+{
+    const esp_console_cmd_t test_hal_tx_cmd = {
+        .command = "test_hal_tx",
+        .help = "Test HAL Tx",
+        .hint = NULL,
+        .func = &main_test_loragw_hal_tx,
+        .argtable = NULL,
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&test_hal_tx_cmd));
+}

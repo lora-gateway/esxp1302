@@ -40,7 +40,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 
 /* describe command line options */
-void usage(void) {
+static void usage(void) {
     printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
@@ -201,12 +201,12 @@ int main_test_loragw_toa(int argc, char **argv) {
 
 void register_test_loragw_toa(void)
 {
-    const esp_console_cmd_t hal_conf_cmd = {
+    const esp_console_cmd_t test_toa_cmd = {
         .command = "test_toa",
         .help = "Test TOA",
         .hint = NULL,
         .func = &main_test_loragw_toa,
         .argtable = NULL,
     };
-    ESP_ERROR_CHECK(esp_console_cmd_register(&hal_conf_cmd));
+    ESP_ERROR_CHECK(esp_console_cmd_register(&test_toa_cmd));
 }
