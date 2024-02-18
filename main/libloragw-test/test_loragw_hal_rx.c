@@ -28,9 +28,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <signal.h>
 #include <math.h>
 #include <getopt.h>
+
+#include "esp_console.h"
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
@@ -59,15 +60,7 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
-
-void usage(void) {
+static void usage(void) {
     printf("Library version information: %s\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
@@ -90,14 +83,12 @@ void usage(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
+int main_test_loragw_hal_rx(int argc, char **argv)
 {
     /* SPI interfaces */
     const char com_path_default[] = COM_PATH_DEFAULT;
     const char * com_path = com_path_default;
     lgw_com_type_t com_type = COM_TYPE_DEFAULT;
-
-    struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     int i, j, x;
     uint32_t fa = DEFAULT_FREQ_HZ;
@@ -154,6 +145,8 @@ int main(int argc, char **argv)
         {"fdd",  no_argument, 0, 0},
         {0, 0, 0, 0}
     };
+
+    optind = 0;
 
     /* parse command line options */
     while ((i = getopt_long(argc, argv, "hja:b:k:r:n:z:m:o:d:u", long_options, &option_index)) != -1) {
@@ -269,14 +262,6 @@ int main(int argc, char **argv)
                 return -1;
         }
     }
-
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
 
     printf("===== sx1302 HAL RX test =====\n");
 
@@ -435,4 +420,14 @@ int main(int argc, char **argv)
     return 0;
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+void register_test_loragw_hal_rx(void)
+{
+    const esp_console_cmd_t test_hal_rx_cmd = {
+        .command = "test_hal_rx",
+        .help = "Test HAL Rx",
+        .hint = NULL,
+        .func = &main_test_loragw_hal_rx,
+        .argtable = NULL,
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&test_hal_rx_cmd));
+}

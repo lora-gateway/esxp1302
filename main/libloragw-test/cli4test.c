@@ -25,6 +25,7 @@ void app_main(void)
 
     register_test_loragw_toa();
     register_test_loragw_hal_tx();
+    register_test_loragw_hal_rx();
 
     // initialize console REPL environment
     esp_console_repl_t *repl = NULL;
