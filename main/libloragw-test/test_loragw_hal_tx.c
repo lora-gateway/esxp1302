@@ -101,19 +101,7 @@ static void usage(void) {
     printf(" --fdd         Enable Full-Duplex mode (CN490 reference design)\n");
 }
 
-/* handle signals */
-static void sig_handler(int sigio)
-{
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;
-    }
-    else if((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
-
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
+/* --- MAIN FUNCTION ----------------------- */
 
 int main_test_loragw_hal_tx(int argc, char **argv)
 {

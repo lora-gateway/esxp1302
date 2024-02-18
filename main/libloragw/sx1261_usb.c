@@ -45,7 +45,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 static lgw_com_write_mode_t _sx1261_write_mode = LGW_COM_WRITE_MODE_SINGLE;
-static uint8_t _sx1261_spi_req_nb = 0;
+//static uint8_t _sx1261_spi_req_nb = 0;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -167,10 +167,10 @@ int sx1261_usb_set_write_mode(lgw_com_write_mode_t write_mode) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1261_usb_flush(void *com_target) {
+#if 0 // esxp1302 doesn't support USB interface
     int usb_device;
     int a = 0;
 
-#if 0 // esxp1302 doesn't support USB interface
     /* Check input parameters */
     CHECK_NULL(com_target);
     if (_sx1261_write_mode != LGW_COM_WRITE_MODE_BULK) {
@@ -196,9 +196,11 @@ int sx1261_usb_flush(void *com_target) {
 
     /* reset the pending request number */
     _sx1261_spi_req_nb = 0;
-#endif
 
     return a;
+#endif
+
+    return 0;
 }
 
 /* --- EOF ------------------------------------------------------------------ */
