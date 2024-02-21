@@ -42,12 +42,21 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define WRITE_ACCESS    0x8000
 #define ADDR_MASK       0x7fff
 
+#ifndef PIN_NUM_MISO
 #define PIN_NUM_MISO 12
-#define PIN_NUM_MOSI 13
-#define PIN_NUM_CLK  14
-#define PIN_NUM_CS   15
+#endif
 
-#define DMA_CHAN    2
+#ifndef PIN_NUM_MOSI
+#define PIN_NUM_MOSI 13
+#endif
+
+#ifndef PIN_NUM_CLK
+#define PIN_NUM_CLK  14
+#endif
+
+#ifndef PIN_NUM_CS
+#define PIN_NUM_CS   15
+#endif
 
 #define USE_SPI_TRANSACTION_EXT
 //#define DEBUG_SPI
@@ -81,7 +90,7 @@ int lgw_spi_open(spi_device_handle_t **spi_target)
     }
 
     // Initialize the SPI bus
-    ret = spi_bus_initialize(SX1302_SPI_HOST, &buscfg, DMA_CHAN);
+    ret = spi_bus_initialize(SX1302_SPI_HOST, &buscfg, SPI_DMA_CH_AUTO);
     ESP_ERROR_CHECK(ret);
 
     // Attach SX1302 to the SPI bus

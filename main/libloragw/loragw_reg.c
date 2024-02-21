@@ -1160,13 +1160,13 @@ int reg_w(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int reg_r(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
-    int com_stat = LGW_REG_SUCCESS;
+    int spi_stat = LGW_REG_SUCCESS;
     uint8_t bufu[4] = "\x00\x00\x00\x00";
     int8_t *bufs = (int8_t *)bufu;
 
     if ((r.offs + r.leng) <= 8) {
         /* read one byte, then shift and mask bits to get reg value with sign extension if needed */
-        com_stat = lgw_com_r(spi_mux_target, r.addr, &bufu[0]);
+        spi_stat = lgw_spi_r(spi_target, spi_mux_target, r.addr, &bufu[0]);
         bufu[1] = bufu[0] << (8 - r.leng - r.offs); /* left-align the data */
         if (r.sign == true) {
             bufs[2] = bufs[1] >> (8 - r.leng); /* right align the data with sign extension (ARITHMETIC right shift) */
@@ -1196,7 +1196,7 @@ int reg_r(void *spi_target, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t 
         return LGW_REG_ERROR;
     }
 
-    return com_stat;
+    return spi_stat;
 }
 
 /* -------------------------------------------------------------------------- */

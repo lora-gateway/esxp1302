@@ -69,7 +69,7 @@ int sx1261_com_open(lgw_com_type_t com_type, const char *com_path) {
     switch(com_type) {
         case LGW_COM_SPI:
             /* open the SPI link */
-            spi_stat = lgw_spi_open(&_sx1261_com_target);
+            spi_stat = lgw_spi_open((spi_device_handle_t **)&_sx1261_com_target);
             if (spi_stat != LGW_SPI_SUCCESS) {
                 printf("ERROR: %s: Failed to connect to sx1261 radio on %s\n", __FUNCTION__, com_path);
                 return LGW_COM_ERROR;

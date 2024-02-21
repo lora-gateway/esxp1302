@@ -36,6 +36,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
+#include "loragw_gpio.h"
+
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -348,9 +350,8 @@ int main_test_loragw_hal_rx(int argc, char **argv)
 
         if (com_type == LGW_COM_SPI) {
             /* Board reset */
-            if (system("./reset_lgw.sh start") != 0) {
-                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-                exit(EXIT_FAILURE);
+            if (com_type == LGW_COM_SPI) {
+                lgw_reset();
             }
         }
 
@@ -408,9 +409,8 @@ int main_test_loragw_hal_rx(int argc, char **argv)
 
         if (com_type == LGW_COM_SPI) {
             /* Board reset */
-            if (system("./reset_lgw.sh stop") != 0) {
-                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-                exit(EXIT_FAILURE);
+            if (com_type == LGW_COM_SPI) {
+                lgw_reset();
             }
         }
     }

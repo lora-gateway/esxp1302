@@ -36,6 +36,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
+#include "loragw_gpio.h"
+
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -459,6 +461,11 @@ int main_test_loragw_hal_tx(int argc, char **argv)
     }
 
     for (cnt_loop = 0; cnt_loop < nb_loop; cnt_loop++) {
+        if (com_type == LGW_COM_SPI) {
+            /* Board reset */
+            lgw_reset();
+        }
+
         /* connect, configure and start the LoRa concentrator */
         x = lgw_start();
         if (x != 0) {
@@ -573,10 +580,7 @@ int main_test_loragw_hal_tx(int argc, char **argv)
 
         if (com_type == LGW_COM_SPI) {
             /* Board reset */
-            if (system("./reset_lgw.sh stop") != 0) {
-                printf("ERROR: failed to reset SX1302, check your reset_lgw.sh script\n");
-                exit(EXIT_FAILURE);
-            }
+            lgw_reset();
         }
     }
 
