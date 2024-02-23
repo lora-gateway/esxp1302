@@ -70,7 +70,7 @@ int lgw_spi_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address
 @param data value to be written in the selected bits
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-int lgw_spi_rmw(void *com_target, uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data);
+int lgw_spi_rmw(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) write

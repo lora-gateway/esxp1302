@@ -173,6 +173,26 @@ int lgw_spi_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address
     return ESP_OK;
 }
 
+/* Single Byte Read-Modify-Write */
+int lgw_spi_rmw(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t offs, uint8_t leng, uint8_t data) {
+    int spi_stat = LGW_SPI_SUCCESS;
+    uint8_t buf[4] = "\x00\x00\x00\x00";
+
+    /* Read */
+    spi_stat += lgw_spi_r(spi, spi_mux_target, address, &buf[0]);
+
+    /* Modify */
+    buf[1] = ((1 << leng) - 1) << offs; /* bit mask */
+    buf[2] = ((uint8_t)data) << offs; /* new data offsetted */
+    buf[3] = (~buf[1] & buf[0]) | (buf[1] & buf[2]); /* mixing old & new data */
+
+    /* Write */
+    spi_stat += lgw_spi_w(spi, spi_mux_target, address, buf[3]);
+
+    return spi_stat;
+}
+
+
 #else
 
 int lgw_spi_r(spi_device_handle_t *spi, uint8_t spi_mux_target, uint16_t address, uint8_t *data)
