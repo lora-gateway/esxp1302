@@ -5,7 +5,7 @@
 
 **ESXP1302 Gateway** project is based on `SX1302_HAL` project, but uses ESP32 instead of Raspberry Pi. *ESXP1302* = *ESP32* + *SX1302*.
 
-This document is a very simple guide about how to configure and use ESXP1302 gateway based on the **version 0.6.1**.
+This document is a very simple guide about how to configure and use ESXP1302 gateway based on **version 0.7.0**.
 
 First, please be noted that ESXP1302 gateway has 2 types of Wi-Fi working modes, and 2 ways to configure it.
 
@@ -78,6 +78,19 @@ So, if you need to change other configuration items, please use the web UI way.
 **Note:**
 - Whenever you provide a valid option to `pkt_fwd`, it's saved and the gateway will reboot to apply the new changes.
 - To input whitespace in command line (such as for Wi-Fi password, use `\` to escape. For example: `pkt_fwd -u mywifi -p my\ password`.
+
+### install Windows Driver
+
+To access the command line under Windows, users would need to install the right device driver first.
+
+Below is the list of USB to serial converter chips installed on most of the ESP32 boards produced by Espressif together with links to the drivers:
+
+- CP210x: [CP210x USB to UART Bridge VCP Drivers](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers)
+- FTDI: [FTDI Virtual COM Port Drivers](https://ftdichip.com/drivers/vcp-drivers)
+
+User can blindly install both drivers, or identifies the USB-to-UART bridge on the ESP32 board first and chooses the right one.
+
+One way to identify the bridge under Linux is using the `lsusb` command. Run it would give output similar as **Bus 002 Device 027: ID 10c4:ea60 Silicon Labs `CP210x` UART Bridge** or **Bus 002 Device 025: ID 1a86:7523 QinHeng Electronics `CH340` serial converter**.
 
 
 ## Other Useful Documents
