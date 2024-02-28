@@ -145,8 +145,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 
 /* for buttons on the bottom board */
+#ifndef USER_BUTTON_1
 #define USER_BUTTON_1    23
+#endif
+
+#ifndef USER_BUTTON_2
 #define USER_BUTTON_2    25
+#endif
+
 #define BUTTON_PRESSED    0
 #define BUTTON_RELEASED   1
 
@@ -165,7 +171,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define WIFI_FAIL_BIT      BIT1
 
 /* for display info on screen */
+#ifndef BLINK_GPIO
 #define BLINK_GPIO      2
+#endif
+
 #define TIME_REFRESH    5  // display the time on screen every 5s
 #define N_CHAR_A_ROW    21  // max chars in a row is 21 in oled display mode=1
 
@@ -1587,12 +1596,19 @@ int pkt_fwd_main(void)
 
     // init all mutexes
     mx_concent = xSemaphoreCreateMutex();
+    assert(mx_concent);
     mx_xcorr = xSemaphoreCreateMutex();
+    assert(mx_xcorr);
     mx_timeref = xSemaphoreCreateMutex();
+    assert(mx_timeref);
     mx_meas_up = xSemaphoreCreateMutex();
+    assert(mx_meas_up);
     mx_meas_dw = xSemaphoreCreateMutex();
+    assert(mx_meas_dw);
     mx_meas_gps = xSemaphoreCreateMutex();
+    assert(mx_meas_gps);
     mx_stat_rep = xSemaphoreCreateMutex();
+    assert(mx_stat_rep);
 
 
     /* display version informations */
@@ -1608,16 +1624,27 @@ int pkt_fwd_main(void)
         MSG("INFO: Host endianness unknown\n");
     #endif
 
-    // pointer to array defined in global_conf.h
-    const char *conf_array = (char *)global_cn_conf;  // set cn470 as the default
+    // pointer to array defined in global_conf.h (default: cn470)
+    char *conf_array = NULL;
 
     // change conf_array if set to a different region
     if(config[FREQ_REGION].val != NULL){
-        if(strncmp(config[FREQ_REGION].val, "eu868", 5) == 0)
-            conf_array = (char *)global_eu_conf;
-        else if(strncmp(config[FREQ_REGION].val, "us915", 5) == 0)
-            conf_array = (char *)global_us_conf;
+        if(strncmp(config[FREQ_REGION].val, "eu868", 5) == 0){
+            conf_array = malloc(sizeof(global_eu_conf));
+            memcpy(conf_array, global_eu_conf, sizeof(global_eu_conf));
+        } else if(strncmp(config[FREQ_REGION].val, "us915", 5) == 0){
+            conf_array = malloc(sizeof(global_us_conf));
+            memcpy(conf_array, global_us_conf, sizeof(global_us_conf));
+        } else {
+            conf_array = malloc(sizeof(global_cn_conf));
+            memcpy(conf_array, global_cn_conf, sizeof(global_cn_conf));
+        }
+    } else {
+            conf_array = malloc(sizeof(global_cn_conf));
+            memcpy(conf_array, global_cn_conf, sizeof(global_cn_conf));
     }
+
+    MSG("Config loaded into memory\n");
 
     // update radio_0 and radio_1 frequencies
     int fwd_offset = 8;  // forward '"freq": ' which is 8 characters.
@@ -1650,8 +1677,13 @@ int pkt_fwd_main(void)
         MSG("INFO: no debug configuration\n");
     }
 
+    free(conf_array);
+
     // TODO
     /* Start GPS a.s.a.p., to allow it to lock */
+    gps_enabled = false;
+    gps_ref_valid = false;
+#ifndef GPS_DISABLE
     i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); /* HAL only supports atgm336h or u-blox 7 for now */
     if (i != LGW_GPS_SUCCESS) {
         printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
@@ -1662,6 +1694,7 @@ int pkt_fwd_main(void)
         //gps_enabled = true;
         //gps_ref_valid = false;
     }
+#endif
 
     /* get timezone info */
     tzset();
@@ -1853,15 +1886,17 @@ int pkt_fwd_main(void)
             if(wifi_ready == true)  // only update time if wifi is ready
                 oled_show_one_line(0, 6, stat_timestamp, 1);
 
-            // Read data from GPS UART.
-            uint8_t data[1024];
-            int length, min;
+            if (gps_enabled){
+                // Read data from GPS UART.
+                uint8_t data[1024];
+                int length, min;
 
-            ESP_ERROR_CHECK(uart_get_buffered_data_len(gps_tty_fd, (size_t *)&length));
-            min = (length < 1024) ? length : 1024;
-            length = uart_read_bytes(gps_tty_fd, data, min, 100);
-            data[min] = '\0';
-            //printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
+                ESP_ERROR_CHECK(uart_get_buffered_data_len(gps_tty_fd, (size_t *)&length));
+                min = (length < 1024) ? length : 1024;
+                length = uart_read_bytes(gps_tty_fd, data, min, 100);
+                data[min] = '\0';
+                //printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
+            }
         }
         strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
 
