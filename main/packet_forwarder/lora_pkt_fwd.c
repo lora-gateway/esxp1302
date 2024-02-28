@@ -121,7 +121,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PKT_PULL_ACK    4
 #define PKT_TX_ACK      5
 
-#define NB_PKT_MAX      255 /* max number of packets per fetch/send cycle */
+#define NB_PKT_MAX      24 /* max number of packets per fetch/send cycle */
 
 #define MIN_LORA_PREAMB 6 /* minimum Lora preamble length for this application */
 #define STD_LORA_PREAMB 8
@@ -413,7 +413,7 @@ static void oled_show_one_line(uint8_t x, uint8_t y, char *str, uint8_t text_siz
 
 static int parse_SX130x_configuration(const char * conf_array) {
     int i, j, number;
-    char param_name[32]; /* used to generate variable parameter names */
+    char param_name[40]; /* used to generate variable parameter names */
     const char *str; /* used to store string value from JSON object */
     const char conf_obj_name[] = "SX130x_conf";
     JSON_Value *root_val = NULL;
@@ -449,17 +449,17 @@ static int parse_SX130x_configuration(const char * conf_array) {
     /* point to the gateway configuration object */
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        MSG("INFO: conf array does not contain a JSON object named %s\n", conf_obj_name);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing SX1302 parameters\n", conf_file, conf_obj_name);
+        MSG("INFO: conf array does contain a JSON object named %s, parsing SX1302 parameters\n", conf_obj_name);
     }
 
     /* set board configuration */
     memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
     str = json_object_get_string(conf_obj, "com_type");
     if (str == NULL) {
-        MSG("ERROR: com_type must be configured in %s\n", conf_file);
+        MSG("ERROR: com_type must be configured in conf array\n");
         return -1;
     } else if (!strncmp(str, "SPI", 3) || !strncmp(str, "spi", 3)) {
         boardconf.com_type = LGW_COM_SPI;
@@ -475,7 +475,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
         strncpy(boardconf.com_path, str, sizeof boardconf.com_path);
         boardconf.com_path[sizeof boardconf.com_path - 1] = '\0'; /* ensure string termination */
     } else {
-        MSG("ERROR: com_path must be configured in %s\n", conf_file);
+        MSG("ERROR: com_path must be configured in conf array\n");
         return -1;
     }
     val = json_object_get_value(conf_obj, "lorawan_public"); /* fetch value (if possible) */
@@ -570,7 +570,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
             strncpy(sx1261conf.spi_path, str, sizeof sx1261conf.spi_path);
             sx1261conf.spi_path[sizeof sx1261conf.spi_path - 1] = '\0'; /* ensure string termination */
         } else {
-            MSG("INFO: SX1261 spi_path is not configured in %s\n", conf_file);
+            MSG("INFO: SX1261 spi_path is not configured in conf array\n");
         }
         val = json_object_get_value(conf_sx1261_obj, "rssi_offset"); /* fetch value (if possible) */
         if (json_value_get_type(val) == JSONNumber) {
@@ -1796,9 +1796,6 @@ int pkt_fwd_main(void)
         printf( "largest_free_block: %d\n", heap_caps_get_largest_free_block( MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT ));
     } else {
         printf( "Thread_up spawned\n" );
-        esp_print_stacktop( pThreadUp );
-        //printf( "Thread_up handle: %p\n", pThreadUp );
-        //printf( "Top of stack: %p\n", (void *)(*(unsigned long *)pThreadUp) );
     }
 
     if( xTaskCreatePinnedToCore(((TaskFunction_t) thread_down), "thread_down", 4096*2, NULL, 6, NULL, tskNO_AFFINITY) == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY) {
@@ -3767,7 +3764,7 @@ void thread_spectral_scan(void)
         spectral_scan_started = false;
 
         /* Start spectral scan (if no downlink programmed) */
-        pthread_mutex_lock(&mx_concent);
+        xSemaphoreTake(mx_concent, portMAX_DELAY);
         /* -- Check if there is a downlink programmed */
         for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
             if (tx_enable[i] == true) {
@@ -3786,12 +3783,12 @@ void thread_spectral_scan(void)
             x = lgw_spectral_scan_start(freq_hz, spectral_scan_params.nb_scan);
             if (x != 0) {
                 printf("ERROR: spectral scan start failed\n");
-                pthread_mutex_unlock(&mx_concent);
+                xSemaphoreGive(mx_concent);
                 continue; /* main while loop */
             }
             spectral_scan_started = true;
         }
-        pthread_mutex_unlock(&mx_concent);
+        xSemaphoreGive(mx_concent);
 
         if (spectral_scan_started == true) {
             /* Wait for scan to be completed */
@@ -3805,9 +3802,9 @@ void thread_spectral_scan(void)
                 }
 
                 /* get spectral scan status */
-                pthread_mutex_lock(&mx_concent);
+                xSemaphoreTake(mx_concent, portMAX_DELAY);
                 x = lgw_spectral_scan_get_status(&status);
-                pthread_mutex_unlock(&mx_concent);
+                xSemaphoreGive(mx_concent);
                 if (x != 0) {
                     printf("ERROR: spectral scan status failed\n");
                     break; /* do while */
@@ -3821,9 +3818,9 @@ void thread_spectral_scan(void)
                 /* Get spectral scan results */
                 memset(levels, 0, sizeof levels);
                 memset(results, 0, sizeof results);
-                pthread_mutex_lock(&mx_concent);
+                xSemaphoreTake(mx_concent, portMAX_DELAY);
                 x = lgw_spectral_scan_get_results(levels, results);
-                pthread_mutex_unlock(&mx_concent);
+                xSemaphoreGive(mx_concent);
                 if (x != 0) {
                     printf("ERROR: spectral scan get results failed\n");
                     continue; /* main while loop */
