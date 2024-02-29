@@ -20,9 +20,10 @@ web_light_theme_file=main/webpage_light_theme.html
 web_hd_name=main/packet_forwarder/webpage.h
 
 hd_name=main/packet_forwarder/global_json.h
-json_cn_file=main/conf/global_conf.cn490.json
-json_eu_file=main/conf/global_conf.eu868.json
-json_us_file=main/conf/global_conf.us915.json
+conf_dir=main/packet_forwarder/global_conf.json
+json_cn_file=$conf_dir/global_conf.cn490.json
+json_eu_file=$conf_dir/global_conf.eu868.json
+json_us_file=$conf_dir/global_conf.us915.json
 
 if [ "$#" -eq 0 -o "$1" = "-h" -o "$1" = "--help" ]; then
 	echo "Usage: $0 [make|make_all|flash|flash_all|run]\n"
