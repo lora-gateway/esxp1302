@@ -10,6 +10,32 @@
             "enable": false,
             "mode": "all_sf" /* high_capacity or all_sf */
         },
+        "sx1261_conf": {
+            "spi_path": "/dev/spidev0.1",
+            "rssi_offset": 0, /* dB */
+            "spectral_scan": {
+                "enable": false,
+                "freq_start": 473100000,
+                "nb_chan": 8,
+                "nb_scan": 2000,
+                "pace_s": 10
+            },
+            "lbt": {
+                "enable": false,
+                "rssi_target": -70, /* dBm */
+                "channels":[ /* 16 channels maximum */
+                    { "freq_hz": 500300000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 500500000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 500700000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 500900000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 501100000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 501300000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 501500000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 501700000, "bandwidth": 125000, "scan_time_us": 128,  "transmit_time_ms": 400 },
+                    { "freq_hz": 505300000, "bandwidth": 125000, "scan_time_us": 5000, "transmit_time_ms": 4000 }
+                ]
+            }
+        },
         "radio_0": {
             "enable": true,
             "type": "SX1250",
@@ -21,22 +47,22 @@
             "tx_freq_min": 500000000,
             "tx_freq_max": 510000000,
             "tx_gain_lut":[
-                {"rf_power": -6, "pa_gain": 0, "pwr_idx":  0},
-                {"rf_power": -3, "pa_gain": 0, "pwr_idx":  1},
-                {"rf_power":  0, "pa_gain": 0, "pwr_idx":  2},
-                {"rf_power":  3, "pa_gain": 1, "pwr_idx":  3},
-                {"rf_power":  6, "pa_gain": 1, "pwr_idx":  4},
-                {"rf_power": 10, "pa_gain": 1, "pwr_idx":  5},
-                {"rf_power": 11, "pa_gain": 1, "pwr_idx":  6},
-                {"rf_power": 12, "pa_gain": 1, "pwr_idx":  7},
-                {"rf_power": 13, "pa_gain": 1, "pwr_idx":  8},
-                {"rf_power": 14, "pa_gain": 1, "pwr_idx":  9},
-                {"rf_power": 16, "pa_gain": 1, "pwr_idx": 10},
-                {"rf_power": 20, "pa_gain": 1, "pwr_idx": 11},
-                {"rf_power": 23, "pa_gain": 1, "pwr_idx": 12},
-                {"rf_power": 25, "pa_gain": 1, "pwr_idx": 13},
-                {"rf_power": 26, "pa_gain": 1, "pwr_idx": 14},
-                {"rf_power": 27, "pa_gain": 1, "pwr_idx": 15}
+                {"rf_power": 3, "pa_gain": 0, "pwr_idx":  7},
+                {"rf_power": 4, "pa_gain": 0, "pwr_idx":  8},
+                {"rf_power": 5, "pa_gain": 0, "pwr_idx":  9},
+                {"rf_power": 6, "pa_gain": 1, "pwr_idx":  10},
+                {"rf_power": 7, "pa_gain": 1, "pwr_idx":  11},
+                {"rf_power": 8, "pa_gain": 1, "pwr_idx":  12},
+                {"rf_power": 9, "pa_gain": 1, "pwr_idx":  13},
+                {"rf_power": 10, "pa_gain": 1, "pwr_idx": 14},
+                {"rf_power": 11, "pa_gain": 1, "pwr_idx": 15},
+                {"rf_power": 12, "pa_gain": 1, "pwr_idx": 16},
+                {"rf_power": 13, "pa_gain": 1, "pwr_idx": 17},
+                {"rf_power": 14, "pa_gain": 1, "pwr_idx": 18},
+                {"rf_power": 15, "pa_gain": 1, "pwr_idx": 19},
+                {"rf_power": 16, "pa_gain": 1, "pwr_idx": 20},
+                {"rf_power": 17, "pa_gain": 1, "pwr_idx": 21},
+                {"rf_power": 18, "pa_gain": 1, "pwr_idx": 22}
             ]
         },
         "radio_1": {
@@ -84,7 +110,7 @@
         "ref_altitude": 0,
         /* Beaconing parameters */
         "beacon_period": 0,
-        "beacon_freq_hz": 869525000,
+        "beacon_freq_hz": 500000000,
         "beacon_datarate": 9,
         "beacon_bw_hz": 125000,
         "beacon_power": 14,
