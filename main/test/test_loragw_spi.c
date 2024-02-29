@@ -19,6 +19,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "driver/gpio.h"
+#include "loragw_com.h"
 #include "loragw_spi.h"
 
 

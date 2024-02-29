@@ -56,8 +56,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES  --------------------------------------------------- */
 
-static lgw_com_write_mode_t _lgw_write_mode = LGW_COM_WRITE_MODE_SINGLE;
-static uint8_t _lgw_spi_req_nb = 0;
+//static lgw_com_write_mode_t _lgw_write_mode = LGW_COM_WRITE_MODE_SINGLE;
+//static uint8_t _lgw_spi_req_nb = 0;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */

@@ -1582,7 +1582,6 @@ int pkt_fwd_main(void)
     /* SX1302 data variables */
     uint32_t trig_tstamp;
     uint32_t inst_tstamp;
-    uint64_t eui;
     float temperature;
 
     /* statistics variable */
@@ -1806,6 +1805,7 @@ int pkt_fwd_main(void)
 
 #if 0  // TODO
     /* get the concentrator EUI */
+    uint64_t eui;
     i = lgw_get_eui(&eui);
     if (i != LGW_HAL_SUCCESS) {
         printf("ERROR: failed to get concentrator EUI\n");
