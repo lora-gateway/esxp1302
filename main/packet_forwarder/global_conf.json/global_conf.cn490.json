@@ -40,11 +40,11 @@
             "enable": true,
             "type": "SX1250",
             "single_input_mode": true,
-            "freq": 471400000,
+            "freq": 470600000,
             "rssi_offset": -207.0,
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": true,
-            "tx_freq_min": 500000000,
+            "tx_freq_min": 470000000,
             "tx_freq_max": 510000000,
             "tx_gain_lut":[
                 {"rf_power": 3, "pa_gain": 0, "pwr_idx":  7},
@@ -69,7 +69,7 @@
             "enable": true,
             "type": "SX1250",
             "single_input_mode": true,
-            "freq": 475000000,
+            "freq": 471400000,
             "rssi_offset": -207.0,
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": false
@@ -89,11 +89,11 @@
     },
 
     "gateway_conf": {
-        "gateway_ID": "AA555A0000000000",
+        "gateway_ID": "AA555A00000021FB",
         /* change with default server address/ports */
-        "server_address": "localhost",
-        "serv_port_up": 1730,
-        "serv_port_down": 1730,
+        "server_address": "192.168.1.202",
+        "serv_port_up": 1680,
+        "serv_port_down": 1680,
         /* adjust the following parameters for your network */
         "keepalive_interval": 10,
         "stat_interval": 30,
@@ -110,7 +110,7 @@
         "ref_altitude": 0,
         /* Beaconing parameters */
         "beacon_period": 0,
-        "beacon_freq_hz": 500000000,
+        "beacon_freq_hz": 508300000,
         "beacon_datarate": 9,
         "beacon_bw_hz": 125000,
         "beacon_power": 14,
