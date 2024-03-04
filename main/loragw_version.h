@@ -15,6 +15,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #ifndef __LORAGW_VERSION__
 #define __LORAGW_VERSION__
 
-#define EXSP1302_VERSION "0.7.0"
+#define EXSP1302_VERSION "0.8.0"
 
 #endif

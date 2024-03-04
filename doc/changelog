@@ -1,23 +1,35 @@
 CHANGE LOG
 
 
+v0.8.0:
+- add hardware reference design materials
+- add support for esp32c3
+- add support for compiling using PlatformIO
+- add support for compiling under Windows (based on PlatformIO)
+- optimize memory usage
+- update scripts to Python3
+- other fixes and document improvement
+
+
 v0.7.0:
-  - show version info in the screen
-  - change CN470 tx_freq_min from 500MHz to 470MHz for supporting RP2
-  - fix the bug that ns host can't be domain name
-  - change web username/password as 'iot/lora'
-  - add upgrader.py to simplify upgrade the firmware
-  - add license info
+- show version info in the screen
+- change CN470 tx_freq_min from 500MHz to 470MHz for supporting RP2
+- fix the bug that ns host can't be domain name
+- change web username/password as 'iot/lora'
+- add upgrader.py to simplify upgrade the firmware
+- add license info
+
 
 v0.6.2:
-  - disable gps output
-  - workaround to support sx1303
+- disable gps output
+- workaround to support sx1303
+
 
 v0.6.1:
-  - hide wifi password
+- hide wifi password
+
 
 v0.6.0:
-  - the first public released version
-  - add version info in the serial port output
-  - documents
-
+- the first public released version
+- add version info in the serial port output
+- documents
