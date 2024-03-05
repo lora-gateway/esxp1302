@@ -7,16 +7,11 @@
 ESXP1302 = ESP32 + SX1302.
 
 **ESXP1302** is a low cost 8 channel LoRa gateway design, based on ESP32 platform and porting of
-[SX1302\_HAL](https://github.com/Lora-net/sx1302_hal), based on Version 1.0.5 (update to the latest v2.1.0 is ongoing).
+[SX1302\_HAL](https://github.com/Lora-net/sx1302_hal), based on the latest Version *2.1.0*.
 
 <p align="center">
   <img src="https://github.com/lora-gateway/esxp1302/raw/main/doc/esxp1302.jpg" alt="ESXP1302 pic"/>
 </p>
-
-## Upgrade and Usage guide
-
-The documents about how to upgrade the released binaries, and how to use this gateway are both located under the `doc` folder.
-Below is mainly for development and other utilities.
 
 
 ## How to Compile
@@ -70,15 +65,11 @@ Run `./run_me.sh -h` for its whole usage.
 
 ## Configurations
 
-File **main/main.c** is a hard link currently pointing to `test/lora_pkt_fwd.c`, so the default output would be `pkt_fwd`.
+There are 2 compile targets:
+- main/packet_forwarder/lora_pkt_fwd.c. This the default target.
+- main/libloragw-test/cli4test.c. This provides a command line interface to support several test commands.
 
-However, there are some other compile targets available, just as under the original `sx1302_hal` project under `libloragw/tst/test_*`. So you just need to update the **main/main.c** before compiling.
-
-For example:
-```shell
-cp main/test/test_loragw_hal_rx.c main/main.c
-./run_me.sh make
-```
+It's controlled by flag **CONFIG_LIBLORAGW_TEST**. Change the value to "1" in `run_me.sh` to switch to the second target.
 
 
 ## Usage
@@ -91,12 +82,10 @@ test_network_connection -u wireless_ssid -p wireless_password --host 192.168.1.2
 pkt_fwd -u wireless_ssid -p wireless_password --host 192.168.1.200 --port 1680
 ```
 
+## Upgrade and Usage guide
 
-## Issues and TODOs
+All kinds of documents (user guide, changelog, todo list etc.) are available from `doc` folder.
 
-There are some issues need to be fixed, and more features under development.
+## License
 
-Below is the list of some of them:
-1. A few test targets do no work: `test_loragw_cal.c`, `test_loragw_counter.c`, `test_loragw_capture_ram.c` and `test_loragw_gps.c`.
-2. GPS can output raw data with the module **ATGM336H** but hasn't been fully verified yet.
-3. Needs to upgrade to sx1302\_hal v2.1.0 to support SF5 and SF6.
+ESXP1302 is distributed under the 3-clause BSD license. See also [License](LICENSE.TXT).
