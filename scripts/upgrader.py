@@ -82,5 +82,10 @@ if len(sys.argv) == 4:
         cmd_list += ['0x8000', sys.argv[3]]
 
 print('cmd:', ' '.join(cmd_list))
-subprocess.call(cmd_list)
-#subprocess.call(cmd_list, shell=True)  # this is for windows
+if os.name == 'posix':  # Linux etc.
+    subprocess.call(cmd_list)
+elif os.name == 'nt':  # Windows
+    subprocess.call(cmd_list, shell=True)  # this is for windows
+else:
+    print("WARNING! this tool may not work under this OS...")
+    subprocess.call(cmd_list)  # just try it anyway
