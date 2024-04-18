@@ -15,12 +15,12 @@ bootloader="0x1000 $pth/build/bootloader/bootloader.bin"
 app="0x10000 $pth/build/ESXP1302-Pkt-Fwd.bin"
 part="0x8000 $pth/build/partition_table/partition-table.bin"
 
-web_file=main/webpage.html
-web_light_theme_file=main/webpage_light_theme.html
-web_hd_name=main/packet_forwarder/webpage.h
+pkt_dir=main/packet_forwarder
+web_file=$pkt_dir/webpage.html
+web_hd_name=$pkt_dir/webpage.h
 
-hd_name=main/packet_forwarder/global_json.h
-conf_dir=main/packet_forwarder/global_conf.json
+hd_name=$pkt_dir/global_json.h
+conf_dir=$pkt_dir/global_conf.json
 json_cn_file=$conf_dir/global_conf.cn490.json
 json_eu_file=$conf_dir/global_conf.eu868.json
 json_us_file=$conf_dir/global_conf.us915.json
@@ -33,8 +33,6 @@ fi
 if [ "$1" = "make" ]; then
 	# prepare the webpage by dumping it to a string
 	scripts/dump_html.py $web_file webpage_str > $web_hd_name
-	echo "" >> $web_hd_name  # add a new blank line
-	scripts/dump_html.py $web_light_theme_file webpage_light_theme_str >> $web_hd_name
 
 	# prepare the C array comes from global_conf.cn490.json
 	echo '// dump from global_conf.cn490.json as string array' > $hd_name
