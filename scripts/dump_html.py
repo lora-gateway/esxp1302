@@ -10,9 +10,9 @@ import sys
 
 
 def dump(
-    file_from: str = sys.argv[1],
+    file_from: str,
+    var_name: str,
     file_to: str | None = None,
-    var_name: str = sys.argv[2],
 ):
     """
     Reads a file and dumps it to bytes frame. Can write to STDOUT
@@ -45,4 +45,7 @@ def dump(
 
 
 if __name__ == "__main__":
-    dump()
+    dump(
+        file_from=sys.argv[1],
+        var_name=sys.argv[2],
+    )
