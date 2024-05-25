@@ -30,7 +30,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_BURST_CHUNK     1024
 
 #define SPI_SPEED           2000000
+#ifndef SX1302_SPI_HOST
 #define SX1302_SPI_HOST     HSPI_HOST
+#endif
 
 
 /**
