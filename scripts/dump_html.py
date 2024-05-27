@@ -8,16 +8,44 @@
 import os
 import sys
 
-with open(sys.argv[1]) as f:
-    chars = f.read()
 
-print("// dump from file: %s" %os.path.basename(sys.argv[1]))
+def dump(
+    file_from: str,
+    var_name: str,
+    file_to: str | None = None,
+):
+    """
+    Reads a file and dumps it to bytes frame. Can write to STDOUT
+    or to a `file_to`.
 
-print("static const char %s[] = {\n   " %sys.argv[2], end=''),
-for (i, x) in enumerate(chars, 1):
-    print(" 0x%02X," %ord(x), end=''),
-    if i % 16 == 0:
-        print('\n   ', end='')
+    Args:
+        file_from: Filename to read from
+        file_to: None (STDOUT) or file to write
+        var_name: The variable name to associate with the bytes frame
+    """
+    result = (
+        f"// dump from file {os.path.basename(file_from)}\n"
+        f"static const char {var_name}[] = {{\n    "
+    )
 
-print(' 0x00')  # add a '\0' to the end as string terminator
-print('};')
+    with open(file_from) as f:
+        chars = f.read()
+
+    for i, x in enumerate(chars, 1):
+        result += f" 0x{ord(x):02X},"
+        if i % 16 == 0:
+            result += "\n    "
+    result += " 0x00\n};"
+
+    if file_to is None:
+        print(result)
+    else:
+        with open(file_to, "w") as f:
+            f.writelines(result)
+
+
+if __name__ == "__main__":
+    dump(
+        file_from=sys.argv[1],
+        var_name=sys.argv[2],
+    )
