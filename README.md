@@ -1,7 +1,7 @@
 # About ESXP1302 LoRa Gateway
 
 <p align="center">
-  <img src="https://github.com/lora-gateway/esxp1302/raw/main/doc/esxp1302-logo.png" alt="ESXP1302 Logo"/>
+  <img src="https://github.com/lora-gateway/esxp1302/raw/main/doc/images/esxp1302-logo.png" alt="ESXP1302 Logo"/>
 </p>
 
 ESXP1302 = ESP32 + SX1302.
@@ -10,7 +10,7 @@ ESXP1302 = ESP32 + SX1302.
 [SX1302\_HAL](https://github.com/Lora-net/sx1302_hal), based on the latest Version *2.1.0*.
 
 <p align="center">
-  <img src="https://github.com/lora-gateway/esxp1302/raw/main/doc/esxp1302.jpg" alt="ESXP1302 pic"/>
+  <img src="https://github.com/lora-gateway/esxp1302/raw/main/doc/images/esxp1302.jpg" alt="ESXP1302 pic"/>
 </p>
 
 
@@ -82,9 +82,12 @@ test_network_connection -u wireless_ssid -p wireless_password --host 192.168.1.2
 pkt_fwd -u wireless_ssid -p wireless_password --host 192.168.1.200 --port 1680
 ```
 
-## Upgrade and Usage guide
+Or change settings for `pkt_fwd` from browser:
+<p align="center">
+  <img src="https://github.com/lora-gateway/esxp1302/raw/main/doc/images/esxp1302-web-settings.png" alt="ESXP1302 Web Settings"/>
+</p>
 
-All kinds of documents (user guide, changelog, todo list etc.) are available from `doc` folder.
+The usage details and all kinds of documents (user guide, changelog, todo list etc.) are available from `doc` folder.
 
 ## License
 
