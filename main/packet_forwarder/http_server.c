@@ -489,36 +489,9 @@ static void stop_web_server(httpd_handle_t server)
     httpd_stop(server);
 }
 
-static void connect_handler(void* arg, esp_event_base_t event_base,
-                                int32_t event_id, void* event_data)
-{
-    httpd_handle_t* server = (httpd_handle_t*) arg;
-
-    if (*server == NULL) {
-        ESP_LOGI(TAG, "Starting esp32 internal web server");
-        *server = start_web_server();
-    }
-}
-
-static void disconnect_handler(void* arg, esp_event_base_t event_base,
-                               int32_t event_id, void* event_data)
-{
-    httpd_handle_t* server = (httpd_handle_t*) arg;
-
-    if (*server) {
-        ESP_LOGI(TAG, "Stopping esp32 internal web server");
-        stop_web_server(*server);
-        *server = NULL;
-    }
-}
-
 void http_server_task(void *pvParameters)
 {
     static httpd_handle_t server = NULL;
-
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &server));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &disconnect_handler, &server));
-    //ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, &disconnect_handler, &server));
 
     /* Start the server for the first time */
     server = start_web_server();
