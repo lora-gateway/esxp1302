@@ -4043,7 +4043,6 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
             sntp_init();
 
             config_wifi_mode(WIFI_MODE_STATION);
-            xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
             xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
         }
     }
@@ -4252,6 +4251,12 @@ void app_main(void)
 
     printf("\n\n*** ESXP1302 Gateway. Version: %s ***\n\n\n", EXSP1302_VERSION);
 
+    oled_init();
+    oled_cls();
+    oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
+    sprintf(out_info,   "            (v%s)", EXSP1302_VERSION);
+    oled_show_one_line(0, 2, out_info, 1);
+
     gpio_set_direction(USER_BUTTON_1, GPIO_MODE_INPUT);
     gpio_set_direction(USER_BUTTON_2, GPIO_MODE_INPUT);
 
@@ -4288,12 +4293,6 @@ void app_main(void)
         ESP_LOGI(BOOT_TAG, "ESP_WIFI_MODE_SOFT_AP");
         wifi_init_soft_ap();
 
-        oled_init();
-        oled_cls();
-        oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
-
-        sprintf(out_info,   "            (v%s)", EXSP1302_VERSION);
-        oled_show_one_line(0, 2, out_info, 1);
         oled_show_one_line(0, 3, "IP=192.168.4.1", 2);
         oled_show_one_line(0, 5, "Soft AP mode", 1);
 
@@ -4302,14 +4301,7 @@ void app_main(void)
         sprintf(out_info, "PSWD=%s", ESP_WIFI_PASS);
         oled_show_one_line(0, 7, out_info, 1);
 
-        // start http service
-        xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
     } else {
-        oled_init();
-        oled_cls();
-        oled_show_str(0, 0, "ESXP1302 GATEWAY", 2);
-        sprintf(out_info,   "            (v%s)", EXSP1302_VERSION);
-        oled_show_one_line(0, 2, out_info, 1);
         oled_show_one_line(0, 3, "station mode", 1);
 
         oled_show_one_line(0, 4, "Wifi not connected.", 1);
@@ -4324,6 +4316,9 @@ void app_main(void)
         ESP_LOGI(BOOT_TAG, "ESP_WIFI_MODE_STA");
         wifi_init_sta();
     }
+
+    // start http service
+    xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
 
     gpio_pad_select_gpio(BLINK_GPIO);
     gpio_set_direction(BLINK_GPIO,GPIO_MODE_OUTPUT);
