@@ -46,10 +46,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_ad5338r.h"
 #include "loragw_debug.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- DEBUG CONSTANTS ------------------------------------------------------ */
-
-#define HAL_DEBUG_FILE_LOG  0
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -193,7 +189,6 @@ static lgw_context_t lgw_context = {
     },
     .debug_cfg = {
         .nb_ref_payload = 0,
-        .log_file_name = "loragw_hal.log"
     }
 };
 
@@ -829,11 +824,6 @@ int lgw_debug_setconf(struct lgw_conf_debug_s * conf) {
         CONTEXT_DEBUG.ref_payload[i].payload[3] = (uint8_t)(CONTEXT_DEBUG.ref_payload[i].id >> 0);
     }
 
-    if (conf->log_file_name != NULL) {
-        strncpy(CONTEXT_DEBUG.log_file_name, conf->log_file_name, sizeof CONTEXT_DEBUG.log_file_name);
-        CONTEXT_DEBUG.log_file_name[sizeof CONTEXT_DEBUG.log_file_name - 1] = '\0'; /* ensure string termination */
-    }
-
     return LGW_HAL_SUCCESS;
 }
 
@@ -1054,34 +1044,6 @@ int lgw_start(void) {
         printf("ERROR: failed to enable GPS on sx1302\n");
         return LGW_HAL_ERROR;
     }
-
-    /* For debug logging */
-#if HAL_DEBUG_FILE_LOG
-    char timestamp_str[40];
-    struct tm *timenow;
-
-    /* Append current time to log file name */
-    time_t now = time(NULL);
-    timenow = gmtime(&now);
-    strftime(timestamp_str, sizeof(timestamp_str), ".%Y-%m-%d_%H%M%S", timenow);
-    strncat(CONTEXT_DEBUG.log_file_name, timestamp_str, sizeof CONTEXT_DEBUG.log_file_name);
-
-    /* Open the file for writting */
-    log_file = fopen(CONTEXT_DEBUG.log_file_name, "w+"); /* create log file, overwrite if file already exist */
-    if (log_file == NULL) {
-        printf("ERROR: impossible to create log file %s\n", CONTEXT_DEBUG.log_file_name);
-        return LGW_HAL_ERROR;
-    } else {
-        printf("INFO: %s file opened for debug log\n", CONTEXT_DEBUG.log_file_name);
-
-        /* Create "pktlog.csv" symlink to simplify user life */
-        unlink("loragw_hal.log");
-        i = symlink(CONTEXT_DEBUG.log_file_name, "loragw_hal.log");
-        if (i < 0) {
-            printf("ERROR: impossible to create symlink to log file %s\n", CONTEXT_DEBUG.log_file_name);
-        }
-    }
-#endif
 
     /* Configure the pseudo-random generator (For Debug) */
     dbg_init_random();

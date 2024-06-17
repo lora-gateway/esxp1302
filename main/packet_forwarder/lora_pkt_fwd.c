@@ -1363,14 +1363,6 @@ static int parse_debug_configuration(const char * config_array) {
         }
     }
 
-    /* Get log file configuration */
-    str = json_object_get_string(conf_obj, "log_file");
-    if (str != NULL) {
-        strncpy(debugconf.log_file_name, str, sizeof debugconf.log_file_name);
-        debugconf.log_file_name[sizeof debugconf.log_file_name - 1] = '\0'; /* ensure string termination */
-        MSG("INFO: setting debug log file name to %s\n", debugconf.log_file_name);
-    }
-
     /* Commit configuration */
     if (lgw_debug_setconf(&debugconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure debug\n");
