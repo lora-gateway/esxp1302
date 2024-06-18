@@ -484,22 +484,9 @@ static httpd_handle_t start_web_server(void)
     return NULL;
 }
 
-static void stop_web_server(httpd_handle_t server)
-{
-    httpd_stop(server);
-}
-
 void http_server_task(void *pvParameters)
 {
-    static httpd_handle_t server = NULL;
-
-    /* Start the server for the first time */
-    server = start_web_server();
+    start_web_server();
 
     vTaskDelete(NULL);
-
-    while(true){
-        printf("http server ended\n");
-        vTaskDelay(8000 / portTICK_PERIOD_MS);
-    }
 }
