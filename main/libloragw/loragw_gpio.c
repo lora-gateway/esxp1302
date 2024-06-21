@@ -25,9 +25,10 @@ void lgw_reset(void)
     gpio_conf.pull_down_en = 0;
     gpio_conf.pull_up_en = 0;
     gpio_config(&gpio_conf);
-
-    gpio_set_level(SX1302_POWER_EN_PIN, 1);
-    wait_ms(100);
+    if (SX1302_POWER_EN_PIN != GPIO_NUM_NC) {
+      gpio_set_level(SX1302_POWER_EN_PIN, 1);
+      wait_ms(100);
+    }
     gpio_set_level(SX1302_RESET_PIN, 1);
     wait_ms(100);
     gpio_set_level(SX1302_RESET_PIN, 0);
