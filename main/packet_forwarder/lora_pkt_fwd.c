@@ -4262,10 +4262,10 @@ void app_main(void)
 
     read_config_from_nvs();
 
-    if(gpio_get_level(USER_BUTTON_1) == BUTTON_PRESSED){
+    if(gpio_get_level(USER_BUTTON_1) == BUTTON_PRESSED && USER_BUTTON_1 != GPIO_NUM_NC){
         printf("User button 1 is PRESSED, go to soft AP mode\n");
         soft_ap_mode = true;
-    } else if(gpio_get_level(USER_BUTTON_2) == BUTTON_PRESSED){
+    } else if(gpio_get_level(USER_BUTTON_2) == BUTTON_PRESSED && USER_BUTTON_2 != GPIO_NUM_NC){
         printf("User button 2 is PRESSED, go to station mode\n");
         soft_ap_mode = false;
     } else if(config[WIFI_MODE].val == NULL){
