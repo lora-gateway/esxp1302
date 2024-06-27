@@ -83,7 +83,7 @@ esp_err_t i2c_esp32_read(uint8_t device_addr, uint8_t reg_addr, uint8_t *data)
     i2c_master_read_byte(cmd, data, NACK_VAL);
     i2c_master_stop(cmd);
 
-    ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
+    ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
 
     return ret;
@@ -109,7 +109,7 @@ esp_err_t i2c_esp32_write_buf(uint8_t device_addr, uint8_t *data, size_t size)
     i2c_master_write(cmd, data, size, ACK_CHECK_EN);
     i2c_master_stop(cmd);
 
-    ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
+    ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_PERIOD_MS);
     i2c_cmd_link_delete(cmd);
 
     return ret;

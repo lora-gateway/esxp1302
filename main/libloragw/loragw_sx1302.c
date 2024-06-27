@@ -2296,7 +2296,7 @@ float sx1302_rssi_get_temperature_offset(struct lgw_rssi_tcomp_s * context, floa
 
 uint8_t sx1302_tx_status(uint8_t rf_chain) {
     int err;
-    int32_t read_value;
+    unsigned int read_value;
 
     err = lgw_reg_r(SX1302_REG_TX_TOP_TX_FSM_STATUS_TX_STATUS(rf_chain), &read_value);
     if (err != LGW_REG_SUCCESS) {

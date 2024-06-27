@@ -19,7 +19,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 void lgw_reset(void)
 {
     gpio_config_t gpio_conf;
-    gpio_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    gpio_conf.intr_type = GPIO_INTR_DISABLE;
     gpio_conf.mode = GPIO_MODE_OUTPUT;
     gpio_conf.pin_bit_mask = SX1302_GPIO_PIN_SEL;
     gpio_conf.pull_down_en = 0;

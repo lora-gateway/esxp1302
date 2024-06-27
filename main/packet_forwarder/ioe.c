@@ -215,8 +215,8 @@ const unsigned char F8X16[] =
     0x00, 0x06, 0x01, 0x01, 0x02, 0x02, 0x04, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //~ 94
 };
 
-static xTimerHandle led_set_tmr;
-static xTimerHandle led_clr_tmr;
+static TimerHandle_t led_set_tmr;
+static TimerHandle_t led_clr_tmr;
 
 static int led_md = 0;
 static int led_off = LED_OFF;
@@ -252,13 +252,13 @@ static void led_set(int mode)
     }
 }
 
-static void led_set_cb(xTimerHandle tmr)
+static void led_set_cb(TimerHandle_t tmr)
 {
     led_set(led_md);
     xTimerReset(led_clr_tmr, 0);
 }
 
-static void led_clear_cb(xTimerHandle tmr)
+static void led_clear_cb(TimerHandle_t tmr)
 {
     led_set(led_off);
     xTimerReset(led_set_tmr, 0);
@@ -279,8 +279,8 @@ void led_mode(int mode, int intv /* [ms] */, int duty_cycle /* [%] */)
     xTimerStop(led_set_tmr, 0);
 
     if(led_intv >= LED_MIN_INTV_MS && led_dc >= LED_MIN_DC && led_dc <= (100-LED_MIN_DC)) {
-        xTimerChangePeriod( led_clr_tmr, led_intv * led_dc / 100 / portTICK_RATE_MS, 0);
-        xTimerChangePeriod( led_set_tmr, led_intv * (100 - led_dc) / 100 / portTICK_RATE_MS, 0);
+        xTimerChangePeriod( led_clr_tmr, led_intv * led_dc / 100 / portTICK_PERIOD_MS, 0);
+        xTimerChangePeriod( led_set_tmr, led_intv * (100 - led_dc) / 100 / portTICK_PERIOD_MS, 0);
         led_set_cb(led_set_tmr);
     } else {
         led_set(led_md);
@@ -296,8 +296,8 @@ void ioe_init(void)
     oled_init();
     oled_cls();
 
-    led_set_tmr = xTimerCreate("TimerLedSet", 100/portTICK_RATE_MS, false, NULL, led_set_cb );
-    led_clr_tmr = xTimerCreate("TimerledClr", 100/portTICK_RATE_MS, false, NULL, led_clear_cb );
+    led_set_tmr = xTimerCreate("TimerLedSet", 100/portTICK_PERIOD_MS, false, NULL, led_set_cb );
+    led_clr_tmr = xTimerCreate("TimerledClr", 100/portTICK_PERIOD_MS, false, NULL, led_clear_cb );
 }
 
 static void write_cmd(uint8_t cmd)

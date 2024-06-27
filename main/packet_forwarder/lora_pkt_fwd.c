@@ -68,6 +68,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "argtable3/argtable3.h"
 #include "esp_netif.h"
 #include "esp_timer.h"
+#include "esp_mac.h"
+#include "esp_rom_gpio.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -395,9 +397,9 @@ static void sig_handler(int sigio) {
 
 void Init_Led( void )
 {
-    gpio_pad_select_gpio( LED_BLUE_GPIO );
-    gpio_pad_select_gpio( LED_GREEN_GPIO );
-    gpio_pad_select_gpio( LED_RED_GPIO );
+    esp_rom_gpio_pad_select_gpio( LED_BLUE_GPIO );
+    esp_rom_gpio_pad_select_gpio( LED_GREEN_GPIO );
+    esp_rom_gpio_pad_select_gpio( LED_RED_GPIO );
     gpio_set_direction( LED_BLUE_GPIO, GPIO_MODE_OUTPUT );
     gpio_set_direction( LED_GREEN_GPIO, GPIO_MODE_OUTPUT );
     gpio_set_direction( LED_RED_GPIO, GPIO_MODE_OUTPUT );
@@ -1404,7 +1406,7 @@ static double difftimespec(struct timespec end, struct timespec beginning) {
     return x;
 }
 
-static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, int32_t error_value) {
+static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, signed int error_value) {
     uint8_t buff_ack[ACK_BUFF_SIZE]; /* buffer to give feedback to server */
     int buff_index;
     int j;
@@ -2766,7 +2768,7 @@ void thread_down(void)
     enum jit_error_e jit_result = JIT_ERROR_OK;
     enum jit_pkt_type_e downlink_type;
     enum jit_error_e warning_result = JIT_ERROR_OK;
-    int32_t warning_value = 0;
+    signed int warning_value = 0;
     uint8_t tx_lut_idx = 0;
 
     /* set downstream socket RX timeout */
@@ -3370,7 +3372,7 @@ void thread_down(void)
                 if ((i < 0) || (txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power != txpkt.rf_power)) {
                     /* this RF power is not supported, throw a warning, and use the closest lower power supported */
                     warning_result = JIT_ERROR_TX_POWER;
-                    warning_value = (int32_t)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
+                    warning_value = (signed int)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
                     printf("WARNING: Requested TX power is not supported (%ddBm), actual power used: %ddBm\n", txpkt.rf_power, warning_value);
                     txpkt.rf_power = txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
                 }
@@ -4316,7 +4318,7 @@ void app_main(void)
     // start http service
     xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
 
-    gpio_pad_select_gpio(BLINK_GPIO);
+    esp_rom_gpio_pad_select_gpio(BLINK_GPIO);
     gpio_set_direction(BLINK_GPIO,GPIO_MODE_OUTPUT);
     gpio_set_level(BLINK_GPIO, 1);
 

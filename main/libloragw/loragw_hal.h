@@ -195,7 +195,7 @@ struct lgw_conf_rxrf_s {
 struct lgw_conf_rxif_s {
     bool        enable;         /*!> enable or disable that IF chain */
     uint8_t     rf_chain;       /*!> to which RF chain is that IF chain associated */
-    int32_t     freq_hz;        /*!> center frequ of the IF chain, relative to RF chain frequency */
+    signed int  freq_hz;        /*!> center frequ of the IF chain, relative to RF chain frequency */
     uint8_t     bandwidth;      /*!> RX bandwidth, 0 for default */
     unsigned int    datarate;       /*!> RX datarate, 0 for default */
     uint8_t     sync_word_size; /*!> size of FSK sync word (number of bytes, 0 for default) */
@@ -220,7 +220,7 @@ struct lgw_conf_demod_s {
 */
 struct lgw_pkt_rx_s {
     unsigned int    freq_hz;        /*!> central frequency of the IF chain */
-    int32_t     freq_offset;
+    signed int  freq_offset;
     uint8_t     if_chain;       /*!> by which IF chain was packet received */
     uint8_t     status;         /*!> status of the received packet */
     unsigned int    count_us;       /*!> internal concentrator counter for timestamping, 1 microsecond resolution */
