@@ -4032,13 +4032,13 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
             printf("Wi-Fi ready. Start tasks...\n");
 
             // update the time by NTP
-            sntp_setoperatingmode(SNTP_OPMODE_POLL);
+            esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
             if(config[NTP_SERVER].val != NULL) {
-                sntp_setservername(0, config[NTP_SERVER].val);
+                esp_sntp_setservername(0, config[NTP_SERVER].val);
             } else {
-                sntp_setservername(0, NTP_SERVER_ADDR);
+                esp_sntp_setservername(0, NTP_SERVER_ADDR);
             }
-            sntp_init();
+            esp_sntp_init();
 
             config_wifi_mode(WIFI_MODE_STATION);
             xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
