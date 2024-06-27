@@ -35,6 +35,7 @@ config_s config[CONFIG_NUM] = {
     { FREQ_REGION, "freq_region", NULL, 0 },
     { FREQ_RADIO0, "freq_radio0", NULL, 0 },
     { FREQ_RADIO1, "freq_radio1", NULL, 0 },
+    { NTP_SERVER, "ntp_server", NULL, 0 },
 };
 
 tag_e name2tag(char *name)

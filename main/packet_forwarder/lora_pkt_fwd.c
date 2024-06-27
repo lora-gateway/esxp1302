@@ -4031,7 +4031,11 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
 
             // update the time by NTP
             sntp_setoperatingmode(SNTP_OPMODE_POLL);
-            sntp_setservername(0, "cn.pool.ntp.org");
+            if(config[NTP_SERVER].val != NULL) {
+                sntp_setservername(0, config[NTP_SERVER].val);
+            } else {
+                sntp_setservername(0, NTP_SERVER_ADDR);
+            }
             sntp_init();
 
             config_wifi_mode(WIFI_MODE_STATION);

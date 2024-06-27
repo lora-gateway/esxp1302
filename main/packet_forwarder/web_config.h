@@ -19,6 +19,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "esp_log.h"
 #include "esp_err.h"
 
+
+#define NTP_SERVER_ADDR  "cn.pool.ntp.org"
+
 typedef enum {
     WIFI_SSID  = 0,
     WIFI_PASSWORD,
@@ -29,6 +32,7 @@ typedef enum {
     FREQ_REGION,
     FREQ_RADIO0,
     FREQ_RADIO1,
+    NTP_SERVER,
     CONFIG_NUM,
     CONFIG_END = 254,
     CONFIG_ERR = 255

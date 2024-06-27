@@ -284,6 +284,20 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
+    fwd = strstr(last, "name='ntp_server'");
+    if(fwd){
+        strncpy(buf, last, fwd - last);
+        buf += fwd - last;
+        last = fwd;
+        if(config[NTP_SERVER].val != NULL) {
+            sprintf(config_buf, "value='%s' ", config[NTP_SERVER].val);
+        } else {
+            sprintf(config_buf, "value='%s' ", NTP_SERVER_ADDR);
+        }
+        strncpy(buf, config_buf, strlen(config_buf));
+        buf += strlen(config_buf);
+    }
+
     // copy the tail content
     strcpy(buf, last);
     return (char *)resp_buf;
