@@ -71,7 +71,7 @@ int main(int argc, char ** argv)
 
     uint8_t test_buff[BUFF_SIZE];
     uint8_t read_buff[BUFF_SIZE];
-    uint32_t test_val, read_val;
+    unsigned int test_val, read_val;
     int cycle_number = 0;
     int i, x;
 

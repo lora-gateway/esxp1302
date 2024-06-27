@@ -108,11 +108,11 @@ static void usage(void) {
 int main_test_loragw_hal_tx(int argc, char **argv)
 {
     int i, x;
-    uint32_t ft = DEFAULT_FREQ_HZ;
+    unsigned int ft = DEFAULT_FREQ_HZ;
     int8_t rf_power = 0;
     uint8_t sf = 0;
     uint16_t bw_khz = 0;
-    uint32_t nb_pkt = 1;
+    unsigned int nb_pkt = 1;
     unsigned int nb_loop = 1, cnt_loop;
     uint8_t size = 0;
     char mod[64] = "LORA";
@@ -138,8 +138,8 @@ int main_test_loragw_hal_tx(int argc, char **argv)
     struct lgw_pkt_tx_s pkt;
     struct lgw_tx_gain_lut_s txlut; /* TX gain table */
     uint8_t tx_status;
-    uint32_t count_us;
-    uint32_t trig_delay_us = 1000000;
+    unsigned int count_us;
+    unsigned int trig_delay_us = 1000000;
     bool trig_delay = false;
 
     /* SPI interfaces */
@@ -243,7 +243,7 @@ int main_test_loragw_hal_tx(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     trig_delay = true;
-                    trig_delay_us = (uint32_t)(arg_u * 1E3);
+                    trig_delay_us = (unsigned int)(arg_u * 1E3);
                 }
                 break;
             case 'k': /* <uint> Clock Source */
@@ -270,7 +270,7 @@ int main_test_loragw_hal_tx(int argc, char **argv)
                     printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    ft = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                    ft = (unsigned int)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
             case 's': /* <uint> LoRa datarate */
@@ -297,7 +297,7 @@ int main_test_loragw_hal_tx(int argc, char **argv)
                     printf("ERROR: argument parsing of -n argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    nb_pkt = (uint32_t)arg_u;
+                    nb_pkt = (unsigned int)arg_u;
                 }
                 break;
             case 'p': /* <int> RF power */

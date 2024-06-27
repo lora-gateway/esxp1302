@@ -61,7 +61,7 @@ int main_test_loragw_toa(int argc, char **argv) {
     unsigned int arg_u;
 
     struct lgw_pkt_tx_s pkt;
-    uint32_t toa_u;
+    unsigned int toa_u;
 
     /* mandatory params to be set by user */
     bool sf = false;

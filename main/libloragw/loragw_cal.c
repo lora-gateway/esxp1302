@@ -66,12 +66,12 @@ static int8_t rf_rx_image_phi[LGW_RF_CHAIN_NB] = {0, 0};
 void cal_rx_result_init(struct lgw_sx125x_cal_rx_result_s *res_rx_min, struct lgw_sx125x_cal_rx_result_s *res_rx_max);
 void cal_rx_result_sort(struct lgw_sx125x_cal_rx_result_s *res_rx, struct lgw_sx125x_cal_rx_result_s *res_rx_min, struct lgw_sx125x_cal_rx_result_s *res_rx_max);
 bool cal_rx_result_assert(struct lgw_sx125x_cal_rx_result_s *res_rx_min, struct lgw_sx125x_cal_rx_result_s *res_rx_max);
-int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, uint8_t radio_type, struct lgw_sx125x_cal_rx_result_s * res);
+int sx125x_cal_rx_image(uint8_t rf_chain, unsigned int freq_hz, bool use_loopback, uint8_t radio_type, struct lgw_sx125x_cal_rx_result_s * res);
 
 void cal_tx_result_init(struct lgw_sx125x_cal_tx_result_s *res_tx_min, struct lgw_sx125x_cal_tx_result_s *res_tx_max);
 void cal_tx_result_sort(struct lgw_sx125x_cal_tx_result_s *res_tx, struct lgw_sx125x_cal_tx_result_s *res_tx_min, struct lgw_sx125x_cal_tx_result_s *res_tx_max);
 bool cal_tx_result_assert(struct lgw_sx125x_cal_tx_result_s *res_tx_min, struct lgw_sx125x_cal_tx_result_s *res_tx_max);
-int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type, struct lgw_sx125x_cal_tx_result_s * res);
+int sx125x_cal_tx_dc_offset(uint8_t rf_chain, unsigned int freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type, struct lgw_sx125x_cal_tx_result_s * res);
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -247,11 +247,11 @@ int sx1302_cal_start(uint8_t version, struct lgw_conf_rxrf_s * rf_chain_cfg, str
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, uint8_t radio_type, struct lgw_sx125x_cal_rx_result_s * res) {
+int sx125x_cal_rx_image(uint8_t rf_chain, unsigned int freq_hz, bool use_loopback, uint8_t radio_type, struct lgw_sx125x_cal_rx_result_s * res) {
     uint8_t rx, tx;
-    uint32_t rx_freq_hz, tx_freq_hz;
-    uint32_t rx_freq_int, rx_freq_frac;
-    uint32_t tx_freq_int, tx_freq_frac;
+    unsigned int rx_freq_hz, tx_freq_hz;
+    unsigned int rx_freq_int, rx_freq_frac;
+    unsigned int tx_freq_int, tx_freq_frac;
     uint8_t rx_pll_locked, tx_pll_locked;
     uint8_t rx_threshold = 8; /* Used by AGC to set decimation gain to increase signal and its image: value is MSB => x * 256 */
 
@@ -401,11 +401,11 @@ int sx125x_cal_rx_image(uint8_t rf_chain, uint32_t freq_hz, bool use_loopback, u
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx125x_cal_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type, struct lgw_sx125x_cal_tx_result_s * res) {
+int sx125x_cal_tx_dc_offset(uint8_t rf_chain, unsigned int freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type, struct lgw_sx125x_cal_tx_result_s * res) {
 
-    uint32_t rx_freq_hz, tx_freq_hz;
-    uint32_t rx_freq_int, rx_freq_frac;
-    uint32_t tx_freq_int, tx_freq_frac;
+    unsigned int rx_freq_hz, tx_freq_hz;
+    unsigned int rx_freq_int, rx_freq_frac;
+    unsigned int tx_freq_int, tx_freq_frac;
     uint8_t rx_pll_locked, tx_pll_locked;
     uint16_t reg;
     uint8_t tx_threshold = 64;

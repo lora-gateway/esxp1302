@@ -51,7 +51,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define IF_HZ_TO_REG(f)     ((f * 32) / 15625)
 
-#define SX1302_FREQ_TO_REG(f)   (uint32_t)((uint64_t)f * (1 << 18) / 32000000U)
+#define SX1302_FREQ_TO_REG(f)   (unsigned int)((uint64_t)f * (1 << 18) / 32000000U)
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
@@ -161,7 +161,7 @@ uint8_t fw_check[MCU_FW_SIZE];
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-int calculate_freq_to_time_drift(uint32_t freq_hz, uint8_t bw, uint16_t * mant, uint8_t * exp) {
+int calculate_freq_to_time_drift(unsigned int freq_hz, uint8_t bw, uint16_t * mant, uint8_t * exp) {
     uint64_t mantissa_u64;
     uint8_t exponent = 0;
     int32_t bw_hz;
@@ -330,7 +330,7 @@ int sx1302_get_model_id(sx1302_model_id_t * model_id) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int sx1302_update(void) {
-    uint32_t inst, pps;
+    unsigned int inst, pps;
     /* performances variables */
     struct timeval tm;
 
@@ -715,7 +715,7 @@ int sx1302_channelizer_configure(struct lgw_conf_rxif_s * if_cfg, bool fix_gain)
 
 int sx1302_fsk_configure(struct lgw_conf_rxif_s * cfg) {
     uint64_t fsk_sync_word_reg;
-    uint32_t fsk_br_reg;
+    unsigned int fsk_br_reg;
     int err = LGW_REG_SUCCESS;
 
     DEBUG_PRINTF("FSK: syncword:0x%" PRIx64 ", syncword_size:%u\n", cfg->sync_word, cfg->sync_word_size);
@@ -881,7 +881,7 @@ int sx1302_lora_service_correlator_configure(struct lgw_conf_rxif_s * cfg) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
+int sx1302_lora_modem_configure(unsigned int radio_freq_hz) {
     uint16_t mantissa = 0;
     uint8_t exponent = 0;
     int err = LGW_REG_SUCCESS;
@@ -992,7 +992,7 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t radio_freq_hz) {
+int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, unsigned int radio_freq_hz) {
     uint16_t mantissa = 0;
     uint8_t exponent = 0;
     uint8_t preamble_nb_symb;
@@ -1144,8 +1144,8 @@ int sx1302_lora_syncword(bool public, uint8_t lora_service_sf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint32_t sx1302_timestamp_counter(bool pps) {
-    uint32_t inst_cnt, pps_cnt;
+unsigned int sx1302_timestamp_counter(bool pps) {
+    unsigned int inst_cnt, pps_cnt;
     timestamp_counter_get(&counter_us, &inst_cnt, &pps_cnt);
     return ((pps == true) ? pps_cnt : inst_cnt);
 }
@@ -1946,7 +1946,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
     p->rf_chain = (uint8_t)context->if_chain_cfg[p->if_chain].rf_chain;
 
     /* Get the frequency for the channel configuration */
-    p->freq_hz = (uint32_t)((int32_t)context->rf_chain_cfg[p->rf_chain].freq_hz + context->if_chain_cfg[p->if_chain].freq_hz);
+    p->freq_hz = (unsigned int)((int32_t)context->rf_chain_cfg[p->rf_chain].freq_hz + context->if_chain_cfg[p->if_chain].freq_hz);
 
     /* Get signal strength : offset and temperature compensation will be applied later */
     p->rssic = (float)(pkt.rssi_chan_avg);
@@ -2122,7 +2122,7 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
         p->datarate = context->fsk_cfg.datarate;
 
         /* Compute timestamp correction to be applied */
-        timestamp_correction = ((uint32_t)680000 / context->fsk_cfg.datarate) - 20;
+        timestamp_correction = ((unsigned int)680000 / context->fsk_cfg.datarate) - 20;
 
         /* RSSI correction */
         p->rssic = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssic + RSSI_FSK_POLY_2 * pow(p->rssic, 2) + RSSI_FSK_POLY_3 * pow(p->rssic, 3);
@@ -2155,11 +2155,11 @@ int sx1302_parse(lgw_context_t * context, struct lgw_pkt_rx_s * p) {
 
 #if 0 // debug code to check for failed submicros/micros handling
     {
-        static uint32_t last_valid = 0;
-        static uint32_t last_us32 = 0;
-        static uint32_t last_pkt_num;
+        static unsigned int last_valid = 0;
+        static unsigned int last_us32 = 0;
+        static unsigned int last_pkt_num;
         int32_t diff = p->count_us - last_us32;
-        uint32_t pkt_num = (p->payload[4] << 24) | (p->payload[5] << 16) | (p->payload[6] << 8) | (p->payload[7] << 0);
+        unsigned int pkt_num = (p->payload[4] << 24) | (p->payload[5] << 16) | (p->payload[6] << 8) | (p->payload[7] << 0);
 
         printf("XXXXXXXXXXXXXXXX inst - ref=%u wrap=%u\n", counter_us.inst.counter_us_27bits_ref, counter_us.inst.counter_us_27bits_wrap);
         printf("XXXXXXXXXXXXXXXX pps  - ref=%u wrap=%u\n", counter_us.pps.counter_us_27bits_ref, counter_us.pps.counter_us_27bits_wrap);
@@ -2397,12 +2397,12 @@ int sx1302_tx_configure(lgw_radio_type_t radio_type) {
 
 int sx1302_send(lgw_radio_type_t radio_type, struct lgw_tx_gain_lut_s * tx_lut, bool lwan_public, struct lgw_conf_rxif_s * context_fsk, struct lgw_pkt_tx_s * pkt_data) {
     int err;
-    uint32_t freq_reg, fdev_reg;
-    uint32_t freq_dev;
-    uint32_t fsk_br_reg;
+    unsigned int freq_reg, fdev_reg;
+    unsigned int freq_dev;
+    unsigned int fsk_br_reg;
     uint64_t fsk_sync_word_reg;
     uint16_t mem_addr;
-    uint32_t count_us;
+    unsigned int count_us;
     uint8_t power;
     uint8_t pow_index;
     uint8_t mod_bw;

@@ -53,7 +53,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
-uint32_t sampling_frequency[] = {4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 0, 0, 1e6, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 8e6, 125e3, 125e3, 125e3, 0, 32e6, 32e6, 0, 32e6, 32e6, 0, 32e6, 32e6, 32e6};
+unsigned int sampling_frequency[] = {4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 4e6, 0, 0, 1e6, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 125e3, 8e6, 125e3, 125e3, 125e3, 0, 32e6, 32e6, 0, 32e6, 32e6, 0, 32e6, 32e6, 32e6};
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */

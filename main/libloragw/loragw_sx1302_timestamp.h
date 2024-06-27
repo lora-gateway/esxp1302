@@ -46,7 +46,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @brief context to maintain the internal counters (inst and pps trig) rollover status
 */
 struct timestamp_info_s {
-    uint32_t counter_us_27bits_ref;     /* reference value (last read) */
+    unsigned int counter_us_27bits_ref;     /* reference value (last read) */
     uint8_t  counter_us_27bits_wrap;    /* rollover/wrap status */
 };
 typedef struct timestamp_counter_s {
@@ -78,24 +78,24 @@ void timestamp_counter_delete(timestamp_counter_t * self);
 @param cnt      Current value of the freerun counter to be used for the update
 @return N/A
 */
-void timestamp_counter_update(timestamp_counter_t * self, uint32_t pps, uint32_t cnt);
+void timestamp_counter_update(timestamp_counter_t * self, unsigned int pps, unsigned int cnt);
 
 /**
-@brief Convert the 27-bits counter given by the SX1302 to a 32-bits counter which wraps on a uint32_t.
+@brief Convert the 27-bits counter given by the SX1302 to a 32-bits counter which wraps on a unsigned int.
 @param self     Pointer to the counter handler
 @param pps      Set to true to expand the counter based on the PPS trig wrapping status
 @param cnt_us   The 27-bits counter to be expanded
 @return the 32-bits counter
 */
-uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t cnt_us);
+unsigned int timestamp_counter_expand(timestamp_counter_t * self, bool pps, unsigned int cnt_us);
 
 /**
-@brief Convert the 27-bits packet timestamp to a 32-bits counter which wraps on a uint32_t.
+@brief Convert the 27-bits packet timestamp to a 32-bits counter which wraps on a unsigned int.
 @param self     Pointer to the counter handler
 @param cnt_us   The packet 27-bits counter to be expanded
 @return the 32-bits counter
 */
-uint32_t timestamp_pkt_expand(timestamp_counter_t * self, uint32_t cnt_us);
+unsigned int timestamp_pkt_expand(timestamp_counter_t * self, unsigned int cnt_us);
 
 /**
 @brief Reads the SX1302 internal counter register, and return the 32-bits 1 MHz counter
@@ -104,7 +104,7 @@ uint32_t timestamp_pkt_expand(timestamp_counter_t * self, uint32_t cnt_us);
 @param pps      Current value of the PPS counter
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t * pps);
+int timestamp_counter_get(timestamp_counter_t * self, unsigned int * inst, unsigned int * pps);
 
 /**
 @brief Get the correction to applied to the LoRa packet timestamp (count_us)
@@ -141,7 +141,7 @@ int timestamp_counter_mode(bool ftime_enable);
 @param result_ftime A pointer to store the resulting fine timestamp
 @return 0 if success, -1 otherwise
 */
-int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t pkt_coarse_tmst, uint8_t sf, int32_t if_freq_hz, double pkt_freq_error, uint32_t * result_ftime);
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, unsigned int pkt_coarse_tmst, uint8_t sf, int32_t if_freq_hz, double pkt_freq_error, unsigned int * result_ftime);
 
 #endif
 

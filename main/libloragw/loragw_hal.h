@@ -180,7 +180,7 @@ struct lgw_rssi_tcomp_s {
 */
 struct lgw_conf_rxrf_s {
     bool                    enable;             /*!> enable or disable that RF chain */
-    uint32_t                freq_hz;            /*!> center frequency of the radio in Hz */
+    unsigned int                freq_hz;            /*!> center frequency of the radio in Hz */
     float                   rssi_offset;        /*!> Board-specific RSSI correction factor */
     struct lgw_rssi_tcomp_s rssi_tcomp;         /*!> Board-specific RSSI temperature compensation coefficients */
     lgw_radio_type_t        type;               /*!> Radio type for that RF chain (SX1255, SX1257....) */
@@ -197,7 +197,7 @@ struct lgw_conf_rxif_s {
     uint8_t     rf_chain;       /*!> to which RF chain is that IF chain associated */
     int32_t     freq_hz;        /*!> center frequ of the IF chain, relative to RF chain frequency */
     uint8_t     bandwidth;      /*!> RX bandwidth, 0 for default */
-    uint32_t    datarate;       /*!> RX datarate, 0 for default */
+    unsigned int    datarate;       /*!> RX datarate, 0 for default */
     uint8_t     sync_word_size; /*!> size of FSK sync word (number of bytes, 0 for default) */
     uint64_t    sync_word;      /*!> FSK sync word (ALIGN RIGHT, eg. 0xC194C1) */
     bool        implicit_hdr;               /*!> LoRa Service implicit header */
@@ -219,16 +219,16 @@ struct lgw_conf_demod_s {
 @brief Structure containing the metadata of a packet that was received and a pointer to the payload
 */
 struct lgw_pkt_rx_s {
-    uint32_t    freq_hz;        /*!> central frequency of the IF chain */
+    unsigned int    freq_hz;        /*!> central frequency of the IF chain */
     int32_t     freq_offset;
     uint8_t     if_chain;       /*!> by which IF chain was packet received */
     uint8_t     status;         /*!> status of the received packet */
-    uint32_t    count_us;       /*!> internal concentrator counter for timestamping, 1 microsecond resolution */
+    unsigned int    count_us;       /*!> internal concentrator counter for timestamping, 1 microsecond resolution */
     uint8_t     rf_chain;       /*!> through which RF chain the packet was received */
     uint8_t     modem_id;
     uint8_t     modulation;     /*!> modulation used by the packet */
     uint8_t     bandwidth;      /*!> modulation bandwidth (LoRa only) */
-    uint32_t    datarate;       /*!> RX datarate of the packet (SF for LoRa) */
+    unsigned int    datarate;       /*!> RX datarate of the packet (SF for LoRa) */
     uint8_t     coderate;       /*!> error-correcting code of the packet (LoRa only) */
     float       rssic;          /*!> average RSSI of the channel in dB */
     float       rssis;          /*!> average RSSI of the signal in dB */
@@ -239,7 +239,7 @@ struct lgw_pkt_rx_s {
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
     bool        ftime_received; /*!> a fine timestamp has been received */
-    uint32_t    ftime;          /*!> packet fine timestamp (nanoseconds since last PPS) */
+    unsigned int    ftime;          /*!> packet fine timestamp (nanoseconds since last PPS) */
 };
 
 /**
@@ -247,15 +247,15 @@ struct lgw_pkt_rx_s {
 @brief Structure containing the configuration of a packet to send and a pointer to the payload
 */
 struct lgw_pkt_tx_s {
-    uint32_t    freq_hz;        /*!> center frequency of TX */
+    unsigned int    freq_hz;        /*!> center frequency of TX */
     uint8_t     tx_mode;        /*!> select on what event/time the TX is triggered */
-    uint32_t    count_us;       /*!> timestamp or delay in microseconds for TX trigger */
+    unsigned int    count_us;       /*!> timestamp or delay in microseconds for TX trigger */
     uint8_t     rf_chain;       /*!> through which RF chain will the packet be sent */
     int8_t      rf_power;       /*!> TX power, in dBm */
     uint8_t     modulation;     /*!> modulation to use for the packet */
     int8_t      freq_offset;    /*!> frequency offset from Radio Tx frequency (CW mode) */
     uint8_t     bandwidth;      /*!> modulation bandwidth (LoRa only) */
-    uint32_t    datarate;       /*!> TX datarate (baudrate for FSK, SF for LoRa) */
+    unsigned int    datarate;       /*!> TX datarate (baudrate for FSK, SF for LoRa) */
     uint8_t     coderate;       /*!> error-correcting code of the packet (LoRa only) */
     bool        invert_pol;     /*!> invert signal polarity, for orthogonal downlinks (LoRa only) */
     uint8_t     f_dev;          /*!> frequency deviation, in kHz (FSK only) */
@@ -296,9 +296,9 @@ struct lgw_tx_gain_lut_s {
 @brief Configuration structure for debug
 */
 struct conf_ref_payload_s {
-    uint32_t id;
+    unsigned int id;
     uint8_t payload[255];
-    uint32_t prev_cnt;
+    unsigned int prev_cnt;
 };
 struct lgw_conf_debug_s {
     uint8_t                     nb_ref_payload;
@@ -336,7 +336,7 @@ typedef enum {
 @brief Structure containing a Listen-Before-Talk channel configuration
 */
 struct lgw_conf_chan_lbt_s{
-    uint32_t            freq_hz;           /*!> LBT channel frequency */
+    unsigned int            freq_hz;           /*!> LBT channel frequency */
     uint8_t             bandwidth;         /*!> LBT channel bandwidth */
     lgw_lbt_scan_time_t scan_time_us;      /*!> LBT channel carrier sense time */
     uint16_t            transmit_time_ms;  /*!> LBT channel transmission duration when allowed */
@@ -525,14 +525,14 @@ int lgw_abort_tx(uint8_t rf_chain);
 @param trig_cnt_us pointer to receive timestamp value
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_get_trigcnt(uint32_t * trig_cnt_us);
+int lgw_get_trigcnt(unsigned int * trig_cnt_us);
 
 /**
 @brief Return instateneous value of internal counter
 @param inst_cnt_us pointer to receive timestamp value
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_get_instcnt(uint32_t * inst_cnt_us);
+int lgw_get_instcnt(unsigned int * inst_cnt_us);
 
 /**
 @brief Return the LoRa concentrator EUI
@@ -559,7 +559,7 @@ const char* lgw_version_info(void);
 @param packet is a pointer to the packet structure
 @return the packet time on air in milliseconds
 */
-uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s * packet);
+unsigned int lgw_time_on_air(const struct lgw_pkt_tx_s * packet);
 
 /**
 @brief Start scaning the channel centered on the given frequency
@@ -567,7 +567,7 @@ uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s * packet);
 @param nb_scan number of measures to be done for the scan
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_spectral_scan_start(uint32_t freq_hz, uint16_t nb_scan);
+int lgw_spectral_scan_start(unsigned int freq_hz, uint16_t nb_scan);
 
 /**
 @brief Get the current scan status

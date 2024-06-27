@@ -1,4 +1,4 @@
-static const uint32_t pram[] = {
+static const unsigned int pram[] = {
 0x337fe1,
 0x337fdb,
 0x337fd5,

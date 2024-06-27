@@ -76,10 +76,10 @@ int main(int argc, char ** argv)
     unsigned int arg_u;
 
     uint8_t buff[BUFF_SIZE];
-    uint32_t freq_hz = 0;
+    unsigned int freq_hz = 0;
     float rssi_inst;
-    uint32_t fa = DEFAULT_FREQ_HZ;
-    uint32_t fb = DEFAULT_FREQ_HZ;
+    unsigned int fa = DEFAULT_FREQ_HZ;
+    unsigned int fb = DEFAULT_FREQ_HZ;
     uint8_t clocksource = 0;
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1250;
 
@@ -153,7 +153,7 @@ int main(int argc, char ** argv)
                     printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    fa = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                    fa = (unsigned int)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
 
@@ -163,7 +163,7 @@ int main(int argc, char ** argv)
                     printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    fb = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                    fb = (unsigned int)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
 
@@ -173,7 +173,7 @@ int main(int argc, char ** argv)
                     printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    freq_hz = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                    freq_hz = (unsigned int)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
 

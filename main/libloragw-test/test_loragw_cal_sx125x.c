@@ -82,7 +82,7 @@ struct cal_tx_log {
 
 FILE * fp;
 
-static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB] = {865500000, 865500000};
+static unsigned int rf_rx_freq[LGW_RF_CHAIN_NB] = {865500000, 865500000};
 static lgw_radio_type_t rf_radio_type[LGW_RF_CHAIN_NB] = {LGW_RADIO_TYPE_SX1257, LGW_RADIO_TYPE_SX1257};
 static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 
@@ -124,10 +124,10 @@ static void sig_handler(int sigio)
     }
 }
 
-int setup_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type) {
-    uint32_t rx_freq_hz, tx_freq_hz;
-    uint32_t rx_freq_int, rx_freq_frac;
-    uint32_t tx_freq_int, tx_freq_frac;
+int setup_tx_dc_offset(uint8_t rf_chain, unsigned int freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type) {
+    unsigned int rx_freq_hz, tx_freq_hz;
+    unsigned int rx_freq_int, rx_freq_frac;
+    unsigned int tx_freq_int, tx_freq_frac;
     uint8_t rx_pll_locked, tx_pll_locked;
 
     /* Set PLL frequencies */
@@ -184,7 +184,7 @@ int setup_tx_dc_offset(uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uin
     return 0;
 }
 
-int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, uint32_t freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type, int32_t f_offset, int32_t i_offset, int32_t q_offset, bool full_log, bool use_agc, uint8_t amp, uint8_t phi) {
+int cal_tx_dc_offset(uint8_t test_id, uint8_t rf_chain, unsigned int freq_hz, uint8_t dac_gain, uint8_t mix_gain, uint8_t radio_type, int32_t f_offset, int32_t i_offset, int32_t q_offset, bool full_log, bool use_agc, uint8_t amp, uint8_t phi) {
     int i;
     uint16_t reg;
     int32_t val_min, val_max;

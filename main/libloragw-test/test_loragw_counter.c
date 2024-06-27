@@ -91,8 +91,8 @@ int main(int argc, char **argv)
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     int i, x;
-    uint32_t fa = DEFAULT_FREQ_HZ;
-    uint32_t fb = DEFAULT_FREQ_HZ;
+    unsigned int fa = DEFAULT_FREQ_HZ;
+    unsigned int fb = DEFAULT_FREQ_HZ;
     unsigned int arg_u;
     uint8_t clocksource = 0;
     lgw_radio_type_t radio_type = LGW_RADIO_TYPE_SX1250;
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
     struct lgw_conf_rxrf_s rfconf;
     struct lgw_conf_rxif_s ifconf;
 
-    uint32_t counter;
+    unsigned int counter;
     bool trig_cnt = false;
 
     const int32_t channel_if[9] = {

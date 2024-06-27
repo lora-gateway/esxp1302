@@ -109,7 +109,7 @@ void dbg_log_payload_diff_to_file(FILE * file, uint8_t * buffer1, uint8_t * buff
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void dbg_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, uint8_t size) {
+void dbg_generate_random_payload(unsigned int pkt_cnt, uint8_t * buffer_expected, uint8_t size) {
     int k;
 
     /* construct payload we should get for this packet counter */
@@ -128,7 +128,7 @@ void dbg_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, ui
 
 int dbg_check_payload(struct lgw_conf_debug_s * context, FILE * file, uint8_t * payload_received, uint8_t size, uint8_t ref_payload_idx, uint8_t sf) {
     int k;
-    uint32_t debug_payload_cnt;
+    unsigned int debug_payload_cnt;
 
     /* If the 4 first bytes of received payload match with the expected ones, go on with comparison */
     if (memcmp((void*)payload_received, (void*)(context->ref_payload[ref_payload_idx].payload), 4) == 0) {

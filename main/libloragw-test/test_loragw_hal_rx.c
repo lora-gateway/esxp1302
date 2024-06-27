@@ -93,8 +93,8 @@ int main_test_loragw_hal_rx(int argc, char **argv)
     lgw_com_type_t com_type = COM_TYPE_DEFAULT;
 
     int i, j, x;
-    uint32_t fa = DEFAULT_FREQ_HZ;
-    uint32_t fb = DEFAULT_FREQ_HZ;
+    unsigned int fa = DEFAULT_FREQ_HZ;
+    unsigned int fb = DEFAULT_FREQ_HZ;
     double arg_d = 0.0;
     unsigned int arg_u;
     uint8_t clocksource = 0;
@@ -202,7 +202,7 @@ int main_test_loragw_hal_rx(int argc, char **argv)
                     printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    fa = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                    fa = (unsigned int)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
             case 'b': /* <float> Radio B RX frequency in MHz */
@@ -211,7 +211,7 @@ int main_test_loragw_hal_rx(int argc, char **argv)
                     printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
                     return EXIT_FAILURE;
                 } else {
-                    fb = (uint32_t)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                    fb = (unsigned int)((arg_d*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
             case 'n': /* <uint> NUmber of packets to be received before exiting */

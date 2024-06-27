@@ -23,7 +23,7 @@
  * @param x 32-bit integer
  * @return 32-bit integer
  */
-static uint32_t ini_func1(uint32_t x) {
+static unsigned int ini_func1(unsigned int x) {
     return (x ^ (x >> 27)) * UINT32_C(1664525);
 }
 
@@ -33,7 +33,7 @@ static uint32_t ini_func1(uint32_t x) {
  * @param x 32-bit integer
  * @return 32-bit integer
  */
-static uint32_t ini_func2(uint32_t x) {
+static unsigned int ini_func2(unsigned int x) {
     return (x ^ (x >> 27)) * UINT32_C(1566083941);
 }
 
@@ -59,7 +59,7 @@ static void period_certification(tinymt32_t * random) {
  * @param random tinymt state vector.
  * @param seed a 32-bit unsigned integer used as a seed.
  */
-void tinymt32_init(tinymt32_t * random, uint32_t seed) {
+void tinymt32_init(tinymt32_t * random, unsigned int seed) {
     random->status[0] = seed;
     random->status[1] = random->mat1;
     random->status[2] = random->mat2;
@@ -82,15 +82,15 @@ void tinymt32_init(tinymt32_t * random, uint32_t seed) {
  * @param init_key the array of 32-bit integers, used as a seed.
  * @param key_length the length of init_key.
  */
-void tinymt32_init_by_array(tinymt32_t * random, uint32_t init_key[],
+void tinymt32_init_by_array(tinymt32_t * random, unsigned int init_key[],
 			    int key_length) {
     const int lag = 1;
     const int mid = 1;
     const int size = 4;
     int i, j;
     int count;
-    uint32_t r;
-    uint32_t * st = &random->status[0];
+    unsigned int r;
+    unsigned int * st = &random->status[0];
 
     st[0] = 0;
     st[1] = random->mat1;

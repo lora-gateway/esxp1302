@@ -49,7 +49,7 @@ void dbg_init_random(void);
 @brief
 @param
 */
-void dbg_generate_random_payload(uint32_t pkt_cnt, uint8_t * buffer_expected, uint8_t size);
+void dbg_generate_random_payload(unsigned int pkt_cnt, uint8_t * buffer_expected, uint8_t size);
 
 /**
 @brief

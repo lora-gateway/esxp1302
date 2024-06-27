@@ -532,7 +532,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s * conf) {
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s * conf) {
     int32_t bw_hz;
-    uint32_t rf_rx_bandwidth;
+    unsigned int rf_rx_bandwidth;
 
     CHECK_NULL(conf);
 
@@ -1480,7 +1480,7 @@ int lgw_abort_tx(uint8_t rf_chain) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
+int lgw_get_trigcnt(unsigned int* trig_cnt_us) {
     DEBUG_PRINTF(" --- %s\n", "IN");
 
     CHECK_NULL(trig_cnt_us);
@@ -1494,7 +1494,7 @@ int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_get_instcnt(uint32_t* inst_cnt_us) {
+int lgw_get_instcnt(unsigned int* inst_cnt_us) {
     DEBUG_PRINTF(" --- %s\n", "IN");
 
     CHECK_NULL(inst_cnt_us);
@@ -1556,9 +1556,9 @@ const char* lgw_version_info() {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
+unsigned int lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
     double t_fsk;
-    uint32_t toa_ms, toa_us;
+    unsigned int toa_ms, toa_us;
 
     DEBUG_PRINTF(" --- %s\n", "IN");
 
@@ -1569,7 +1569,7 @@ uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
 
     if (packet->modulation == MOD_LORA) {
         toa_us = lora_packet_time_on_air(packet->bandwidth, packet->datarate, packet->coderate, packet->preamble, packet->no_header, packet->no_crc, packet->size, NULL, NULL, NULL);
-        toa_ms = (uint32_t)( (double)toa_us / 1000.0 + 0.5 );
+        toa_ms = (unsigned int)( (double)toa_us / 1000.0 + 0.5 );
         DEBUG_PRINTF("INFO: LoRa packet ToA: %u ms\n", toa_ms);
     } else if (packet->modulation == MOD_FSK) {
         /* PREAMBLE + SYNC_WORD + PKT_LEN + PKT_PAYLOAD + CRC
@@ -1582,7 +1582,7 @@ uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
         t_fsk = (8 * (double)(packet->preamble + CONTEXT_FSK.sync_word_size + 1 + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
 
         /* Duration of packet */
-        toa_ms = (uint32_t)t_fsk + 1; /* add margin for rounding */
+        toa_ms = (unsigned int)t_fsk + 1; /* add margin for rounding */
     } else {
         toa_ms = 0;
         printf("ERROR: Cannot compute time on air for this packet, unsupported modulation (0x%02X)\n", packet->modulation);
@@ -1595,7 +1595,7 @@ uint32_t lgw_time_on_air(const struct lgw_pkt_tx_s *packet) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_spectral_scan_start(uint32_t freq_hz, uint16_t nb_scan) {
+int lgw_spectral_scan_start(unsigned int freq_hz, uint16_t nb_scan) {
     int err;
 
     if (CONTEXT_SX1261.enable != true) {

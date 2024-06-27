@@ -182,7 +182,7 @@ int sx1261_load_pram(void) {
     int i, err;
     uint8_t buff[32];
     char pram_version[SX1261_PRAM_VERSION_FULL_SIZE];
-    uint32_t val, addr;
+    unsigned int val, addr;
 
     /* Set Radio in Standby mode */
     buff[0] = (uint8_t)SX1261_STDBY_RC;
@@ -254,7 +254,7 @@ int sx1261_load_pram(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1261_calibrate(uint32_t freq_hz) {
+int sx1261_calibrate(unsigned int freq_hz) {
     int err = LGW_REG_SUCCESS;
     uint8_t buff[16];
 
@@ -336,7 +336,7 @@ int sx1261_setup(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx1261_set_rx_params(uint32_t freq_hz, uint8_t bandwidth) {
+int sx1261_set_rx_params(unsigned int freq_hz, uint8_t bandwidth) {
     int err;
     uint8_t buff[16];
     int32_t freq_reg;

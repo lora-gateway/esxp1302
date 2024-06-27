@@ -34,8 +34,8 @@ struct radio_reg_s
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
 
-#define SX1257_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 19) / 32000000U)
-#define SX1255_FREQ_TO_REG(f)       (uint32_t)((uint64_t)f * (1 << 20) / 32000000U)
+#define SX1257_FREQ_TO_REG(f)       (unsigned int)((uint64_t)f * (1 << 19) / 32000000U)
+#define SX1255_FREQ_TO_REG(f)       (unsigned int)((uint64_t)f * (1 << 20) / 32000000U)
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
@@ -139,7 +139,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, uint32_t freq_hz);
+int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, unsigned int freq_hz);
 
 int sx125x_reg_w(radio_reg_t idx, uint8_t data, uint8_t rf_chain);
 int sx125x_reg_r(radio_reg_t idx, uint8_t *data, uint8_t rf_chain);

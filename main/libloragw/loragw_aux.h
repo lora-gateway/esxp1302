@@ -95,7 +95,7 @@ void wait_us(unsigned long t);
 @param t_symbol_us pointer to return the duration of a symbol in microseconds
 @return the packet time on air in microseconds
 */
-uint32_t lora_packet_time_on_air( const uint8_t bw,
+unsigned int lora_packet_time_on_air( const uint8_t bw,
                                   const uint8_t sf,
                                   const uint8_t cr,
                                   const uint16_t n_symbol_preamble,
@@ -103,7 +103,7 @@ uint32_t lora_packet_time_on_air( const uint8_t bw,
                                   const bool no_crc,
                                   const uint8_t size,
                                   double * nb_symbols,
-                                  uint32_t * nb_symbols_payload,
+                                  unsigned int * nb_symbols_payload,
                                   uint16_t * t_symbol_us);
 
 /**
@@ -132,7 +132,7 @@ void timeout_start(struct timeval * start);
 @param timeout_ms the timeout duration in milliseconds
 @return -1 if the timeout has exceeded, 0 otherwise
 */
-int timeout_check(struct timeval start, uint32_t timeout_ms);
+int timeout_check(struct timeval start, unsigned int timeout_ms);
 
 #endif
 

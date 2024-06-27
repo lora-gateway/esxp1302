@@ -22,7 +22,7 @@ static int16_t sUplinkCounter = 0;
 static int16_t sDownlinkCounter = 0;
 static int16_t sBackhaulCounter = 0;
 
-void led_set_level(gpio_num_t gpio_num, uint32_t level){
+void led_set_level(gpio_num_t gpio_num, unsigned int level){
     if (gpio_num != GPIO_NUM_NC){
         gpio_set_level( gpio_num, level );
     }

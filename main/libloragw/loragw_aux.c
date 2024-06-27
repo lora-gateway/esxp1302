@@ -48,14 +48,14 @@ void wait_ms(unsigned long delay_ms) {
 }
 
 
-uint32_t lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, const uint8_t cr, const uint16_t n_symbol_preamble,
+unsigned int lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, const uint8_t cr, const uint16_t n_symbol_preamble,
                                  const bool no_header, const bool no_crc, const uint8_t size,
-                                 double * out_nb_symbols, uint32_t * out_nb_symbols_payload, uint16_t * out_t_symbol_us) {
+                                 double * out_nb_symbols, unsigned int * out_nb_symbols_payload, uint16_t * out_t_symbol_us) {
     uint8_t H, DE, n_bit_crc;
     uint8_t bw_pow;
     uint16_t t_symbol_us;
     double n_symbol;
-    uint32_t toa_us, n_symbol_payload;
+    unsigned int toa_us, n_symbol_payload;
 
     /* Check input parameters */
     if (IS_LORA_DR(sf) == false) {
@@ -104,7 +104,7 @@ uint32_t lora_packet_time_on_air(const uint8_t bw, const uint8_t sf, const uint8
     n_symbol = (double)n_symbol_preamble + ((sf >= 7) ? 4.25 : 6.25) + 8.0 + (double)n_symbol_payload;
 
     /* Duration of packet in microseconds */
-    toa_us = (uint32_t)( (double)n_symbol * (double)t_symbol_us );
+    toa_us = (unsigned int)( (double)n_symbol * (double)t_symbol_us );
 
     DEBUG_PRINTF("INFO: LoRa packet ToA: %u us (n_symbol:%f, t_symbol_us:%u)\n", toa_us, n_symbol, t_symbol_us);
 
@@ -155,10 +155,10 @@ void timeout_start(struct timeval * start) {
 }
 
 
-int timeout_check(struct timeval start, uint32_t timeout_ms) {
+int timeout_check(struct timeval start, unsigned int timeout_ms) {
     struct timeval tm;
     struct timeval diff;
-    uint32_t ms;
+    unsigned int ms;
 
     gettimeofday(&tm, NULL);
 
