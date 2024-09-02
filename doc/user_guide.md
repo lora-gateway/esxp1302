@@ -42,10 +42,10 @@ From web UI, user can configure below items:
 - **Frequency Plan**. You need to choose this wisely based on your region and node settings. You can click each of them to know the details of the original JSON file used for that frequency plan.
 - **Radio 1 and Radio 2 center frequency**. These 2 values should be the reasonable values based on the Frequency plan. Each control the frequency bands. The frequency bands has offsets of -300K/-100K/100K/300K Hz with the center frequency for CN470, while it's -400K/-200K/0K/200K for EU868. So please check the Frequency plan link to be sure.
 - **Wi-Fi SSID and password**. Please noted that both only support the ASCII characters. It doesn't work if your SSID or password contains other UTF-8 characters such as Chinese characters. This limitation is hard to remove so you may have to change your Wi-Fi router settings.
-- **NS Host and Port**. Here user needs to provide the right NS IP address and port. So far, it seems the gateway doesn't work with domain name, so please provide IP for the NS Host. This limitation could be removed in the future.
+- **NS Host and Port**. Here user needs to provide the right NS IP address (or domain name) and port.
 - **Gateway ID**. Each gateway needs to have its own unique ID, so provide it here to avoid using the same one as other gateway.
 
-If you think the original value is correct for any of above field, then you can just leave it empty. Any value you provided would be used to replace the original one from the JSON template file.
+If you think the original value is correct for any of above fields, then you can just leave it empty. Any value you provided would be used to replace the original one from the JSON template file.
 
 You can save your configurations whenever you like by clicking the **Apply** button. Such changes are saved in the gateway but won't apply to the current *packet-forward* process yet. It only happens after you click the **Reboot** button to reboot the gateway, or by user reboot the gateway by power off and on.
 
