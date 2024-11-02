@@ -188,6 +188,7 @@ extern config_s config[CONFIG_NUM];
 bool wifi_ready = false;
 char wifi_ssid[32];
 char wifi_pswd[64];
+char wifi_hostname[32];
 char udp_host[64];
 char udp_port_str[16];
 char self_ip[16] = "(unknown)";
@@ -3929,7 +3930,12 @@ void wifi_init_soft_ap(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_ap();
+    esp_netif_t *netif = esp_netif_create_default_wifi_ap();
+
+    if(wifi_hostname[0] != '\0'){
+        ESP_LOGI(WIFI_TAG, "Setting hostname to %s", wifi_hostname);
+        ESP_ERROR_CHECK(esp_netif_set_hostname(netif, wifi_hostname));
+    }
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -4051,7 +4057,12 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_netif_init());
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
+    esp_netif_t *netif = esp_netif_create_default_wifi_sta();
+
+    if(wifi_hostname[0] != '\0'){
+        ESP_LOGI(WIFI_TAG, "Setting hostname to %s", wifi_hostname);
+        ESP_ERROR_CHECK(esp_netif_set_hostname(netif, wifi_hostname));
+    }
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -4112,6 +4123,10 @@ void read_config_from_nvs(void)
 
     if(config[GW_ID].len > 0 && config[GW_ID].len == 16)
         strncpy(gw_id, config[GW_ID].val, config[GW_ID].len);
+
+    if(config[WIFI_HOSTNAME].len > 0 && config[WIFI_HOSTNAME].len < 32)
+        strncpy(wifi_hostname, config[WIFI_HOSTNAME].val, config[WIFI_HOSTNAME].len);
+
 }
 
 
@@ -4122,6 +4137,7 @@ static struct {
     struct arg_str *udp_host;
     struct arg_int *udp_port;
     struct arg_str *gw_id;
+    struct arg_str *wifi_hostname;
     struct arg_end *end;
 } net_conf_args;
 
@@ -4129,6 +4145,7 @@ void usage(void) {
     printf("\n\n ---- pkt_fwd ----\n");
     printf("\nAvailable options:\n");
     printf(" -h                   print this help\n");
+    printf(" -H <hostname>        ESP32 hostname\n");
     printf(" -u <wifi ssid>       Wifi SSID\n");
     printf(" -p <wifi password>   Wifi Password\n");
     printf(" --host <NS Host>     NS Host\n");
@@ -4161,6 +4178,15 @@ static int do_net_config_cmd(int argc, char **argv)
     if (nerrors != 0) {
         arg_print_errors(stderr, net_conf_args.end, argv[0]);
         return 0;
+    }
+
+    // process '-H' for our hostname
+    if (net_conf_args.wifi_hostname->count > 0) {
+        sval = net_conf_args.wifi_hostname->sval[0];
+        sprintf((char *)wifi_hostname, "%s", (char *)sval);
+        config[WIFI_HOSTNAME].val = wifi_hostname;
+        config[WIFI_HOSTNAME].len = strlen(wifi_hostname);
+        config_updated_config = true;
     }
 
     // process '-u' for modulation type
