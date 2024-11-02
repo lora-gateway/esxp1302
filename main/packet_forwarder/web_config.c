@@ -36,6 +36,7 @@ config_s config[CONFIG_NUM] = {
     { FREQ_RADIO0, "freq_radio0", NULL, 0 },
     { FREQ_RADIO1, "freq_radio1", NULL, 0 },
     { NTP_SERVER, "ntp_server", NULL, 0 },
+    { WIFI_HOSTNAME, "wifi_hostname", NULL, 0 }
 };
 
 tag_e name2tag(char *name)
@@ -124,7 +125,7 @@ int update_config(char *str, int len)
             free(config[tag].val);
         strncpy(p, str + name_len + 1, n - 1);
         p[n-1] = '\0';
-        if(tag == WIFI_SSID || tag == WIFI_PASSWORD){
+        if(tag == WIFI_SSID || tag == WIFI_PASSWORD || tag == WIFI_HOSTNAME){
             decode_ascii(p, p);
             n = strlen(p) + 1;
         }

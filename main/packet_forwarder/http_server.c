@@ -224,6 +224,18 @@ char *assemble_webpage(const char *webpage_str)
         }
     }
 
+    if(config[WIFI_HOSTNAME].val != NULL){
+        fwd = strstr(last, "name='wifi_hostname'");
+        if(fwd){
+            strncpy(buf, last, fwd - last);
+            buf += fwd - last;
+            last = fwd;
+            sprintf(config_buf, "value='%s' ", config[WIFI_HOSTNAME].val);
+            strncpy(buf, config_buf, strlen(config_buf));
+            buf += strlen(config_buf);
+        }
+    }
+
     if(config[WIFI_SSID].val != NULL){
         fwd = strstr(last, "name='wifi_ssid'");
         if(fwd){
