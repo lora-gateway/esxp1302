@@ -15,22 +15,24 @@ bootloader="0x1000 $pth/build/bootloader/bootloader.bin"
 app="0x10000 $pth/build/ESXP1302-Pkt-Fwd.bin"
 part="0x8000 $pth/build/partition_table/partition-table.bin"
 
-pkt_dir=main/packet_forwarder
-web_file=$pkt_dir/webpage.html
-web_hd_name=$pkt_dir/webpage.h
-
-hd_name=$pkt_dir/global_json.h
-conf_dir=$pkt_dir/global_conf.json
-json_cn_file=$conf_dir/global_conf.cn490.json
-json_eu_file=$conf_dir/global_conf.eu868.json
-json_us_file=$conf_dir/global_conf.us915.json
 
 if [ "$#" -eq 0 -o "$1" = "-h" -o "$1" = "--help" ]; then
 	echo "Usage: $0 [make|make_all|flash|flash_all|run]\n"
 	exit
 fi
 
-if [ "$1" = "make" ]; then
+prepare_c_head_file_from_files() {
+	pkt_dir=main/packet_forwarder
+
+	web_hd_name=$pkt_dir/webpage.h
+	hd_name=$pkt_dir/global_json.h
+	web_file=$pkt_dir/webpage.html
+	conf_dir=$pkt_dir/global_conf.json
+
+	json_cn_file=$conf_dir/global_conf.cn490.json
+	json_eu_file=$conf_dir/global_conf.eu868.json
+	json_us_file=$conf_dir/global_conf.us915.json
+
 	# prepare the webpage by dumping it to a string
 	scripts/dump_html.py $web_file webpage_str > $web_hd_name
 
@@ -54,16 +56,15 @@ if [ "$1" = "make" ]; then
 
 	# indent the code by prefix 4 ' '.
 	sed -i 's/^0x/    0x/; s/ *$//' $hd_name
+}
 
+if [ "$1" = "make" ]; then
+	prepare_c_head_file_from_files
 	idf.py -DCONFIG_LIBLORAGW_TEST=0 app
 fi
 
 if [ "$1" = "make_all" ]; then
-	# prepare the C array comes from global_conf.json
-	echo 'const static uint8_t global_conf[] = {' > $hd_name
-	scripts/json_to_hex_array.py $json_file >> $hd_name
-	echo '};' >> $hd_name
-
+	prepare_c_head_file_from_files
 	idf.py build
 fi
 
