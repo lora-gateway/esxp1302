@@ -62,12 +62,15 @@ If you are not under Linux, you need to change `run_me.sh` to use other terminal
 
 Run `./run_me.sh -h` for its whole usage.
 
+**Note**: a few extra steps for esp32c3 (not needed for esp32):
+- run `cp sdkconfig.esp32c3 sdkconfig` before `./run_me.sh make`.
+- for `./run_me.sh flash` to work, need to change `--chip esp32` to `--chip esp32c3` at line 13 in file `run_me.sh`.
 
 ## Configurations
 
 There are 2 compile targets:
-- main/packet_forwarder/lora_pkt_fwd.c. This the default target.
-- main/libloragw-test/cli4test.c. This provides a command line interface to support several test commands.
+- **main/packet_forwarder/lora_pkt_fwd.c**. This is the default target.
+- **main/libloragw-test/cli4test.c**. This provides a command line interface to support several test commands.
 
 It's controlled by flag **CONFIG_LIBLORAGW_TEST**. Change the value to "1" in `run_me.sh` to switch to the second target.
 
