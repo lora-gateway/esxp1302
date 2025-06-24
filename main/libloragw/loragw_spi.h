@@ -31,7 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define SPI_SPEED           2000000
 #ifndef SX1302_SPI_HOST
-#define SX1302_SPI_HOST     HSPI_HOST
+#define SX1302_SPI_HOST     SPI2_HOST
 #endif
 
 
