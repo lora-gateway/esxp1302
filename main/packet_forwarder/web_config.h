@@ -33,6 +33,7 @@ typedef enum {
     FREQ_RADIO0,
     FREQ_RADIO1,
     NTP_SERVER,
+    WIFI_HOSTNAME,
     CONFIG_NUM,
     CONFIG_END = 254,
     CONFIG_ERR = 255
