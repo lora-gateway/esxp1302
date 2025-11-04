@@ -2296,7 +2296,7 @@ float sx1302_rssi_get_temperature_offset(struct lgw_rssi_tcomp_s * context, floa
 
 uint8_t sx1302_tx_status(uint8_t rf_chain) {
     int err;
-    unsigned int read_value;
+    int32_t read_value;
 
     err = lgw_reg_r(SX1302_REG_TX_TOP_TX_FSM_STATUS_TX_STATUS(rf_chain), &read_value);
     if (err != LGW_REG_SUCCESS) {
@@ -2311,7 +2311,7 @@ uint8_t sx1302_tx_status(uint8_t rf_chain) {
     } else if ((read_value == 0x91) || (read_value == 0x92)) {
         return TX_SCHEDULED;
     } else {
-        printf("ERROR: UNKNOWN TX STATUS 0x%02X\n", read_value);
+        printf("ERROR: UNKNOWN TX STATUS 0x%02X\n", (uint8_t)read_value);
         return TX_STATUS_UNKNOWN;
     }
 }

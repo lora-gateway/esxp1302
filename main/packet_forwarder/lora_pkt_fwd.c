@@ -1684,7 +1684,9 @@ int pkt_fwd_main(void)
     /* Start GPS a.s.a.p., to allow it to lock */
     gps_enabled = false;
     gps_ref_valid = false;
-#ifndef GPS_DISABLE
+
+#if 0
+//#ifndef GPS_DISABLE
     i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); /* HAL only supports atgm336h or u-blox 7 for now */
     if (i != LGW_GPS_SUCCESS) {
         printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
@@ -3972,7 +3974,7 @@ static void mqtt_task(void)
 
 
 static bool reboot_flag = false;
-static void reboot_timer_callback(void)
+static void reboot_timer_callback(void *)
 {
     if(reboot_flag){
         printf("\n!!! reboot timer called\n");
