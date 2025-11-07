@@ -258,7 +258,6 @@ static char * read_file(const char * filename) {
 
 static char * copy_array(const char *conf_array) {
     size_t file_size;
-    long pos;
     char *file_contents;
 
     file_size = ((conf_array[0] << 8) | conf_array[1]);

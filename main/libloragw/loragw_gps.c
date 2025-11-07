@@ -253,12 +253,15 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) 
 int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr)
 {
     esp_err_t err;
+
+#if 0
     uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN] = {
                     0xB5, 0x62, /* UBX Sync Chars */
                     0x06, 0x01, /* CFG-MSG Class/ID */
                     0x08, 0x00, /* Payload length */
                     0x01, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-TIMEGPS output on serial */
                     0x32, 0x94 }; /* Checksum */
+#endif
 
     uart_port_t uart_num = UART_NUM_1;
     uart_config_t uart_config = {
