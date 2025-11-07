@@ -56,7 +56,7 @@ typedef struct rx_packet_s {
     uint8_t     rssi_chan_max_pos_delta;
     uint8_t     rssi_sig_max_neg_delta;     /* LoRa only */
     uint8_t     rssi_sig_max_pos_delta;     /* LoRa only */
-    uint32_t    timestamp_cnt;
+    unsigned int    timestamp_cnt;
     uint16_t    rx_crc16_value;             /* LoRa only */
     uint8_t     num_ts_metrics_stored;      /* LoRa only */
     int8_t      timestamp_avg[255];         /* LoRa only */

@@ -251,7 +251,7 @@ void app_main(void)
         size_t frame_end_idx = 0;
 
         /* blocking non-canonical read on serial port */
-        ssize_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t *)(serial_buff + wr_idx), LGW_GPS_MIN_MSG_SIZE, 20/portTICK_RATE_MS);
+        ssize_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t *)(serial_buff + wr_idx), LGW_GPS_MIN_MSG_SIZE, 20/portTICK_PERIOD_MS);
         if (nb_char <= 0) {
             printf("WARNING: [gps] read() returned value %zd\n", nb_char);
             continue;

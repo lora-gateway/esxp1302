@@ -112,7 +112,7 @@ void jit_sort_queue(struct jit_queue_s *queue) {
     MSG_DEBUG(DEBUG_JIT, "sorting queue done - swapped:%d\n", counter);
 }
 
-bool jit_collision_test(uint32_t p1_count_us, uint32_t p1_pre_delay, uint32_t p1_post_delay, uint32_t p2_count_us, uint32_t p2_pre_delay, uint32_t p2_post_delay) {
+bool jit_collision_test(unsigned int p1_count_us, unsigned int p1_pre_delay, unsigned int p1_post_delay, unsigned int p2_count_us, unsigned int p2_pre_delay, unsigned int p2_post_delay) {
     if (((p1_count_us - p2_count_us) <= (p1_pre_delay + p2_post_delay + TX_MARGIN_DELAY)) ||
         ((p2_count_us - p1_count_us) <= (p2_pre_delay + p1_post_delay + TX_MARGIN_DELAY))) {
         return true;
@@ -121,13 +121,13 @@ bool jit_collision_test(uint32_t p1_count_us, uint32_t p1_pre_delay, uint32_t p1
     }
 }
 
-enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct lgw_pkt_tx_s *packet, enum jit_pkt_type_e pkt_type) {
+enum jit_error_e jit_enqueue(struct jit_queue_s *queue, unsigned int time_us, struct lgw_pkt_tx_s *packet, enum jit_pkt_type_e pkt_type) {
     int i = 0;
-    uint32_t packet_post_delay = 0;
-    uint32_t packet_pre_delay = 0;
-    uint32_t target_pre_delay = 0;
+    unsigned int packet_post_delay = 0;
+    unsigned int packet_pre_delay = 0;
+    unsigned int target_pre_delay = 0;
     enum jit_error_e err_collision;
-    uint32_t asap_count_us;
+    unsigned int asap_count_us;
 
     MSG_DEBUG(DEBUG_JIT, "Current concentrator time is %u, pkt_type=%d\n", time_us, pkt_type);
 
@@ -356,7 +356,7 @@ enum jit_error_e jit_dequeue(struct jit_queue_s *queue, int index, struct lgw_pk
     return JIT_ERROR_OK;
 }
 
-enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_idx) {
+enum jit_error_e jit_peek(struct jit_queue_s *queue, unsigned int time_us, int *pkt_idx) {
     /* Return index of node containing a packet inline with given time */
     int i = 0;
     int idx_highest_priority = -1;

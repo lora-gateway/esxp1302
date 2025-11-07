@@ -54,7 +54,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 struct tref {
     time_t          systime;    /*!> system time when solution was calculated */
-    uint32_t        count_us;   /*!> reference concentrator internal timestamp */
+    unsigned int        count_us;   /*!> reference concentrator internal timestamp */
     struct timespec utc;        /*!> reference UTC time (from GPS/NMEA) */
     struct timespec gps;        /*!> reference GPS time (since 01.Jan.1980) */
     double          xtal_err;   /*!> raw clock error (eg. <1 'slow' XTAL) */
@@ -186,7 +186,7 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
 
 Set systime to 0 in ref to trigger initial synchronization.
 */
-int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc, struct timespec gps_time);
+int lgw_gps_sync(struct tref *ref, unsigned int count_us, struct timespec utc, struct timespec gps_time);
 
 /**
 @brief Convert concentrator timestamp counter value to UTC time
@@ -200,7 +200,7 @@ This function is typically used when a packet is received to transform the
 internal counter-based timestamp in an absolute timestamp with an accuracy in
 the order of a couple microseconds (ns resolution).
 */
-int lgw_cnt2utc(struct tref ref, uint32_t count_us, struct timespec* utc);
+int lgw_cnt2utc(struct tref ref, unsigned int count_us, struct timespec* utc);
 
 /**
 @brief Convert UTC time to concentrator timestamp counter value
@@ -214,7 +214,7 @@ This function is typically used when a packet must be sent at an accurate time
 (eg. to send a piggy-back response after receiving a packet from a node) to
 transform an absolute UTC time into a matching internal concentrator timestamp.
 */
-int lgw_utc2cnt(struct tref ref,struct timespec utc, uint32_t* count_us);
+int lgw_utc2cnt(struct tref ref,struct timespec utc, unsigned int* count_us);
 
 /**
 @brief Convert concentrator timestamp counter value to GPS time
@@ -228,7 +228,7 @@ This function is typically used when a packet is received to transform the
 internal counter-based timestamp in an absolute timestamp with an accuracy in
 the order of a millisecond.
 */
-int lgw_cnt2gps(struct tref ref, uint32_t count_us, struct timespec* gps_time);
+int lgw_cnt2gps(struct tref ref, unsigned int count_us, struct timespec* gps_time);
 
 /**
 @brief Convert GPS time to concentrator timestamp counter value
@@ -242,7 +242,7 @@ This function is typically used when a packet must be sent at an accurate time
 (eg. to send a piggy-back response after receiving a packet from a node) to
 transform an absolute GPS time into a matching internal concentrator timestamp.
 */
-int lgw_gps2cnt(struct tref ref, struct timespec gps_time, uint32_t* count_us);
+int lgw_gps2cnt(struct tref ref, struct timespec gps_time, unsigned int* count_us);
 
 #endif
 

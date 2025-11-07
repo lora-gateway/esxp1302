@@ -40,7 +40,7 @@
 
 #define SIZEOF_TOKEN(a)       (sizeof(a) - 1)
 #define SKIP_CHAR(str)        ((*str)++)
-#define SKIP_WHITESPACES(str) while (isspace(**str)) { SKIP_CHAR(str); }
+#define SKIP_WHITESPACES(str) while (isspace((unsigned char)**str)) { SKIP_CHAR(str); }
 #define MAX(a, b)             ((a) > (b) ? (a) : (b))
 
 #undef malloc
@@ -258,7 +258,6 @@ static char * read_file(const char * filename) {
 
 static char * copy_array(const char *conf_array) {
     size_t file_size;
-    long pos;
     char *file_contents;
 
     file_size = ((conf_array[0] << 8) | conf_array[1]);

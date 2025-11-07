@@ -100,7 +100,7 @@ int bin_to_b64_nopad(const uint8_t * in, int size, char * out, int max_len) {
     int full_blocks; /* number of 3 unsigned chars / 4 characters blocks */
     int last_bytes; /* number of unsigned chars <3 in the last block */
     int last_chars; /* number of characters <4 in the last block */
-    uint32_t b;
+    unsigned int b;
 
     /* check input values */
     if ((out == NULL) || (in == NULL)) {
@@ -174,7 +174,7 @@ int b64_to_bin_nopad(const char * in, int size, uint8_t * out, int max_len) {
     int full_blocks; /* number of 3 unsigned chars / 4 characters blocks */
     int last_chars; /* number of characters <4 in the last block */
     int last_bytes; /* number of unsigned chars <3 in the last block */
-    uint32_t b;
+    unsigned int b;
     ;
 
     /* check input values */

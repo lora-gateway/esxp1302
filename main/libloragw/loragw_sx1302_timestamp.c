@@ -51,7 +51,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define MAX_TIMESTAMP_PPS_HISTORY 16
 struct timestamp_pps_history_s {
-    uint32_t history[MAX_TIMESTAMP_PPS_HISTORY];
+    unsigned int history[MAX_TIMESTAMP_PPS_HISTORY];
     uint8_t idx; /* next slot to be written */
     uint8_t size; /* current size */
 };
@@ -95,14 +95,14 @@ int32_t precision_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint
 @param TODO
 @return The correction to be applied to the packet timestamp, in microseconds
 */
-void timestamp_pps_history_save(uint32_t timestamp_pps_reg);
+void timestamp_pps_history_save(unsigned int timestamp_pps_reg);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 int32_t legacy_timestamp_correction(uint8_t bandwidth, uint8_t sf, uint8_t cr, bool crc_en, uint8_t payload_length, sx1302_rx_dft_peak_mode_t dft_peak_mode) {
     uint64_t clk_period, filtering_delay, demap_delay, fft_delay_state3, fft_delay, decode_delay, total_delay;
-    uint32_t nb_nibble, nb_nibble_in_hdr, nb_nibble_in_last_block;
+    unsigned int nb_nibble, nb_nibble_in_hdr, nb_nibble_in_last_block;
     uint8_t nb_iter, bw_pow, dft_peak_en = (dft_peak_mode == RX_DFT_PEAK_MODE_DISABLED) ? 0 : 1;
     uint8_t ppm = SET_PPM_ON(bandwidth, sf) ? 1 : 0;
     int32_t timestamp_correction;
@@ -213,11 +213,11 @@ int32_t legacy_timestamp_correction(uint8_t bandwidth, uint8_t sf, uint8_t cr, b
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int32_t precision_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint8_t coderate, bool crc_en, uint8_t payload_length) {
-    uint32_t nb_symbols_payload;
+    unsigned int nb_symbols_payload;
     uint16_t t_symbol_us;
     int32_t timestamp_correction;
     uint8_t bw_pow;
-    uint32_t filtering_delay;
+    unsigned int filtering_delay;
 
     switch (bandwidth)
     {
@@ -255,7 +255,7 @@ int32_t precision_timestamp_correction(uint8_t bandwidth, uint8_t datarate, uint
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void timestamp_pps_history_save(uint32_t timestamp_pps_reg) {
+void timestamp_pps_history_save(unsigned int timestamp_pps_reg) {
     /* Store it only if different from the previous one */
     if ((timestamp_pps_reg != timestamp_pps_history.history[timestamp_pps_history.idx] || (timestamp_pps_history.size == 0))) {
         /* Select next index */
@@ -299,7 +299,7 @@ void timestamp_counter_delete(timestamp_counter_t * self) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void timestamp_counter_update(timestamp_counter_t * self, uint32_t pps, uint32_t inst) {
+void timestamp_counter_update(timestamp_counter_t * self, unsigned int pps, unsigned int inst) {
     //struct timestamp_info_s* tinfo = (pps == true) ? &self->pps : &self->inst;
 
     /* Check if counter has wrapped, and update wrap status if necessary */
@@ -319,12 +319,12 @@ void timestamp_counter_update(timestamp_counter_t * self, uint32_t pps, uint32_t
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t * pps) {
+int timestamp_counter_get(timestamp_counter_t * self, unsigned int * inst, unsigned int * pps) {
     int x;
     uint8_t buff[8];
     uint8_t buff_wa[8];
-    uint32_t counter_inst_us_raw_27bits_now;
-    uint32_t counter_pps_us_raw_27bits_now;
+    unsigned int counter_inst_us_raw_27bits_now;
+    unsigned int counter_pps_us_raw_27bits_now;
 
     /* Get the freerun and pps 32MHz timestamp counters - 8 bytes
             0 -> 3 : PPS counter
@@ -376,9 +376,9 @@ int timestamp_counter_get(timestamp_counter_t * self, uint32_t * inst, uint32_t 
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t cnt_us) {
+unsigned int timestamp_counter_expand(timestamp_counter_t * self, bool pps, unsigned int cnt_us) {
     struct timestamp_info_s* tinfo = (pps == true) ? &self->pps : &self->inst;
-    uint32_t counter_us_32bits;
+    unsigned int counter_us_32bits;
 
     counter_us_32bits = (tinfo->counter_us_27bits_wrap << 27) | cnt_us;
 
@@ -397,9 +397,9 @@ uint32_t timestamp_counter_expand(timestamp_counter_t * self, bool pps, uint32_t
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint32_t timestamp_pkt_expand(timestamp_counter_t * self, uint32_t pkt_cnt_us) {
+unsigned int timestamp_pkt_expand(timestamp_counter_t * self, unsigned int pkt_cnt_us) {
     struct timestamp_info_s* tinfo = &self->inst;
-    uint32_t counter_us_32bits;
+    unsigned int counter_us_32bits;
     uint8_t wrap_status;
 
     /* Check if counter has wrapped since the packet has been received in the sx1302 internal FIFO */
@@ -475,17 +475,17 @@ int32_t timestamp_counter_correction(lgw_context_t * context, uint8_t bandwidth,
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, uint32_t timestamp_cnt, uint8_t sf, int32_t if_freq_hz, double pkt_freq_error, uint32_t * result_ftime) {
+int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics, unsigned int timestamp_cnt, uint8_t sf, int32_t if_freq_hz, double pkt_freq_error, unsigned int * result_ftime) {
     int i, x, timestamp_pps_idx, timestamp_pps_idx_next, timestamp_pps_idx_prev;
     int32_t ftime_sum;
     int32_t ftime[256];
     float ftime_mean;
-    uint32_t timestamp_cnt_end_of_preamble;
-    uint32_t timestamp_pps = 0;
-    uint32_t timestamp_pps_reg = 0;
-    uint32_t offset_preamble_hdr;
+    unsigned int timestamp_cnt_end_of_preamble;
+    unsigned int timestamp_pps = 0;
+    unsigned int timestamp_pps_reg = 0;
+    unsigned int offset_preamble_hdr;
     uint8_t buff[4];
-    uint32_t diff_pps;
+    unsigned int diff_pps;
     double pkt_ftime;
     uint8_t ts_metrics_nb_clipped;
     double xtal_correct;
@@ -554,10 +554,10 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
         printf("ERROR: Failed to get timestamp counter value\n");
         return 0;
     }
-    timestamp_pps_reg  = (uint32_t)((buff[0] << 24) & 0xFF000000);
-    timestamp_pps_reg |= (uint32_t)((buff[1] << 16) & 0x00FF0000);
-    timestamp_pps_reg |= (uint32_t)((buff[2] << 8)  & 0x0000FF00);
-    timestamp_pps_reg |= (uint32_t)((buff[3] << 0)  & 0x000000FF);
+    timestamp_pps_reg  = (unsigned int)((buff[0] << 24) & 0xFF000000);
+    timestamp_pps_reg |= (unsigned int)((buff[1] << 16) & 0x00FF0000);
+    timestamp_pps_reg |= (unsigned int)((buff[2] << 8)  & 0x0000FF00);
+    timestamp_pps_reg |= (unsigned int)((buff[3] << 0)  & 0x000000FF);
 
     /* Ensure that the timestamp PPS history is up-to-date */
     timestamp_pps_history_save(timestamp_pps_reg);
@@ -620,7 +620,7 @@ int precise_timestamp_calculate(uint8_t ts_metrics_nb, const int8_t * ts_metrics
     /* Apply current XTAL error correction */
     pkt_ftime *= xtal_correct;
 
-    *result_ftime = (uint32_t)pkt_ftime;
+    *result_ftime = (unsigned int)pkt_ftime;
     if (*result_ftime > 1E9) {
         printf("ERROR: fine timestamp is out of range (%u)\n", *result_ftime);
         return -1;

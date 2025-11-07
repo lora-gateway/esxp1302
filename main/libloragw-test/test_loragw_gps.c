@@ -85,12 +85,12 @@ static void sig_handler(int sigio) {
 
 static void gps_process_sync(void) {
     /* variables for PPM pulse GPS synchronization */
-    uint32_t ppm_tstamp;
+    unsigned int ppm_tstamp;
     struct timespec ppm_gps;
     struct timespec ppm_utc;
 
     /* variables for timestamp <-> GPS time conversions */
-    uint32_t x, z;
+    unsigned int x, z;
     struct timespec y;
 
     /* get GPS time for synchronization */

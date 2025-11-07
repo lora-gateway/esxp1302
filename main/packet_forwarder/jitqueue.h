@@ -55,8 +55,8 @@ struct jit_node_s {
     enum jit_pkt_type_e pkt_type;   /* Packet type: Downlink, Beacon... */
 
     /* Internal fields */
-    uint32_t pre_delay;             /* Amount of time before packet timestamp to be reserved */
-    uint32_t post_delay;            /* Amount of time after packet timestamp to be reserved (time on air) */
+    unsigned int pre_delay;             /* Amount of time before packet timestamp to be reserved */
+    unsigned int post_delay;            /* Amount of time after packet timestamp to be reserved (time on air) */
 };
 
 struct jit_queue_s {
@@ -106,7 +106,7 @@ This function is typically used when a packet is received from server for downli
 It will check if packet can be queued, with several criterias. Once the packet is queued, it has to be
 sent over the air. So all checks should happen before the packet being actually in the queue.
 */
-enum jit_error_e jit_enqueue(struct jit_queue_s *queue, uint32_t time_us, struct lgw_pkt_tx_s *packet, enum jit_pkt_type_e pkt_type);
+enum jit_error_e jit_enqueue(struct jit_queue_s *queue, unsigned int time_us, struct lgw_pkt_tx_s *packet, enum jit_pkt_type_e pkt_type);
 
 /**
 @brief Dequeue a packet from a Just-in-Time queue
@@ -134,7 +134,7 @@ This function is typically used to check in JiT queue if there is a packet soon 
 It search the packet with the highest priority in queue, and check if its timestamp is near
 enough the current concentrator time.
 */
-enum jit_error_e jit_peek(struct jit_queue_s *queue, uint32_t time_us, int *pkt_idx);
+enum jit_error_e jit_peek(struct jit_queue_s *queue, unsigned int time_us, int *pkt_idx);
 
 /**
 @brief Debug function to print the queue's content on console

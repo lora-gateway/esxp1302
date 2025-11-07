@@ -215,7 +215,7 @@ int sx1302_lora_syncword(bool public, uint8_t lora_service_sf);
 @param radio_freq_hz    The center frequency of the RF chain (0 or 1)
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_lora_modem_configure(uint32_t radio_freq_hz);
+int sx1302_lora_modem_configure(unsigned int radio_freq_hz);
 
 /**
 @brief Configure the LoRa single-SF modem
@@ -223,7 +223,7 @@ int sx1302_lora_modem_configure(uint32_t radio_freq_hz);
 @param radio_freq_hz    The center frequency of the RF chain (0 or 1)
 @return LGW_REG_SUCCESS if success, LGW_REG_ERROR otherwise
 */
-int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, uint32_t radio_freq_hz);
+int sx1302_lora_service_modem_configure(struct lgw_conf_rxif_s * cfg, unsigned int radio_freq_hz);
 
 /**
 @brief Configure the FSK modem
@@ -251,7 +251,7 @@ int sx1302_gps_enable(bool enable);
 @param pps      True for getting the counter value at last PPS
 @return the counter value in mciroseconds (32-bits)
 */
-uint32_t sx1302_timestamp_counter(bool pps);
+unsigned int sx1302_timestamp_counter(bool pps);
 
 /**
 @brief Load firmware to AGC MCU memory

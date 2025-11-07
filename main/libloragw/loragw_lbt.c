@@ -49,7 +49,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* As given frequencies have been converted from float to integer, some aliasing
 issues can appear, so we can't simply check for equality, but have to take some
 margin */
-static bool is_equal_freq(uint32_t a, uint32_t b) {
+static bool is_equal_freq(unsigned int a, unsigned int b) {
     int64_t diff;
     int64_t a64 = (int64_t)a;
     int64_t b64 = (int64_t)b;
@@ -63,7 +63,7 @@ static bool is_equal_freq(uint32_t a, uint32_t b) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-static int is_lbt_channel(const struct lgw_conf_lbt_s * lbt_context, uint32_t freq_hz, uint8_t bandwidth) {
+static int is_lbt_channel(const struct lgw_conf_lbt_s * lbt_context, unsigned int freq_hz, uint8_t bandwidth) {
     int i;
     int lbt_channel_match = -1;
 
@@ -85,7 +85,7 @@ static int is_lbt_channel(const struct lgw_conf_lbt_s * lbt_context, uint32_t fr
 int lgw_lbt_start(const struct lgw_conf_sx1261_s * sx1261_context, const struct lgw_pkt_tx_s * pkt) {
     int err;
     int lbt_channel_selected;
-    uint32_t toa_ms;
+    unsigned int toa_ms;
     /* performances variables */
     struct timeval tm;
 
@@ -106,7 +106,7 @@ int lgw_lbt_start(const struct lgw_conf_sx1261_s * sx1261_context, const struct 
         return -1;
     }
     toa_ms = lgw_time_on_air(pkt);
-    if ((toa_ms * 1000) > (uint32_t)(sx1261_context->lbt_conf.channels[lbt_channel_selected].transmit_time_ms * 1000 - 1500)) {
+    if ((toa_ms * 1000) > (unsigned int)(sx1261_context->lbt_conf.channels[lbt_channel_selected].transmit_time_ms * 1000 - 1500)) {
         printf("ERROR: Cannot start LBT - packet time on air exceeds allowed transmit time (toa:%ums, max:%ums)\n", toa_ms, sx1261_context->lbt_conf.channels[lbt_channel_selected].transmit_time_ms);
         return -1;
     }

@@ -73,7 +73,7 @@ static short gps_sec = 0; /* seconds (0-60)(60 is for leap second) */
 static float gps_fra = 0.0; /* fractions of seconds (<1) */
 static bool gps_time_ok = false;
 static int16_t gps_week = 0; /* GPS week number of the navigation epoch */
-static uint32_t gps_iTOW = 0; /* GPS time of week in milliseconds */
+static unsigned int gps_iTOW = 0; /* GPS time of week in milliseconds */
 static int32_t gps_fTOW = 0; /* Fractional part of iTOW (+/-500000) in nanosec */
 
 static short gps_dla = 0; /* degrees of latitude */
@@ -253,12 +253,15 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) 
 int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr)
 {
     esp_err_t err;
+
+#if 0
     uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN] = {
                     0xB5, 0x62, /* UBX Sync Chars */
                     0x06, 0x01, /* CFG-MSG Class/ID */
                     0x08, 0x00, /* Payload length */
                     0x01, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-TIMEGPS output on serial */
                     0x32, 0x94 }; /* Checksum */
+#endif
 
     uart_port_t uart_num = UART_NUM_1;
     uart_config_t uart_config = {
@@ -604,7 +607,7 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc, struct timespec gps_time) {
+int lgw_gps_sync(struct tref *ref, unsigned int count_us, struct timespec utc, struct timespec gps_time) {
     double cnt_diff; /* internal concentrator time difference (in seconds) */
     double utc_diff; /* UTC time difference (in seconds) */
     double slope; /* time slope between new reference and old reference (for sanity check) */
@@ -675,7 +678,7 @@ int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc, struc
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_cnt2utc(struct tref ref, uint32_t count_us, struct timespec *utc) {
+int lgw_cnt2utc(struct tref ref, unsigned int count_us, struct timespec *utc) {
     double delta_sec;
     double intpart, fractpart;
     long tmp;
@@ -705,7 +708,7 @@ int lgw_cnt2utc(struct tref ref, uint32_t count_us, struct timespec *utc) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_utc2cnt(struct tref ref, struct timespec utc, uint32_t *count_us) {
+int lgw_utc2cnt(struct tref ref, struct timespec utc, unsigned int *count_us) {
     double delta_sec;
 
     CHECK_NULL(count_us);
@@ -719,14 +722,14 @@ int lgw_utc2cnt(struct tref ref, struct timespec utc, uint32_t *count_us) {
     delta_sec += 1E-9 * (double)(utc.tv_nsec - ref.utc.tv_nsec);
 
     /* now convert that to internal counter tics and add that to reference counter value */
-    *count_us = ref.count_us + (uint32_t)(delta_sec * TS_CPS * ref.xtal_err);
+    *count_us = ref.count_us + (unsigned int)(delta_sec * TS_CPS * ref.xtal_err);
 
     return LGW_GPS_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_cnt2gps(struct tref ref, uint32_t count_us, struct timespec *gps_time) {
+int lgw_cnt2gps(struct tref ref, unsigned int count_us, struct timespec *gps_time) {
     double delta_sec;
     double intpart, fractpart;
     long tmp;
@@ -756,7 +759,7 @@ int lgw_cnt2gps(struct tref ref, uint32_t count_us, struct timespec *gps_time) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_gps2cnt(struct tref ref, struct timespec gps_time, uint32_t *count_us) {
+int lgw_gps2cnt(struct tref ref, struct timespec gps_time, unsigned int *count_us) {
     double delta_sec;
 
     CHECK_NULL(count_us);
@@ -770,7 +773,7 @@ int lgw_gps2cnt(struct tref ref, struct timespec gps_time, uint32_t *count_us) {
     delta_sec += 1E-9 * (double)(gps_time.tv_nsec - ref.gps.tv_nsec);
 
     /* now convert that to internal counter tics and add that to reference counter value */
-    *count_us = ref.count_us + (uint32_t)(delta_sec * TS_CPS * ref.xtal_err);
+    *count_us = ref.count_us + (unsigned int)(delta_sec * TS_CPS * ref.xtal_err);
 
     return LGW_GPS_SUCCESS;
 }

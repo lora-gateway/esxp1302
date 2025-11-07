@@ -68,6 +68,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "argtable3/argtable3.h"
 #include "esp_netif.h"
 #include "esp_timer.h"
+#include "esp_mac.h"
+#include "esp_rom_gpio.h"
+#include "mqtt_client.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -180,6 +183,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define IP_LEN  32  // a right ip address should be no more than 16 bytes. some extra space for failed solving
 
+#define MQTT_BROKER_URL "mqtt://192.168.1.202"
+#define MQTT_TOPIC "/topic/esxp1302"
+
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -192,8 +198,8 @@ char udp_host[64];
 char udp_port_str[16];
 char self_ip[16] = "(unknown)";
 char gw_id[32];
-uint32_t udp_port;
-uint32_t time_count = 0;  // used for display time on screen
+unsigned int udp_port;
+unsigned int time_count = 0;  // used for display time on screen
 
 // buffer for display output
 char out_info[96];
@@ -201,14 +207,17 @@ char out_info[96];
 static const char *BOOT_TAG = "gateway boot";
 static const char *PKT_TAG = "packet-forward";
 static const char *WIFI_TAG = "wifi station";
+static const char *MQTT_TAG = "esxp1302_mqtt";
+
+static esp_mqtt_client_handle_t mqtt_client;
 
 /* spectral scan */
 typedef struct spectral_scan_s {
     bool enable;            /* enable spectral scan thread */
-    uint32_t freq_hz_start; /* first channel frequency, in Hz */
+    unsigned int freq_hz_start; /* first channel frequency, in Hz */
     uint8_t nb_chan;        /* number of channels to scan (200kHz between each channel) */
     uint16_t nb_scan;       /* number of scan points for each frequency scan */
-    uint32_t pace_s;        /* number of seconds between 2 scans in the thread */
+    unsigned int pace_s;        /* number of seconds between 2 scans in the thread */
 } spectral_scan_t;
 
 
@@ -232,8 +241,8 @@ static int keepalive_time = DEFAULT_KEEPALIVE; /* send a PULL_DATA request every
 static unsigned stat_interval = DEFAULT_STAT; /* time interval (in sec) at which statistics are collected and displayed */
 
 /* gateway <-> MAC protocol variables */
-static uint32_t net_mac_h; /* Most Significant Nibble, network order */
-static uint32_t net_mac_l; /* Least Significant Nibble, network order */
+static unsigned int net_mac_h; /* Most Significant Nibble, network order */
+static unsigned int net_mac_l; /* Least Significant Nibble, network order */
 
 /* network sockets */
 static int sock_up; /* socket for upstream traffic */
@@ -269,32 +278,32 @@ static bool gps_fake_enable; /* enable the feature */
 
 /* measurements to establish statistics */
 static SemaphoreHandle_t mx_meas_up; /* control access to the upstream measurements */
-static uint32_t meas_nb_rx_rcv = 0; /* count packets received */
-static uint32_t meas_nb_rx_ok = 0; /* count packets received with PAYLOAD CRC OK */
-static uint32_t meas_nb_rx_bad = 0; /* count packets received with PAYLOAD CRC ERROR */
-static uint32_t meas_nb_rx_nocrc = 0; /* count packets received with NO PAYLOAD CRC */
-static uint32_t meas_up_pkt_fwd = 0; /* number of radio packet forwarded to the server */
-static uint32_t meas_up_network_byte = 0; /* sum of UDP bytes sent for upstream traffic */
-static uint32_t meas_up_payload_byte = 0; /* sum of radio payload bytes sent for upstream traffic */
-static uint32_t meas_up_dgram_sent = 0; /* number of datagrams sent for upstream traffic */
-static uint32_t meas_up_ack_rcv = 0; /* number of datagrams acknowledged for upstream traffic */
+static unsigned int meas_nb_rx_rcv = 0; /* count packets received */
+static unsigned int meas_nb_rx_ok = 0; /* count packets received with PAYLOAD CRC OK */
+static unsigned int meas_nb_rx_bad = 0; /* count packets received with PAYLOAD CRC ERROR */
+static unsigned int meas_nb_rx_nocrc = 0; /* count packets received with NO PAYLOAD CRC */
+static unsigned int meas_up_pkt_fwd = 0; /* number of radio packet forwarded to the server */
+static unsigned int meas_up_network_byte = 0; /* sum of UDP bytes sent for upstream traffic */
+static unsigned int meas_up_payload_byte = 0; /* sum of radio payload bytes sent for upstream traffic */
+static unsigned int meas_up_dgram_sent = 0; /* number of datagrams sent for upstream traffic */
+static unsigned int meas_up_ack_rcv = 0; /* number of datagrams acknowledged for upstream traffic */
 
 static SemaphoreHandle_t mx_meas_dw; /* control access to the downstream measurements */
-static uint32_t meas_dw_pull_sent = 0; /* number of PULL requests sent for downstream traffic */
-static uint32_t meas_dw_ack_rcv = 0; /* number of PULL requests acknowledged for downstream traffic */
-static uint32_t meas_dw_dgram_rcv = 0; /* count PULL response packets received for downstream traffic */
-static uint32_t meas_dw_network_byte = 0; /* sum of UDP bytes sent for upstream traffic */
-static uint32_t meas_dw_payload_byte = 0; /* sum of radio payload bytes sent for upstream traffic */
-static uint32_t meas_nb_tx_ok = 0; /* count packets emitted successfully */
-static uint32_t meas_nb_tx_fail = 0; /* count packets were TX failed for other reasons */
-static uint32_t meas_nb_tx_requested = 0; /* count TX request from server (downlinks) */
-static uint32_t meas_nb_tx_rejected_collision_packet = 0; /* count packets were TX request were rejected due to collision with another packet already programmed */
-static uint32_t meas_nb_tx_rejected_collision_beacon = 0; /* count packets were TX request were rejected due to collision with a beacon already programmed */
-static uint32_t meas_nb_tx_rejected_too_late = 0; /* count packets were TX request were rejected because it is too late to program it */
-static uint32_t meas_nb_tx_rejected_too_early = 0; /* count packets were TX request were rejected because timestamp is too much in advance */
-static uint32_t meas_nb_beacon_queued = 0; /* count beacon inserted in jit queue */
-static uint32_t meas_nb_beacon_sent = 0; /* count beacon actually sent to concentrator */
-static uint32_t meas_nb_beacon_rejected = 0; /* count beacon rejected for queuing */
+static unsigned int meas_dw_pull_sent = 0; /* number of PULL requests sent for downstream traffic */
+static unsigned int meas_dw_ack_rcv = 0; /* number of PULL requests acknowledged for downstream traffic */
+static unsigned int meas_dw_dgram_rcv = 0; /* count PULL response packets received for downstream traffic */
+static unsigned int meas_dw_network_byte = 0; /* sum of UDP bytes sent for upstream traffic */
+static unsigned int meas_dw_payload_byte = 0; /* sum of radio payload bytes sent for upstream traffic */
+static unsigned int meas_nb_tx_ok = 0; /* count packets emitted successfully */
+static unsigned int meas_nb_tx_fail = 0; /* count packets were TX failed for other reasons */
+static unsigned int meas_nb_tx_requested = 0; /* count TX request from server (downlinks) */
+static unsigned int meas_nb_tx_rejected_collision_packet = 0; /* count packets were TX request were rejected due to collision with another packet already programmed */
+static unsigned int meas_nb_tx_rejected_collision_beacon = 0; /* count packets were TX request were rejected due to collision with a beacon already programmed */
+static unsigned int meas_nb_tx_rejected_too_late = 0; /* count packets were TX request were rejected because it is too late to program it */
+static unsigned int meas_nb_tx_rejected_too_early = 0; /* count packets were TX request were rejected because timestamp is too much in advance */
+static unsigned int meas_nb_beacon_queued = 0; /* count beacon inserted in jit queue */
+static unsigned int meas_nb_beacon_sent = 0; /* count beacon actually sent to concentrator */
+static unsigned int meas_nb_beacon_rejected = 0; /* count beacon rejected for queuing */
 
 static SemaphoreHandle_t mx_meas_gps; /* control access to the GPS statistics */
 static bool gps_coord_valid; /* could we get valid GPS coordinates ? */
@@ -306,17 +315,17 @@ static bool report_ready = false; /* true when there is a new report to send to 
 static char status_report[STATUS_SIZE]; /* status report as a JSON object */
 
 /* beacon parameters */
-static uint32_t beacon_period = 0; /* set beaconing period, must be a sub-multiple of 86400, the nb of sec in a day */
-static uint32_t beacon_freq_hz = DEFAULT_BEACON_FREQ_HZ; /* set beacon TX frequency, in Hz */
+static unsigned int beacon_period = 0; /* set beaconing period, must be a sub-multiple of 86400, the nb of sec in a day */
+static unsigned int beacon_freq_hz = DEFAULT_BEACON_FREQ_HZ; /* set beacon TX frequency, in Hz */
 static uint8_t beacon_freq_nb = DEFAULT_BEACON_FREQ_NB; /* set number of beaconing channels beacon */
-static uint32_t beacon_freq_step = DEFAULT_BEACON_FREQ_STEP; /* set frequency step between beacon channels, in Hz */
+static unsigned int beacon_freq_step = DEFAULT_BEACON_FREQ_STEP; /* set frequency step between beacon channels, in Hz */
 static uint8_t beacon_datarate = DEFAULT_BEACON_DATARATE; /* set beacon datarate (SF) */
-static uint32_t beacon_bw_hz = DEFAULT_BEACON_BW_HZ; /* set beacon bandwidth, in Hz */
+static unsigned int beacon_bw_hz = DEFAULT_BEACON_BW_HZ; /* set beacon bandwidth, in Hz */
 static int8_t beacon_power = DEFAULT_BEACON_POWER; /* set beacon TX power, in dBm */
 static uint8_t beacon_infodesc = DEFAULT_BEACON_INFODESC; /* set beacon information descriptor */
 
 /* auto-quit function */
-static uint32_t autoquit_threshold = 0; /* enable auto-quit after a number of non-acknowledged PULL_DATA (0 = disabled)*/
+static unsigned int autoquit_threshold = 0; /* enable auto-quit after a number of non-acknowledged PULL_DATA (0 = disabled)*/
 
 /* Just In Time TX scheduling */
 static struct jit_queue_s jit_queue[LGW_RF_CHAIN_NB];
@@ -326,16 +335,16 @@ static int8_t antenna_gain = 0;
 
 /* TX capabilities */
 static struct lgw_tx_gain_lut_s txlut[LGW_RF_CHAIN_NB]; /* TX gain table */
-static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
-static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
+static unsigned int tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
+static unsigned int tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
 static bool tx_enable[LGW_RF_CHAIN_NB] = {false}; /* Is TX enabled for a given RF chain ? */
 
-static uint32_t nb_pkt_log[LGW_IF_CHAIN_NB][8]; /* [CH][SF] */
-static uint32_t nb_pkt_received_lora = 0;
-static uint32_t nb_pkt_received_fsk = 0;
+static unsigned int nb_pkt_log[LGW_IF_CHAIN_NB][8]; /* [CH][SF] */
+static unsigned int nb_pkt_received_lora = 0;
+static unsigned int nb_pkt_received_fsk = 0;
 
 static struct lgw_conf_debug_s debugconf;
-static uint32_t nb_pkt_received_ref[16];
+static unsigned int nb_pkt_received_ref[16];
 
 /* Interface type */
 static lgw_com_type_t com_type = LGW_COM_SPI;
@@ -353,6 +362,7 @@ TaskHandle_t pJit;
 TaskHandle_t pThreadUp;
 TaskHandle_t pLed;
 TaskHandle_t pkt_fwd_handle;
+TaskHandle_t mqtt_handle;
 
 
 //static void sig_handler(int sigio);
@@ -395,9 +405,9 @@ static void sig_handler(int sigio) {
 
 void Init_Led( void )
 {
-    gpio_pad_select_gpio( LED_BLUE_GPIO );
-    gpio_pad_select_gpio( LED_GREEN_GPIO );
-    gpio_pad_select_gpio( LED_RED_GPIO );
+    esp_rom_gpio_pad_select_gpio( LED_BLUE_GPIO );
+    esp_rom_gpio_pad_select_gpio( LED_GREEN_GPIO );
+    esp_rom_gpio_pad_select_gpio( LED_RED_GPIO );
     gpio_set_direction( LED_BLUE_GPIO, GPIO_MODE_OUTPUT );
     gpio_set_direction( LED_GREEN_GPIO, GPIO_MODE_OUTPUT );
     gpio_set_direction( LED_RED_GPIO, GPIO_MODE_OUTPUT );
@@ -444,7 +454,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
     struct lgw_conf_demod_s demodconf;
     struct lgw_conf_ftime_s tsconf;
     struct lgw_conf_sx1261_s sx1261conf;
-    uint32_t sf, bw, fdev;
+    unsigned int sf, bw, fdev;
     bool sx1250_tx_lut;
     size_t size;
 
@@ -609,7 +619,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
                 /* Get Spectral Scan Parameters */
                 val = json_object_get_value(conf_scan_obj, "freq_start"); /* fetch value (if possible) */
                 if (json_value_get_type(val) == JSONNumber) {
-                    spectral_scan_params.freq_hz_start = (uint32_t)json_value_get_number(val);
+                    spectral_scan_params.freq_hz_start = (unsigned int)json_value_get_number(val);
                 } else {
                     MSG("WARNING: Data type for spectral_scan.freq_start seems wrong, please check\n");
                 }
@@ -627,7 +637,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
                 }
                 val = json_object_get_value(conf_scan_obj, "pace_s"); /* fetch value (if possible) */
                 if (json_value_get_type(val) == JSONNumber) {
-                    spectral_scan_params.pace_s = (uint32_t)json_value_get_number(val);
+                    spectral_scan_params.pace_s = (unsigned int)json_value_get_number(val);
                 } else {
                     MSG("WARNING: Data type for spectral_scan.pace_s seems wrong, please check\n");
                 }
@@ -676,7 +686,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
                     val = json_object_dotget_value(conf_lbtchan_obj, "freq_hz"); /* fetch value (if possible) */
                     if (val != NULL) {
                         if (json_value_get_type(val) == JSONNumber) {
-                            sx1261conf.lbt_conf.channels[i].freq_hz = (uint32_t)json_value_get_number(val);
+                            sx1261conf.lbt_conf.channels[i].freq_hz = (unsigned int)json_value_get_number(val);
                         } else {
                             MSG("WARNING: Data type for lbt.channels[%d].freq_hz seems wrong, please check\n", i);
                             sx1261conf.lbt_conf.channels[i].freq_hz = 0;
@@ -690,7 +700,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
                     val = json_object_dotget_value(conf_lbtchan_obj, "bandwidth"); /* fetch value (if possible) */
                     if (val != NULL) {
                         if (json_value_get_type(val) == JSONNumber) {
-                            bw = (uint32_t)json_value_get_number(val);
+                            bw = (unsigned int)json_value_get_number(val);
                             switch(bw) {
                                 case 500000: sx1261conf.lbt_conf.channels[i].bandwidth = BW_500KHZ; break;
                                 case 250000: sx1261conf.lbt_conf.channels[i].bandwidth = BW_250KHZ; break;
@@ -772,7 +782,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
             MSG("INFO: radio %i disabled\n", i);
         } else  { /* radio enabled, will parse the other parameters */
             snprintf(param_name, sizeof param_name, "radio_%i.freq", i);
-            rfconf.freq_hz = (uint32_t)json_object_dotget_number(conf_obj, param_name);
+            rfconf.freq_hz = (unsigned int)json_object_dotget_number(conf_obj, param_name);
             snprintf(param_name, sizeof param_name, "radio_%i.rssi_offset", i);
             rfconf.rssi_offset = (float)json_object_dotget_number(conf_obj, param_name);
             snprintf(param_name, sizeof param_name, "radio_%i.rssi_tcomp.coeff_a", i);
@@ -812,9 +822,9 @@ static int parse_SX130x_configuration(const char * conf_array) {
                 if (rfconf.tx_enable == true) {
                     /* tx is enabled on this rf chain, we need its frequency range */
                     snprintf(param_name, sizeof param_name, "radio_%i.tx_freq_min", i);
-                    tx_freq_min[i] = (uint32_t)json_object_dotget_number(conf_obj, param_name);
+                    tx_freq_min[i] = (unsigned int)json_object_dotget_number(conf_obj, param_name);
                     snprintf(param_name, sizeof param_name, "radio_%i.tx_freq_max", i);
-                    tx_freq_max[i] = (uint32_t)json_object_dotget_number(conf_obj, param_name);
+                    tx_freq_max[i] = (unsigned int)json_object_dotget_number(conf_obj, param_name);
                     if ((tx_freq_min[i] == 0) || (tx_freq_max[i] == 0)) {
                         MSG("WARNING: no frequency range specified for TX rf chain %d\n", i);
                     }
@@ -976,7 +986,7 @@ static int parse_SX130x_configuration(const char * conf_array) {
             MSG("INFO: Lora multi-SF channel %i disabled\n", i);
         } else  { /* Lora multi-SF channel enabled, will parse the other parameters */
             snprintf(param_name, sizeof param_name, "chan_multiSF_%i.radio", i);
-            ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, param_name);
+            ifconf.rf_chain = (unsigned int)json_object_dotget_number(conf_obj, param_name);
             snprintf(param_name, sizeof param_name, "chan_multiSF_%i.if", i);
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, param_name);
             // TODO: handle individual SF enabling and disabling (spread_factor)
@@ -1004,16 +1014,16 @@ static int parse_SX130x_configuration(const char * conf_array) {
         if (ifconf.enable == false) {
             MSG("INFO: Lora standard channel %i disabled\n", i);
         } else  {
-            ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.radio");
+            ifconf.rf_chain = (unsigned int)json_object_dotget_number(conf_obj, "chan_Lora_std.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.if");
-            bw = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.bandwidth");
+            bw = (unsigned int)json_object_dotget_number(conf_obj, "chan_Lora_std.bandwidth");
             switch(bw) {
                 case 500000: ifconf.bandwidth = BW_500KHZ; break;
                 case 250000: ifconf.bandwidth = BW_250KHZ; break;
                 case 125000: ifconf.bandwidth = BW_125KHZ; break;
                 default: ifconf.bandwidth = BW_UNDEFINED;
             }
-            sf = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.spread_factor");
+            sf = (unsigned int)json_object_dotget_number(conf_obj, "chan_Lora_std.spread_factor");
             switch(sf) {
                 case  5: ifconf.datarate = DR_LORA_SF5;  break;
                 case  6: ifconf.datarate = DR_LORA_SF6;  break;
@@ -1080,11 +1090,11 @@ static int parse_SX130x_configuration(const char * conf_array) {
         if (ifconf.enable == false) {
             MSG("INFO: FSK channel %i disabled\n", i);
         } else  {
-            ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, "chan_FSK.radio");
+            ifconf.rf_chain = (unsigned int)json_object_dotget_number(conf_obj, "chan_FSK.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, "chan_FSK.if");
-            bw = (uint32_t)json_object_dotget_number(conf_obj, "chan_FSK.bandwidth");
-            fdev = (uint32_t)json_object_dotget_number(conf_obj, "chan_FSK.freq_deviation");
-            ifconf.datarate = (uint32_t)json_object_dotget_number(conf_obj, "chan_FSK.datarate");
+            bw = (unsigned int)json_object_dotget_number(conf_obj, "chan_FSK.bandwidth");
+            fdev = (unsigned int)json_object_dotget_number(conf_obj, "chan_FSK.freq_deviation");
+            ifconf.datarate = (unsigned int)json_object_dotget_number(conf_obj, "chan_FSK.datarate");
 
             /* if chan_FSK.bandwidth is set, it has priority over chan_FSK.freq_deviation */
             if ((bw == 0) && (fdev != 0)) {
@@ -1244,7 +1254,7 @@ static int parse_gateway_configuration(const char * conf_array) {
     /* Beacon signal period (optional) */
     val = json_object_get_value(conf_obj, "beacon_period");
     if (val != NULL) {
-        beacon_period = (uint32_t)json_value_get_number(val);
+        beacon_period = (unsigned int)json_value_get_number(val);
         if ((beacon_period > 0) && (beacon_period < 6)) {
             MSG("ERROR: invalid configuration for Beacon period, must be >= 6s\n");
             return -1;
@@ -1256,7 +1266,7 @@ static int parse_gateway_configuration(const char * conf_array) {
     /* Beacon TX frequency (optional) */
     val = json_object_get_value(conf_obj, "beacon_freq_hz");
     if (val != NULL) {
-        beacon_freq_hz = (uint32_t)json_value_get_number(val);
+        beacon_freq_hz = (unsigned int)json_value_get_number(val);
         MSG("INFO: Beaconing signal will be emitted at %u Hz\n", beacon_freq_hz);
     }
 
@@ -1270,7 +1280,7 @@ static int parse_gateway_configuration(const char * conf_array) {
     /* Frequency step between beacon channels (optional) */
     val = json_object_get_value(conf_obj, "beacon_freq_step");
     if (val != NULL) {
-        beacon_freq_step = (uint32_t)json_value_get_number(val);
+        beacon_freq_step = (unsigned int)json_value_get_number(val);
         MSG("INFO: Beaconing channel frequency step is set to %uHz\n", beacon_freq_step);
     }
 
@@ -1284,7 +1294,7 @@ static int parse_gateway_configuration(const char * conf_array) {
     /* Beacon modulation bandwidth (optional) */
     val = json_object_get_value(conf_obj, "beacon_bw_hz");
     if (val != NULL) {
-        beacon_bw_hz = (uint32_t)json_value_get_number(val);
+        beacon_bw_hz = (unsigned int)json_value_get_number(val);
         MSG("INFO: Beaconing modulation bandwidth is set to %dHz\n", beacon_bw_hz);
     }
 
@@ -1305,7 +1315,7 @@ static int parse_gateway_configuration(const char * conf_array) {
     /* Auto-quit threshold (optional) */
     val = json_object_get_value(conf_obj, "autoquit_threshold");
     if (val != NULL) {
-        autoquit_threshold = (uint32_t)json_value_get_number(val);
+        autoquit_threshold = (unsigned int)json_value_get_number(val);
         MSG("INFO: Auto-quit after %u non-acknowledged PULL_DATA\n", autoquit_threshold);
     }
 
@@ -1404,7 +1414,7 @@ static double difftimespec(struct timespec end, struct timespec beginning) {
     return x;
 }
 
-static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, int32_t error_value) {
+static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, signed int error_value) {
     uint8_t buff_ack[ACK_BUFF_SIZE]; /* buffer to give feedback to server */
     int buff_index;
     int j;
@@ -1417,8 +1427,8 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
     buff_ack[1] = token_h;
     buff_ack[2] = token_l;
     buff_ack[3] = PKT_TX_ACK;
-    *(uint32_t *)(buff_ack + 4) = net_mac_h;
-    *(uint32_t *)(buff_ack + 8) = net_mac_l;
+    *(unsigned int *)(buff_ack + 4) = net_mac_h;
+    *(unsigned int *)(buff_ack + 8) = net_mac_l;
     buff_index = 12; /* 12-byte header */
 
     /* Put no JSON string if there is nothing to report */
@@ -1542,38 +1552,38 @@ int pkt_fwd_main(void)
     int l, m;
 
     /* variables to get local copies of measurements */
-    uint32_t cp_nb_rx_rcv;
-    uint32_t cp_nb_rx_ok;
-    uint32_t cp_nb_rx_bad;
-    uint32_t cp_nb_rx_nocrc;
-    uint32_t cp_up_pkt_fwd;
-    uint32_t cp_up_network_byte;
-    uint32_t cp_up_payload_byte;
-    uint32_t cp_up_dgram_sent;
-    uint32_t cp_up_ack_rcv;
-    uint32_t cp_dw_pull_sent;
-    uint32_t cp_dw_ack_rcv;
-    uint32_t cp_dw_dgram_rcv;
-    uint32_t cp_dw_network_byte;
-    uint32_t cp_dw_payload_byte;
-    uint32_t cp_nb_tx_ok;
-    uint32_t cp_nb_tx_fail;
-    uint32_t cp_nb_tx_requested = 0;
-    uint32_t cp_nb_tx_rejected_collision_packet = 0;
-    uint32_t cp_nb_tx_rejected_collision_beacon = 0;
-    uint32_t cp_nb_tx_rejected_too_late = 0;
-    uint32_t cp_nb_tx_rejected_too_early = 0;
-    uint32_t cp_nb_beacon_queued = 0;
-    uint32_t cp_nb_beacon_sent = 0;
-    uint32_t cp_nb_beacon_rejected = 0;
+    unsigned int cp_nb_rx_rcv;
+    unsigned int cp_nb_rx_ok;
+    unsigned int cp_nb_rx_bad;
+    unsigned int cp_nb_rx_nocrc;
+    unsigned int cp_up_pkt_fwd;
+    unsigned int cp_up_network_byte;
+    unsigned int cp_up_payload_byte;
+    unsigned int cp_up_dgram_sent;
+    unsigned int cp_up_ack_rcv;
+    unsigned int cp_dw_pull_sent;
+    unsigned int cp_dw_ack_rcv;
+    unsigned int cp_dw_dgram_rcv;
+    unsigned int cp_dw_network_byte;
+    unsigned int cp_dw_payload_byte;
+    unsigned int cp_nb_tx_ok;
+    unsigned int cp_nb_tx_fail;
+    unsigned int cp_nb_tx_requested = 0;
+    unsigned int cp_nb_tx_rejected_collision_packet = 0;
+    unsigned int cp_nb_tx_rejected_collision_beacon = 0;
+    unsigned int cp_nb_tx_rejected_too_late = 0;
+    unsigned int cp_nb_tx_rejected_too_early = 0;
+    unsigned int cp_nb_beacon_queued = 0;
+    unsigned int cp_nb_beacon_sent = 0;
+    unsigned int cp_nb_beacon_rejected = 0;
 
     /* GPS coordinates variables */
     bool coord_ok = false;
     struct coord_s cp_gps_coord = {0.0, 0.0, 0};
 
     /* SX1302 data variables */
-    uint32_t trig_tstamp;
-    uint32_t inst_tstamp;
+    unsigned int trig_tstamp;
+    unsigned int inst_tstamp;
     float temperature;
 
     /* statistics variable */
@@ -1674,7 +1684,9 @@ int pkt_fwd_main(void)
     /* Start GPS a.s.a.p., to allow it to lock */
     gps_enabled = false;
     gps_ref_valid = false;
-#ifndef GPS_DISABLE
+
+#if 0
+//#ifndef GPS_DISABLE
     i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); /* HAL only supports atgm336h or u-blox 7 for now */
     if (i != LGW_GPS_SUCCESS) {
         printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
@@ -1717,8 +1729,8 @@ int pkt_fwd_main(void)
     }
 
     /* process some of the configuration variables */
-    net_mac_h = htonl((uint32_t)(0xFFFFFFFF & (lgwm>>32)));
-    net_mac_l = htonl((uint32_t)(0xFFFFFFFF &  lgwm  ));
+    net_mac_h = htonl((unsigned int)(0xFFFFFFFF & (lgwm>>32)));
+    net_mac_l = htonl((unsigned int)(0xFFFFFFFF &  lgwm  ));
 
     // -------------------------------
     int addr_family = 0;
@@ -2159,7 +2171,7 @@ void thread_up(void)
     bool send_report = false;
 
     /* mote info variables */
-    uint32_t mote_addr = 0;
+    unsigned int mote_addr = 0;
     uint16_t mote_fcnt = 0;
 
     /* set upstream socket RX timeout */
@@ -2172,8 +2184,8 @@ void thread_up(void)
     /* pre-fill the data buffer with fixed fields */
     buff_up[0] = PROTOCOL_VERSION;
     buff_up[3] = PKT_PUSH_DATA;
-    *(uint32_t *)(buff_up + 4) = net_mac_h;
-    *(uint32_t *)(buff_up + 8) = net_mac_l;
+    *(unsigned int *)(buff_up + 4) = net_mac_h;
+    *(unsigned int *)(buff_up + 8) = net_mac_l;
 
     while (!exit_sig && !quit_sig) {
 
@@ -2628,6 +2640,11 @@ void thread_up(void)
         /* send datagram to server */
         //send(sock_up, (void *)buff_up, buff_index, 0);
         sendto(sock_up, (void *)buff_up, buff_index, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+
+        // send datagram to mqtt server
+        int msg_id = esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC, (char *)(buff_up + 12), 0, 0, 0);
+        ESP_LOGI(MQTT_TAG, "sent publish successful, msg_id=%d", msg_id);
+
         clock_gettime(CLOCK_MONOTONIC, &send_time);
         xSemaphoreTake(mx_meas_up, portMAX_DELAY);
         meas_up_dgram_sent += 1;
@@ -2759,14 +2776,14 @@ void thread_down(void)
     uint16_t field_crc1, field_crc2;
 
     /* auto-quit variable */
-    uint32_t autoquit_cnt = 0; /* count the number of PULL_DATA sent since the latest PULL_ACK */
+    unsigned int autoquit_cnt = 0; /* count the number of PULL_DATA sent since the latest PULL_ACK */
 
     /* Just In Time downlink */
-    uint32_t current_concentrator_time;
+    unsigned int current_concentrator_time;
     enum jit_error_e jit_result = JIT_ERROR_OK;
     enum jit_pkt_type_e downlink_type;
     enum jit_error_e warning_result = JIT_ERROR_OK;
-    int32_t warning_value = 0;
+    signed int warning_value = 0;
     uint8_t tx_lut_idx = 0;
 
     /* set downstream socket RX timeout */
@@ -2779,8 +2796,8 @@ void thread_down(void)
     /* pre-fill the pull request buffer with fixed fields */
     buff_req[0] = PROTOCOL_VERSION;
     buff_req[3] = PKT_PULL_DATA;
-    *(uint32_t *)(buff_req + 4) = net_mac_h;
-    *(uint32_t *)(buff_req + 8) = net_mac_l;
+    *(unsigned int *)(buff_req + 4) = net_mac_h;
+    *(unsigned int *)(buff_req + 8) = net_mac_l;
 
     /* beacon variables initialization */
     last_beacon_gps_time.tv_sec = 0;
@@ -3090,7 +3107,7 @@ void thread_down(void)
                 val = json_object_get_value(txpk_obj,"tmst");
                 if (val != NULL) {
                     /* TX procedure: send on timestamp value */
-                    txpkt.count_us = (uint32_t)json_value_get_number(val);
+                    txpkt.count_us = (unsigned int)json_value_get_number(val);
 
                     /* Concentrator timestamp is given, we consider it is a Class A downlink */
                     downlink_type = JIT_PKT_TYPE_DOWNLINK_CLASS_A;
@@ -3167,7 +3184,7 @@ void thread_down(void)
                 json_value_free(root_val);
                 continue;
             }
-            txpkt.freq_hz = (uint32_t)((double)(1.0e6) * json_value_get_number(val));
+            txpkt.freq_hz = (unsigned int)((double)(1.0e6) * json_value_get_number(val));
 
             /* parse RF chain used for TX (mandatory) */
             val = json_object_get_value(txpk_obj,"rfch");
@@ -3286,7 +3303,7 @@ void thread_down(void)
                     json_value_free(root_val);
                     continue;
                 }
-                txpkt.datarate = (uint32_t)(json_value_get_number(val));
+                txpkt.datarate = (unsigned int)(json_value_get_number(val));
 
                 /* parse frequency deviation (mandatory) */
                 val = json_object_get_value(txpk_obj,"fdev");
@@ -3370,7 +3387,7 @@ void thread_down(void)
                 if ((i < 0) || (txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power != txpkt.rf_power)) {
                     /* this RF power is not supported, throw a warning, and use the closest lower power supported */
                     warning_result = JIT_ERROR_TX_POWER;
-                    warning_value = (int32_t)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
+                    warning_value = (signed int)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
                     printf("WARNING: Requested TX power is not supported (%ddBm), actual power used: %ddBm\n", txpkt.rf_power, warning_value);
                     txpkt.rf_power = txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
                 }
@@ -3430,7 +3447,7 @@ void thread_jit(void)
     int result = LGW_HAL_SUCCESS;
     struct lgw_pkt_tx_s pkt;
     int pkt_index = -1;
-    uint32_t current_concentrator_time;
+    unsigned int current_concentrator_time;
     enum jit_error_e jit_result;
     enum jit_pkt_type_e pkt_type;
     uint8_t tx_status;
@@ -3454,7 +3471,7 @@ void thread_jit(void)
                         if (pkt_type == JIT_PKT_TYPE_BEACON) {
                             /* Compensate breacon frequency with xtal error */
                             xSemaphoreTake(mx_xcorr, portMAX_DELAY);
-                            pkt.freq_hz = (uint32_t)(xtal_correct * (double)pkt.freq_hz);
+                            pkt.freq_hz = (unsigned int)(xtal_correct * (double)pkt.freq_hz);
                             MSG_DEBUG(DEBUG_BEACON, "beacon_pkt.freq_hz=%u (xtal_correct=%.15lf)\n", pkt.freq_hz, xtal_correct);
                             xSemaphoreGive(mx_xcorr);
 
@@ -3529,7 +3546,7 @@ static void gps_process_sync(void)
 {
     struct timespec gps_time;
     struct timespec utc;
-    uint32_t trig_tstamp; /* concentrator timestamp associated with PPM pulse */
+    unsigned int trig_tstamp; /* concentrator timestamp associated with PPM pulse */
     int i = lgw_gps_get(&utc, &gps_time, NULL, NULL);
 
     /* get GPS time for synchronization */
@@ -3764,8 +3781,8 @@ void thread_valid(void)
 void thread_spectral_scan(void)
 {
     int i, x;
-    uint32_t freq_hz = spectral_scan_params.freq_hz_start;
-    uint32_t freq_hz_stop = spectral_scan_params.freq_hz_start + spectral_scan_params.nb_chan * 200E3;
+    unsigned int freq_hz = spectral_scan_params.freq_hz_start;
+    unsigned int freq_hz_stop = spectral_scan_params.freq_hz_start + spectral_scan_params.nb_chan * 200E3;
     int16_t levels[LGW_SPECTRAL_SCAN_RESULT_SIZE];
     uint16_t results[LGW_SPECTRAL_SCAN_RESULT_SIZE];
     struct timeval tm_start;
@@ -3889,8 +3906,75 @@ static void pkt_fwd_task(void *pvParameters)
 }
 
 
+static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+{
+    ESP_LOGD(MQTT_TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
+    esp_mqtt_event_handle_t event = event_data;
+    //esp_mqtt_client_handle_t client = event->client;
+    int msg_id;
+
+    switch ((esp_mqtt_event_id_t)event_id) {
+        case MQTT_EVENT_CONNECTED:
+            ESP_LOGI(MQTT_TAG, "MQTT_EVENT_CONNECTED");
+
+            msg_id = esp_mqtt_client_subscribe(mqtt_client, MQTT_TOPIC, 0);
+            ESP_LOGI(MQTT_TAG, "sent subscribe successful, msg_id=%d", msg_id);
+            break;
+
+        case MQTT_EVENT_DISCONNECTED:
+            ESP_LOGI(MQTT_TAG, "MQTT_EVENT_DISCONNECTED");
+            break;
+
+        case MQTT_EVENT_SUBSCRIBED:
+            ESP_LOGI(MQTT_TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+            break;
+
+        case MQTT_EVENT_PUBLISHED:
+            ESP_LOGI(MQTT_TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+            break;
+
+        case MQTT_EVENT_DATA:
+            ESP_LOGI(MQTT_TAG, "MQTT_EVENT_DATA");
+            printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+            printf("DATA=%.*s\r\n", event->data_len, event->data);
+            break;
+
+        case MQTT_EVENT_ERROR:
+            ESP_LOGI(MQTT_TAG, "MQTT_EVENT_ERROR");
+            if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+                ESP_LOGI(MQTT_TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
+            }
+            break;
+
+        default:
+            ESP_LOGI(MQTT_TAG, "Other event id: %d", event->event_id);
+            break;
+    }
+}
+
+static void mqtt_task(void)
+{
+    esp_mqtt_client_config_t mqtt_cfg = {  // TODO: add username/password?
+        .broker.address.uri = MQTT_BROKER_URL,
+    };
+
+    /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
+    mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+    esp_mqtt_client_start(mqtt_client);
+    ESP_LOGI(MQTT_TAG, "MQTT task started");
+
+    //vTaskDelete(NULL);
+
+    // task never returns
+    while(true){
+        vTaskDelay(8000 / portTICK_PERIOD_MS);
+    }
+}
+
+
 static bool reboot_flag = false;
-static void reboot_timer_callback(void)
+static void reboot_timer_callback(void *)
 {
     if(reboot_flag){
         printf("\n!!! reboot timer called\n");
@@ -4030,15 +4114,16 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
             printf("Wi-Fi ready. Start tasks...\n");
 
             // update the time by NTP
-            sntp_setoperatingmode(SNTP_OPMODE_POLL);
+            esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
             if(config[NTP_SERVER].val != NULL) {
-                sntp_setservername(0, config[NTP_SERVER].val);
+                esp_sntp_setservername(0, config[NTP_SERVER].val);
             } else {
-                sntp_setservername(0, NTP_SERVER_ADDR);
+                esp_sntp_setservername(0, NTP_SERVER_ADDR);
             }
-            sntp_init();
+            esp_sntp_init();
 
             config_wifi_mode(WIFI_MODE_STATION);
+            xTaskCreatePinnedToCore(((TaskFunction_t) mqtt_task), "mqtt", 1*4096, NULL, 6, &mqtt_handle, 0);
             xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
         }
     }
@@ -4142,7 +4227,7 @@ void usage(void) {
 // We don't bother to check and free config[xx].val because we'll reboot esp32 if >= 1 config is updated
 static int do_net_config_cmd(int argc, char **argv)
 {
-    uint32_t val;
+    unsigned int val;
     const char *sval;
     int nerrors;
     bool config_updated_config = false;
@@ -4192,7 +4277,7 @@ static int do_net_config_cmd(int argc, char **argv)
 
     // process '--port' for number of packets to be received before exiting
     if (net_conf_args.udp_port->count > 0) {
-        val = (uint32_t)net_conf_args.udp_port->ival[0];
+        val = (unsigned int)net_conf_args.udp_port->ival[0];
         udp_port = val;
 
         sprintf((char *)udp_port_str, "%u", val);
@@ -4316,7 +4401,7 @@ void app_main(void)
     // start http service
     xTaskCreate(((TaskFunction_t) http_server_task), "http_server", 1*4096, NULL, 6, NULL);
 
-    gpio_pad_select_gpio(BLINK_GPIO);
+    esp_rom_gpio_pad_select_gpio(BLINK_GPIO);
     gpio_set_direction(BLINK_GPIO,GPIO_MODE_OUTPUT);
     gpio_set_level(BLINK_GPIO, 1);
 

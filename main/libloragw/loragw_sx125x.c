@@ -193,9 +193,9 @@ int sx125x_reg_r(radio_reg_t idx, uint8_t *data, uint8_t rf_chain) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, uint32_t freq_hz) {
-    uint32_t part_int = 0;
-    uint32_t part_frac = 0;
+int sx125x_setup(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, unsigned int freq_hz) {
+    unsigned int part_int = 0;
+    unsigned int part_frac = 0;
     int cpt_attempts = 0;
     uint8_t val;
 
