@@ -38,9 +38,9 @@ You need ESP32 development environment [esp-idf](https://github.com/espressif/es
 
 Please follow the guide to install the SDK and the tools, or just follow below simplified steps:
 ```shell
-git clone --recursive https://github.com/espressif/esp-idf.git
+git clone https://github.com/espressif/esp-idf.git
 cd esp-idf
-git checkout v4.4.5  # this branch surely works; the latest v5.x branches not yet
+git checkout v5.5.1  # v5.4.2 also OK; other versions not verified
 git submodule update --init --recursive
 
 # below 2 steps are for Linux. For windows, use `install.bat` and `export.bat` instead.
