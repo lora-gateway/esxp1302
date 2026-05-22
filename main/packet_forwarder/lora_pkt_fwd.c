@@ -4123,7 +4123,7 @@ static void wifi_sta_event_handler(void *arg, esp_event_base_t event_base,
             esp_sntp_init();
 
             config_wifi_mode(WIFI_MODE_STATION);
-            xTaskCreatePinnedToCore(((TaskFunction_t) mqtt_task), "mqtt", 1*4096, NULL, 6, &mqtt_handle, 0);
+            //xTaskCreatePinnedToCore(((TaskFunction_t) mqtt_task), "mqtt", 1*4096, NULL, 6, &mqtt_handle, 0);
             xTaskCreatePinnedToCore(((TaskFunction_t) pkt_fwd_task), "pkt_fwd", 1*4096, NULL, 6, &pkt_fwd_handle, 0);
         }
     }
