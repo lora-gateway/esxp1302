@@ -119,7 +119,7 @@ enum gps_msg {
 @param uart_ptr pointer to a variable to save the UART port number for GPS
 @return success if the function was able to connect and configure a GPS module
 */
-int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr);
+int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t uart_num);
 
 /**
 @brief Restore GPS serial configuration and close serial device

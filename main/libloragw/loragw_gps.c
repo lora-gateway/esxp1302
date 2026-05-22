@@ -250,20 +250,10 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr)
+int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t uart_num)
 {
     esp_err_t err;
 
-#if 0
-    uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN] = {
-                    0xB5, 0x62, /* UBX Sync Chars */
-                    0x06, 0x01, /* CFG-MSG Class/ID */
-                    0x08, 0x00, /* Payload length */
-                    0x01, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-TIMEGPS output on serial */
-                    0x32, 0x94 }; /* Checksum */
-#endif
-
-    uart_port_t uart_num = UART_NUM_1;
     uart_config_t uart_config = {
         .baud_rate = DEFAULT_BAUDRATE,
         .data_bits = UART_DATA_8_BITS,
@@ -272,9 +262,6 @@ int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_APB,
     };
-
-    CHECK_NULL(uart_ptr);
-    *uart_ptr = uart_num;
 
 #if 0
     /* manage the different GPS modules families */
@@ -302,15 +289,6 @@ int lgw_gps_enable(char *gps_family, speed_t target_brate, uart_port_t *uart_ptr
     err = uart_set_pin(uart_num, GPS_UART_TXD, GPS_UART_RXD, GPS_UART_RTS, GPS_UART_CTS);
     if(err != ESP_OK)
         return LGW_GPS_ERROR;
-
-#if 0
-    /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
-    /* This is a binary message, serial port has to be properly configured to handle this */
-    ssize_t num_written = uart_write_bytes(uart_num, (const char *)ubx_cmd_timegps, UBX_MSG_NAVTIMEGPS_LEN);
-    if (num_written != UBX_MSG_NAVTIMEGPS_LEN) {
-        DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
-    }
-#endif
 
     /* get timezone info */
     tzset();

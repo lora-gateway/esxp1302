@@ -261,8 +261,7 @@ static bool xtal_correct_ok = false; /* set true when XTAL correction is stable 
 static double xtal_correct = 1.0;
 
 /* GPS configuration and synchronization */
-static char gps_tty_path[64] = "\0"; /* path of the TTY port GPS is connected on */
-static int gps_tty_fd = -1; /* file descriptor of the GPS TTY port */
+static uart_port_t gps_uart_num = UART_NUM_1; /* uart port number for GPS */
 static bool gps_enabled = false; /* is GPS enabled on that gateway ? */
 
 /* GPS time reference */
@@ -1215,14 +1214,6 @@ static int parse_gateway_configuration(const char * conf_array) {
     }
     MSG("INFO: packets received with no CRC will%s be forwarded\n", (fwd_nocrc_pkt ? "" : " NOT"));
 
-    /* GPS module TTY path (optional) */
-    str = json_object_get_string(conf_obj, "gps_tty_path");
-    if (str != NULL) {
-        strncpy(gps_tty_path, str, sizeof gps_tty_path);
-        gps_tty_path[sizeof gps_tty_path - 1] = '\0'; /* ensure string termination */
-        MSG("INFO: GPS serial port path is configured to \"%s\"\n", gps_tty_path);
-    }
-
     /* get reference coordinates */
     val = json_object_get_value(conf_obj, "ref_latitude");
     if (val != NULL) {
@@ -1685,17 +1676,16 @@ int pkt_fwd_main(void)
     gps_enabled = false;
     gps_ref_valid = false;
 
-#if 0
-//#ifndef GPS_DISABLE
-    i = lgw_gps_enable("ATGM336H", 0, &gps_tty_fd); /* HAL only supports atgm336h or u-blox 7 for now */
+#ifndef GPS_DISABLE
+    i = lgw_gps_enable("ATGM336H", 0, gps_uart_num); /* HAL only verified with ATGM336H */
     if (i != LGW_GPS_SUCCESS) {
-        printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
+        printf("WARNING: [main] enable GPS failed\n");
         gps_enabled = false;
         gps_ref_valid = false;
     } else {
-        printf("INFO: [main] TTY port %s open for GPS synchronization\n", gps_tty_path);
-        //gps_enabled = true;
-        //gps_ref_valid = false;
+        printf("INFO: [main] enable GPS succeeded\n");
+        gps_enabled = true;
+        gps_ref_valid = false;
     }
 #endif
 
@@ -1895,9 +1885,9 @@ int pkt_fwd_main(void)
                 uint8_t data[1024];
                 int length, min;
 
-                ESP_ERROR_CHECK(uart_get_buffered_data_len(gps_tty_fd, (size_t *)&length));
+                ESP_ERROR_CHECK(uart_get_buffered_data_len(gps_uart_num, (size_t *)&length));
                 min = (length < 1024) ? length : 1024;
-                length = uart_read_bytes(gps_tty_fd, data, min, 100);
+                length = uart_read_bytes(gps_uart_num, data, min, 100);
                 data[min] = '\0';
                 //printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
             }
@@ -2098,7 +2088,7 @@ int pkt_fwd_main(void)
         pthread_cancel(thrid_gps); /* don't wait for GPS thread, no access to concentrator board */
         pthread_cancel(thrid_valid); /* don't wait for validation thread, no access to concentrator board */
 
-        i = lgw_gps_disable(gps_tty_fd);
+        i = lgw_gps_disable(gps_uart_num);
         if (i == LGW_HAL_SUCCESS) {
             MSG("INFO: GPS closed successfully\n");
         } else {
@@ -3610,7 +3600,7 @@ void thread_gps(void)
         size_t frame_end_idx = 0;
 
         /* blocking non-canonical read on serial port */
-        ssize_t nb_char = read(gps_tty_fd, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
+        ssize_t nb_char = uart_read_bytes(gps_uart_num, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 100);
         if (nb_char <= 0) {
             MSG("WARNING: [gps] read() returned value %zd\n", nb_char);
             continue;
