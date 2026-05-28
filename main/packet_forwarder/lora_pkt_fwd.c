@@ -362,6 +362,8 @@ TaskHandle_t pThreadUp;
 TaskHandle_t pLed;
 TaskHandle_t pkt_fwd_handle;
 TaskHandle_t mqtt_handle;
+TaskHandle_t gps_handle;
+TaskHandle_t valid_handle;
 
 
 //static void sig_handler(int sigio);
@@ -1844,25 +1846,14 @@ int pkt_fwd_main(void)
     out_info[22] = '\0';
     oled_show_one_line(0, 5, out_info, 1);
 
-#if 0
-    /* threads */
-    pthread_t thrid_gps;
-    pthread_t thrid_valid;
-
     /* spawn thread to manage GPS */
     if (gps_enabled == true) {
-        i = pthread_create(&thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
-        if (i != 0) {
-            MSG("ERROR: [main] impossible to create GPS thread\n");
-            exit(EXIT_FAILURE);
-        }
-        i = pthread_create(&thrid_valid, NULL, (void * (*)(void *))thread_valid, NULL);
-        if (i != 0) {
-            MSG("ERROR: [main] impossible to create validation thread\n");
-            exit(EXIT_FAILURE);
-        }
+        printf( "spawn thread_gps...\n");
+        xTaskCreate((TaskFunction_t) thread_gps, "thread_gps", 4096, (void *)gps_handle, 6, NULL);
+
+        printf( "spawn thread_valid...\n");
+        xTaskCreate((TaskFunction_t) thread_valid, "thread_valid", 4096, (void *)valid_handle, 6, NULL);
     }
-#endif
 
     /* main loop task: statistics collection */
     while (!exit_sig && !quit_sig) {
@@ -1879,18 +1870,6 @@ int pkt_fwd_main(void)
             strftime(stat_timestamp, sizeof stat_timestamp, "%F %T Z", gmtime(&t));
             if(wifi_ready == true)  // only update time if wifi is ready
                 oled_show_one_line(0, 6, stat_timestamp, 1);
-
-            if (gps_enabled){
-                // Read data from GPS UART.
-                uint8_t data[1024];
-                int length, min;
-
-                ESP_ERROR_CHECK(uart_get_buffered_data_len(gps_uart_num, (size_t *)&length));
-                min = (length < 1024) ? length : 1024;
-                length = uart_read_bytes(gps_uart_num, data, min, 100);
-                data[min] = '\0';
-                //printf("GPS Raw Data -------> length = %d, min = %d:\n%s\n", length, min, data);
-            }
         }
         strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
 
