@@ -173,7 +173,7 @@ format that is exploitable by other functions in that library sub-module.
 If the lgw_parse_nmea/lgw_parse_ubx and lgw_gps_get are used in different
 threads, a mutex lock must be acquired before calling either function.
 */
-int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s *loc, struct coord_s *err);
+int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s *loc);
 
 /**
 @brief Get time and position information from the serial GPS last message received

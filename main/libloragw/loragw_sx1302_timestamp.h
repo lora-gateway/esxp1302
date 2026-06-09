@@ -78,7 +78,7 @@ void timestamp_counter_delete(timestamp_counter_t * self);
 @param cnt      Current value of the freerun counter to be used for the update
 @return N/A
 */
-void timestamp_counter_update(timestamp_counter_t * self, unsigned int pps, unsigned int cnt);
+void timestamp_counter_update(timestamp_counter_t* self, uint32_t pps, uint32_t inst);
 
 /**
 @brief Convert the 27-bits counter given by the SX1302 to a 32-bits counter which wraps on a unsigned int.

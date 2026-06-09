@@ -299,22 +299,40 @@ void timestamp_counter_delete(timestamp_counter_t * self) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void timestamp_counter_update(timestamp_counter_t * self, unsigned int pps, unsigned int inst) {
-    //struct timestamp_info_s* tinfo = (pps == true) ? &self->pps : &self->inst;
+void timestamp_counter_update(timestamp_counter_t* self, uint32_t pps, uint32_t inst) {
+    /* Maintain the wrap-counter state used to expand the SX1302's 27-bit
+       PPS-latched and free-running counters into a 32-bit timeline. Must
+       be called more often than the 27-bit wrap period (~134 s @ 1 MHz). */
 
-    /* Check if counter has wrapped, and update wrap status if necessary */
-    if (pps < self->pps.counter_us_27bits_ref) {
-        self->pps.counter_us_27bits_wrap += 1;
-        self->pps.counter_us_27bits_wrap %= 32;
-    }
+    /* INST is free-running: a wrap occurred when the raw value decreased
+       since the previous call. */
     if (inst < self->inst.counter_us_27bits_ref) {
         self->inst.counter_us_27bits_wrap += 1;
         self->inst.counter_us_27bits_wrap %= 32;
     }
-
-    /* Update counter reference */
-    self->pps.counter_us_27bits_ref = pps;
     self->inst.counter_us_27bits_ref = inst;
+
+    /* PPS hardware register stays frozen between rising edges, including
+       across arbitrarily long outages. When raw pps is unchanged, no new
+       edge has fired and the wrap must stay put so the expanded value keeps
+       representing the original edge regardless of how many INST wraps have
+       elapsed during silence (a direct pps-vs-inst test would be unsafe
+       here: after N internal wraps raw inst can re-cross raw pps and
+       silently advance the PPS wrap by N).
+
+       When raw pps changes, a fresh edge has fired. Because PPS arrives at
+       ~1 Hz - far below the 134 s wrap period - the latched value
+       necessarily belongs to either the current INST wrap window
+       (pps <= inst) or the immediately preceding one (pps > inst, meaning
+       INST has wrapped past the latch since it was captured). */
+    if (pps != self->pps.counter_us_27bits_ref) {
+        if (pps <= inst) {
+            self->pps.counter_us_27bits_wrap = self->inst.counter_us_27bits_wrap;
+        } else {
+            self->pps.counter_us_27bits_wrap = (self->inst.counter_us_27bits_wrap + 31) % 32; /* -1 mod 32 */
+        }
+        self->pps.counter_us_27bits_ref = pps;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

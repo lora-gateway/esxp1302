@@ -516,12 +516,11 @@ enum gps_msg lgw_parse_nmea(const char *serial_buff, int buff_size) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s *loc, struct coord_s *err) {
+int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s *loc) {
     struct tm x;
     time_t y;
     double intpart, fractpart;
     //extern long int timezone;
-
 
     if (utc != NULL) {
         if (!gps_time_ok) {
@@ -573,12 +572,6 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
         loc->lon = ((double)gps_dlo + (gps_mlo/60.0)) * ((gps_olo == 'E')?1.0:-1.0);
         loc->alt = gps_alt;
     }
-    if (err != NULL) {
-        DEBUG_MSG("Warning: localization error processing not implemented yet\n");
-        err->lat = 0.0;
-        err->lon = 0.0;
-        err->alt = 0;
-    }
 
     return LGW_GPS_SUCCESS;
 }
@@ -601,11 +594,17 @@ int lgw_gps_sync(struct tref *ref, unsigned int count_us, struct timespec utc, s
     cnt_diff = (double)(count_us - ref->count_us) / (double)(TS_CPS); /* uncorrected by xtal_err */
     utc_diff = (double)(utc.tv_sec - (ref->utc).tv_sec) + (1E-9 * (double)(utc.tv_nsec - (ref->utc).tv_nsec));
 
+    /* skip sync if sx130x pps counter has not changed since last sync */
+    if (count_us == ref->count_us) {
+        DEBUG_MSG("INFO: ref counter PPS has not changed. No sync update.\n");
+        return LGW_GPS_SUCCESS;
+    }
+
     /* detect aberrant points by measuring if slope limits are exceeded */
     if (utc_diff != 0) { // prevent divide by zero
         slope = cnt_diff/utc_diff;
         if ((slope > PLUS_10PPM) || (slope < MINUS_10PPM)) {
-            DEBUG_MSG("Warning: correction range exceeded\n");
+            DEBUG_MSG("WARNING: correction range exceeded - slope=%f (cnt_diff=%f, utc_diff=%f)\n", slope, cnt_diff, utc_diff);
             aber_n0 = true;
         } else {
             aber_n0 = false;
@@ -713,7 +712,12 @@ int lgw_cnt2gps(struct tref ref, unsigned int count_us, struct timespec *gps_tim
     long tmp;
 
     CHECK_NULL(gps_time);
-    if ((ref.systime == 0) || (ref.xtal_err > PLUS_10PPM) || (ref.xtal_err < MINUS_10PPM)) {
+    /* ref.gps.tv_sec == 0 means no GPS-native time source (e.g. UBX-NAV-TIMEGPS)
+       has ever populated this reference. Common with NMEA-only modules, which
+       provide UTC via RMC but never native GPS time. Converting against such a
+       reference would yield a timestamp relative to the GPS epoch (1980), off
+       from reality by ~46 years. */
+    if ((ref.systime == 0) || (ref.gps.tv_sec == 0) || (ref.xtal_err > PLUS_10PPM) || (ref.xtal_err < MINUS_10PPM)) {
         DEBUG_MSG("ERROR: INVALID REFERENCE FOR CNT -> GPS CONVERSION\n");
         return LGW_GPS_ERROR;
     }
@@ -741,7 +745,8 @@ int lgw_gps2cnt(struct tref ref, struct timespec gps_time, unsigned int *count_u
     double delta_sec;
 
     CHECK_NULL(count_us);
-    if ((ref.systime == 0) || (ref.xtal_err > PLUS_10PPM) || (ref.xtal_err < MINUS_10PPM)) {
+    /* See lgw_cnt2gps() for why ref.gps.tv_sec == 0 disqualifies the reference. */
+    if ((ref.systime == 0) || (ref.gps.tv_sec == 0) || (ref.xtal_err > PLUS_10PPM) || (ref.xtal_err < MINUS_10PPM)) {
         DEBUG_MSG("ERROR: INVALID REFERENCE FOR GPS -> CNT CONVERSION\n");
         return LGW_GPS_ERROR;
     }
